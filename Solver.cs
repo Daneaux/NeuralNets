@@ -28,7 +28,7 @@ namespace NeuralNets
             layers.Add(new InputLayer(10));
             layers.Add(new InnerLayer(20));
             layers.Add(new RegressionOutputLayer(1));
-            Net = new Network(layers);
+            Net = new Network(layers, new SquaredLoss());
         }
     }
 

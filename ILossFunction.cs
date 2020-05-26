@@ -30,7 +30,7 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         double Error(double actual, double predicted);
     }
 
-    public class DeltaError
+    public class DeltaError : ILossFunction
     {
         public double Error(double actual, double predicted) => (actual - predicted);
     }
@@ -42,7 +42,7 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
 
     public class LogarithmicLoss : ILossFunction
     {
-        public double Error(double actual, double predicted)u
+        public double Error(double actual, double predicted)
         {
             throw new System.NotImplementedException();
         }
