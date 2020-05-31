@@ -9,19 +9,33 @@ namespace NeuralNets
 {
     class Network
     {
+        public int Seed { get; }
+        public List<Layer> Layers { get; }
         public ILossFunction LossFunction { get; }
-        public List<Layer> Layers { get; private set; }
-        public int Seed { get; private set; }
 
         public Network(List<Layer> layers, ILossFunction lossFunction)
         {
-            Seed = 123;  // temp
+            Seed = 123;  // TODO: temp
             Layers = layers;
             LossFunction = lossFunction;
+            InitializeWeightMatricies();
         }
 
-        private List<Matrix> matrices = new List<Matrix>();
-        private void BuildMatricies()
+        public ColumnVector FeedForward(double[] inputVector)
+        {
+            ColumnVector activationVector = new ColumnVector(inputVector);
+            for(int i = 0; i < this.weightMatrices.Count; i++)
+            {
+                Matrix weightMatrix = this.weightMatrices[i];
+                ColumnVector weightedSum = weightMatrix * activationVector;
+                activationVector = DoActivation(weightedSum, this.Layers[i]);
+            }
+
+            return activationVector;
+        }
+
+        private List<Matrix> weightMatrices = new List<Matrix>();
+        private void InitializeWeightMatricies()
         {
             // Number of matrices is num layers - 1.  So if we have 1 input, 1 hidden, and 1 output, numMatrices = 2
 
@@ -44,25 +58,12 @@ namespace NeuralNets
 
             int numLayers = this.Layers.Count;
             int matrixCount = numLayers - 1;
-            for(int i=0; i< matrixCount; i++)
+            for (int i = 0; i < matrixCount; i++)
             {
                 Matrix mat = new Matrix(Layers[i + 1].NumNodes, Layers[i].NumNodes);
                 mat.SetRandom(Seed, 0.0, 1.0); // TODO: add he et al initialization, Xavier Initialization (each based on different activation functions)
-                this.matrices.Add(mat);
+                this.weightMatrices.Add(mat);
             }
-        }
-
-        public ColumnVector FeedForward(double[] inputVector)
-        {
-            ColumnVector activationVector = new ColumnVector(inputVector);
-            for(int i = 0; i < this.matrices.Count; i++)
-            {
-                Matrix weightMatrix = this.matrices[i];
-                ColumnVector weightedSum = weightMatrix * activationVector;
-                activationVector = DoActivation(weightedSum, this.Layers[i]);
-            }
-
-            return activationVector;
         }
 
         private ColumnVector DoActivation(ColumnVector inputColumnVector, Layer layer)
