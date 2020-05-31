@@ -8,5 +8,9 @@ namespace NeuralNets
 {
     class FeedForward
     {
+        public FeedForward(InputData data, Solver neuralNetwork)
+        {
+
+        }
     }
 }

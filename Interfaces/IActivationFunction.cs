@@ -4,7 +4,7 @@ namespace NeuralNets
 {
     public interface IActivationFunction
     {
-        double Activate(double weightedSum);
+        double Activate(double input);
     }
 
     class ReLUActivaction : IActivationFunction
@@ -17,9 +17,9 @@ namespace NeuralNets
 
     class SigmoidActivation : IActivationFunction
     {
-        public double Activate(double value)
+        public double Activate(double input)
         {
-            return (1.0 / (1.0 + Math.Pow(Math.E, -value)));
+            return (1.0 / (1.0 + Math.Pow(Math.E, -input)));
         }
     }
 

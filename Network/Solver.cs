@@ -22,11 +22,11 @@ namespace NeuralNets
     class RegressionPredictSingle : Solver 
     { 
         // for now: input, inner, output
-        public RegressionPredictSingle()
+        public RegressionPredictSingle(int inputCount, int hiddenLayerCount)
         {
             List<Layer> layers = new List<Layer>();
-            layers.Add(new InputLayer(10));
-            layers.Add(new InnerLayer(20));
+            layers.Add(new InputLayer(inputCount));
+            layers.Add(new InnerLayer(hiddenLayerCount));
             layers.Add(new RegressionOutputLayer(1));
             Net = new Network(layers, new SquaredLoss());
         }

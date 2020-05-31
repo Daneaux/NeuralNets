@@ -78,5 +78,11 @@ namespace UnitTests
             Assert.AreEqual(m.Mat[1, 3], mt.Mat[3, 1]);
             Assert.AreEqual(m.Mat[2, 2], mt.Mat[2, 2]);
         }
+
+        [TestMethod]
+        public void Vectors()
+        {
+            // todo test row and column vectors
+        }
     }
 }

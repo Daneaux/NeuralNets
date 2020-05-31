@@ -46,20 +46,24 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="IActivationFunction.cs" />
-    <Compile Include="ILossFunction.cs" />
-    <Compile Include="Layer.cs" />
-    <Compile Include="Matrix.cs" />
-    <Compile Include="Network.cs" />
-    <Compile Include="Node.cs" />
+    <Compile Include="Interfaces\IActivationFunction.cs" />
+    <Compile Include="Interfaces\ILossFunction.cs" />
+    <Compile Include="Network\Layer.cs" />
+    <Compile Include="Math\Matrix.cs" />
+    <Compile Include="Network\Network.cs" />
+    <Compile Include="Network\Node.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Solver.cs" />
-    <Compile Include="FeedForward.cs" />
+    <Compile Include="Network\Solver.cs" />
+    <Compile Include="Training\FeedForward.cs" />
+    <Compile Include="Training\InputData.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Data\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
