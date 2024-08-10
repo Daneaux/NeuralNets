@@ -1,11 +1,13 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.30002.166
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34622.214
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NeuralNets", "NeuralNets.csproj", "{0B69309B-B4D6-4832-8F8E-225A5CA63071}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{70497C1A-7BB3-470F-9A39-9A31D32F84DE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NumReaderNetwork", "..\NumReaderNetwork\NumReaderNetwork.csproj", "{CE50C190-D524-461D-BD87-CBD26F567C6B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{70497C1A-7BB3-470F-9A39-9A31D32F84DE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{70497C1A-7BB3-470F-9A39-9A31D32F84DE}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{70497C1A-7BB3-470F-9A39-9A31D32F84DE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CE50C190-D524-461D-BD87-CBD26F567C6B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CE50C190-D524-461D-BD87-CBD26F567C6B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CE50C190-D524-461D-BD87-CBD26F567C6B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CE50C190-D524-461D-BD87-CBD26F567C6B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

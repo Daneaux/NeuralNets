@@ -1,4 +1,6 @@
-﻿namespace NeuralNets
+﻿using System;
+
+namespace NeuralNets
 {
     /*
      * https://machinelearningmastery.com/loss-and-loss-functions-for-training-deep-learning-neural-networks/
@@ -25,24 +27,40 @@ The problem is framed as predicting the likelihood of an example belonging to ea
 Output Layer Configuration: One node for each class using the softmax activation function.
 Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
 */
+
+
     public interface ILossFunction
     {
-        double Error(double actual, double predicted);
+        ColumnVector Error(ColumnVector actual, ColumnVector predicted);
+        ColumnVector Derivative(ColumnVector actual, ColumnVector predicted);
     }
 
     public class DeltaError : ILossFunction
     {
-        public double Error(double actual, double predicted) => (actual - predicted);
+        public ColumnVector Derivative(ColumnVector actual, ColumnVector predicted)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ColumnVector Error(ColumnVector actual, ColumnVector predicted) => predicted - actual;
     }
 
+    // 1/2 * (precited - actual)^2
     public class SquaredLoss : ILossFunction
     {
-        public double Error(double actual, double predicted) => (actual - predicted) * (actual - predicted);
+        public ColumnVector Error(ColumnVector actual, ColumnVector predicted) => 0.5 * (predicted - actual) * (predicted - actual);
+
+        public ColumnVector Derivative(ColumnVector actual, ColumnVector predicted) => (predicted - actual);
     }
 
     public class LogarithmicLoss : ILossFunction
     {
-        public double Error(double actual, double predicted)
+        public ColumnVector Derivative(ColumnVector actual, ColumnVector predicted)
+        {
+            throw new NotImplementedException();
+        }
+
+        public ColumnVector Error(ColumnVector actual, ColumnVector predicted)
         {
             throw new System.NotImplementedException();
         }

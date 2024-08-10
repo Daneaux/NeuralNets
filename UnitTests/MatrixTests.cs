@@ -33,6 +33,27 @@ namespace UnitTests
         }
 
         [TestMethod]
+        public void MatrixTimesRow()
+        {
+            double[,] ddd = new double[3, 3]{
+                {1.0, 2.0, 9.0},
+                {4.0, 5.0, 6.0},
+                {7, 8, 9}};
+            Matrix m1 = new Matrix(ddd);
+
+            Matrix m2 = new RowVector(new double[3] { 1, 2, 3 } );
+
+            Matrix m3 = m1 * m2;
+
+            Assert.AreEqual(m3[0, 0], 1.0);
+            Assert.AreEqual(m3[0, 1], 4.0);
+            Assert.AreEqual(m3[0, 2], 3.0 * 9.0);
+           // Assert.AreEqual(m3[0, 0], 1.0);
+
+
+        }
+
+        [TestMethod]
         public void MultiplyOperator()
         {
             double[,] ddd = new double[2, 3]

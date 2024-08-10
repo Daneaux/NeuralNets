@@ -55,6 +55,7 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Network\Solver.cs" />
+    <Compile Include="TrainingData.cs" />
     <Compile Include="Training\FeedForward.cs" />
     <Compile Include="Training\InputData.cs" />
   </ItemGroup>

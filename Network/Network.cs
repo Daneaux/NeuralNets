@@ -9,21 +9,25 @@ namespace NeuralNets
 {
     class Network
     {
+        private readonly List<Matrix> weightMatrices = new List<Matrix>();
+
         public int Seed { get; }
         public List<Layer> Layers { get; }
         public ILossFunction LossFunction { get; }
 
-        public Network(List<Layer> layers, ILossFunction lossFunction)
+        public Network(List<Layer> layers, ILossFunction lossFunction, int randomSeed = 1234)
         {
-            Seed = 123;  // TODO: temp
+            Seed = randomSeed;
             Layers = layers;
             LossFunction = lossFunction;
             InitializeWeightMatricies();
         }
 
-        public ColumnVector FeedForward(double[] inputVector)
+
+        // todo: add biases
+        public ColumnVector FeedForward(ColumnVector inputVector)
         {
-            ColumnVector activationVector = new ColumnVector(inputVector);
+            ColumnVector activationVector = inputVector;
             for(int i = 0; i < this.weightMatrices.Count; i++)
             {
                 Matrix weightMatrix = this.weightMatrices[i];
@@ -34,7 +38,13 @@ namespace NeuralNets
             return activationVector;
         }
 
-        private List<Matrix> weightMatrices = new List<Matrix>();
+        public void BackProp(TrainingPair trainingPair) 
+        {
+            ColumnVector outputVector = this.FeedForward(trainingPair.Input);
+            ColumnVector lossVector = this.LossFunction.Error(outputVector, trainingPair.Output);
+            ColumnVector derivativeLossVector = this.LossFunction.Derivative(outputVector, trainingPair.Output);
+        }
+
         private void InitializeWeightMatricies()
         {
             // Number of matrices is num layers - 1.  So if we have 1 input, 1 hidden, and 1 output, numMatrices = 2

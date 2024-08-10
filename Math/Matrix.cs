@@ -244,6 +244,66 @@ namespace NeuralNets
             }
         }
 
+        public static ColumnVector operator -(ColumnVector left, ColumnVector right)
+        {
+            return left.MinusColumnVector(right);
+        }
+
+        private ColumnVector MinusColumnVector(ColumnVector right)
+        {
+            double[] res = new double[this.Size];
+            for(int i = 0; i < this.Size; i++)
+            {
+                res[i] = this[i] - right[i];
+            }
+
+            return new ColumnVector(res);
+        }
+
+        public static ColumnVector operator +(ColumnVector left, ColumnVector right)
+        {
+            return left.PlusColumnVector(right);
+        }
+
+        private ColumnVector PlusColumnVector(ColumnVector right)
+        {
+            double[] res = new double[this.Size];
+            for (int i = 0; i < this.Size; i++)
+            {
+                res[i] = this[i] + right[i];
+            }
+
+            return new ColumnVector(res);
+        }
+
+        public static ColumnVector operator *(double scalar, ColumnVector vec) => vec.ScalarMultiply(scalar);
+        public static ColumnVector operator *(ColumnVector vec, double scalar) => vec.ScalarMultiply(scalar);
+
+        private  ColumnVector ScalarMultiply(double scalar)
+        {
+            double[] res = new double[this.Size];
+            for (int i = 0; i < this.Size; i++)
+            {
+                res[i] = this[i] * scalar;
+            }
+
+            return new ColumnVector(res);
+        }
+
+        public static ColumnVector operator +(ColumnVector vec, double scalar) => vec.ScalarAddition(scalar);
+        public static ColumnVector operator +(double scalar, ColumnVector vec) => vec.ScalarAddition(scalar);
+
+        private ColumnVector ScalarAddition(double scalar)
+        {
+            double[] res = new double[this.Size];
+            for (int i = 0; i < this.Size; i++)
+            {
+                res[i] = this[i] + scalar;
+            }
+
+            return new ColumnVector(res);
+        }
+
         public double this[int i]
         {
             get { return this.Mat[i, 0]; }
