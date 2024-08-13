@@ -54,7 +54,7 @@ namespace NumReaderNetwork
             
             // Second: find W0 - Wn in the hidden layer, just before the output layer
             // We want the derivative of the Error function in terms of the weights (w0 ... wn)
-            // d(E)/dw = d(E)/o2 * d(o2)/z2 * d(z2)/w = (a-b) * layer.derivative * o1
+            // d(E)/dw1 = d(E)/o2 * d(o2)/z2 * d(z2)/w = (a-b) * layer.derivative * o1
             // <matrix form> ==> 
             //          (pred - actual)_vec * sigmoid_derivate_vec * layer-1.output_vec
             // d(E)/db = d(E)/o2 * d(o2)/z2 * d(z2)/b
@@ -86,9 +86,18 @@ namespace NumReaderNetwork
 
             ColumnVector b2_delta = this.TrainingRate * w2_sigma * 1.0;  // d(z2)/b  .. i think?
 
+
+            // WARNING: UPDATE THESE WEIGHTS AFTER BACK PROP IS DONE!
             // Now: Update W2 weight matrix with w2_delta (and same for b)
             outputLayer.UpdateWeights(scaledGradientWeights);
             outputLayer.UpdateBiases(b2_delta);
+
+            // Now, let's do the weights left of the hidden layer!
+            // d(e)/dw1 = d(e)/o1 * d(o1)/z1 * d(z1)/w
+            // but d(e)/o1 influences (or influences by?) all the incoming edges to this node. So have to sum all their partials wrt w 
+            // So:  d(e)/o1 = sum of all: d(error O2 node1)/o1 + d(error o2 node2)/o1
+            // and: d(error o2 node1)/o1 = d(error o2)/z2 * d(z2)/o1
+            // because d(z2)/o1 ==> z2 = w1 * o11 + w2 * o12 - b.  So Z2/o11 --> w1
         }
     }
 }

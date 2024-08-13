@@ -43,7 +43,7 @@ namespace NeuralNetsTests.ANNTests
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
                 {
                     Weights = new Matrix(new double[,] { { 0.5, 0.2 }, { 0.1, 0.8 } }),
-                    Biases = new ColumnVector(new double[] { 0.3, 0.6 })
+                    Biases = new ColumnVector([0.3, 0.6])
                 },
                 new WeightedLayer(1, new SigmoidActivation(), 2)
                 {
@@ -73,7 +73,7 @@ namespace NeuralNetsTests.ANNTests
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
                 {
                     Weights = new Matrix(new double[,] { { 0.5, 0.2 }, { 0.1, 0.8 } }),
-                    Biases = new ColumnVector(new double[] { 0.3, 0.6 })
+                    Biases = new ColumnVector([0.3, 0.6])
                 },
                 new WeightedLayer(1, new SigmoidActivation(), 2)
                 {
