@@ -1,11 +1,5 @@
-﻿using System;
-using System.CodeDom;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Security.Permissions;
+﻿using System.Diagnostics;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace NeuralNets
 {
@@ -26,6 +20,19 @@ namespace NeuralNets
             for (int r = 0; r < Rows; r++)
             {
                 Mat[r, 0] = inputVector[r];
+            }
+        }
+
+        public Matrix(ColumnVector[] columns, int numRows) : this(numRows, columns.Length)
+        {
+            int c = 0;
+            foreach(ColumnVector col in columns)
+            {
+                for(int r= 0; r<col.Size; r++)
+                {
+                    this[r, c] = col[r];
+                }
+                c++;
             }
         }
 
@@ -118,6 +125,31 @@ namespace NeuralNets
         {
             get { return this.Mat[r, c]; }
             set { this.Mat[r, c] = value; }
+        }
+
+        public static Matrix operator -(Matrix a, Matrix b) => a.Subtract(b);
+
+        private Matrix Subtract(Matrix b)
+        {
+            Debug.Assert(HasSameDimensions(b));
+
+            // this minus b
+            if (this.Cols == b.Rows)
+            {
+                Matrix res = new Matrix(this.Rows, b.Cols);
+                for (int r = 0; r < Rows; r++)
+                {
+                    for (int c = 0; c < this.Cols; c++)
+                    {
+                        res[r, c] = this[r, c] - b[r, c];
+                    }
+                }
+                return res;
+            }
+            else
+            {
+                throw new ArgumentOutOfRangeException("Bad dimensions");
+            }
         }
 
         public Matrix HadamardProduct(Matrix b)

@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MnistReader_ANN\MnistReader_ANN.csproj" />
     <ProjectReference Include="..\NeuralNets\NeuralNets.csproj" />
   </ItemGroup>
 

@@ -30,8 +30,18 @@ namespace NeuralNets
 
         // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.
         // And the number of columns is the number of data points in a samples, for examle 768 b&w pixel values for the MNIST number set
-        public Matrix Weights { get; private set; }
-        public ColumnVector Biases { get; private set; }
+        public Matrix Weights { get;  set; }
+        public ColumnVector Biases { get;  set; }
+
+        public void UpdateWeights(Matrix w2_delta)
+        {
+            Weights = Weights - w2_delta;
+        }
+
+        public void UpdateBiases(ColumnVector b_delta) 
+        { 
+            Biases = Biases - b_delta;
+        }
     }
 
     public class InputLayer : Layer 
