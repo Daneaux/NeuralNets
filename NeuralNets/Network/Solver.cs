@@ -19,18 +19,18 @@ namespace NeuralNets
     // output: numerical
     // Output Activation Function: Linear
     // Loss Function: Mean Squared Error
-    class RegressionPredictSingle : Solver 
+/*    class RegressionPredictSingle : Solver 
     { 
         // for now: input, inner, output
         public RegressionPredictSingle(int inputCount, int hiddenLayerCount)
         {
             List<Layer> layers = new List<Layer>();
             layers.Add(new InputLayer(inputCount));
-            layers.Add(new InnerLayer(hiddenLayerCount));
+            layers.Add(new WeightedLayer(hiddenLayerCount));
             layers.Add(new RegressionOutputLayer(1));
             Net = new Network(layers, new SquaredLoss());
         }
-    }
+    }*/
 
     class BinaryClassification : Solver { }
 

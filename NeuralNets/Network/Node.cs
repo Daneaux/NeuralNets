@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NeuralNets
 {
-    class Node
+/*    class Node
     {
         public int OutEdges => OutWeights.Length;
         public double[] OutWeights { get;  set; }
@@ -38,5 +38,5 @@ namespace NeuralNets
         }
 
 
-    }
+    }*/
 }

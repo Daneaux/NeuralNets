@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace NeuralNets
 {
-    internal class TrainingPair
+    public class TrainingPair
     {
         public TrainingPair(ColumnVector input, ColumnVector output)
         {
@@ -18,7 +18,7 @@ namespace NeuralNets
         public ColumnVector Output { get; }
     }
 
-    internal class TrainingData
+    public class TrainingData
     {
         public TrainingData(int inputDim, int outputDim, TrainingPair[] trainingPairs)
         {

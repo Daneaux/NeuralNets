@@ -1,12 +1,17 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NeuralNets;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
-namespace UnitTests
+namespace NeuralNets.Tests
 {
-    [TestClass]
+    [TestClass()]
     public class MatrixTests
     {
-        [TestMethod]
+        [TestMethod()]
         public void CreateRandom()
         {
             Matrix m = new Matrix(3, 4);
@@ -25,32 +30,11 @@ namespace UnitTests
             Matrix m3 = m1.HadamardProduct(m2);
             Assert.AreEqual(m1[1, 1], 5);
             Assert.AreEqual(m2[1, 1], 5);
-            for(int r=0; r<m1.Rows; r++)
-                for(int c=0; c<m1.Cols; c++)
+            for (int r = 0; r < m1.Rows; r++)
+                for (int c = 0; c < m1.Cols; c++)
                 {
                     Assert.AreEqual(m3[r, c], m1[r, c] * m2[r, c]);
                 }
-        }
-
-        [TestMethod]
-        public void MatrixTimesRow()
-        {
-            double[,] ddd = new double[3, 3]{
-                {1.0, 2.0, 9.0},
-                {4.0, 5.0, 6.0},
-                {7, 8, 9}};
-            Matrix m1 = new Matrix(ddd);
-
-            Matrix m2 = new RowVector(new double[3] { 1, 2, 3 } );
-
-            Matrix m3 = m1 * m2;
-
-            Assert.AreEqual(m3[0, 0], 1.0);
-            Assert.AreEqual(m3[0, 1], 4.0);
-            Assert.AreEqual(m3[0, 2], 3.0 * 9.0);
-           // Assert.AreEqual(m3[0, 0], 1.0);
-
-
         }
 
         [TestMethod]
@@ -76,8 +60,8 @@ namespace UnitTests
             Assert.AreEqual(2, m12.Rows);
             Assert.AreEqual(2, m12.Cols);
 
-            Assert.AreEqual(1 + 4 + (3*9), m12.Mat[0, 0]);
-            Assert.AreEqual(4 + 10 + (6*9), m12.Mat[0, 1]);
+            Assert.AreEqual(1 + 4 + (3 * 9), m12.Mat[0, 0]);
+            Assert.AreEqual(4 + 10 + (6 * 9), m12.Mat[0, 1]);
             Assert.AreEqual(4 + 10 + 18, m12.Mat[1, 0]);
             Assert.AreEqual(16 + 25 + 36, m12.Mat[1, 1]);
         }

@@ -244,6 +244,9 @@ namespace NeuralNets
             }
         }
 
+        public ColumnVector(int size) : base(1, size)
+        { }
+
         public static ColumnVector operator -(ColumnVector left, ColumnVector right)
         {
             return left.MinusColumnVector(right);
@@ -299,6 +302,20 @@ namespace NeuralNets
             for (int i = 0; i < this.Size; i++)
             {
                 res[i] = this[i] + scalar;
+            }
+
+            return new ColumnVector(res);
+        }
+
+        public static ColumnVector operator -(ColumnVector vec, double scalar) => vec.ScalarAddition(-scalar);
+        public static ColumnVector operator -(double scalar, ColumnVector vec) => vec.ScalarSubtract(scalar);
+
+        private ColumnVector ScalarSubtract(double scalar)
+        {
+            double[] res = new double[this.Size];
+            for (int i = 0; i < this.Size; i++)
+            {
+                res[i] = scalar - this[i];
             }
 
             return new ColumnVector(res);
