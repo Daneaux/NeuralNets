@@ -32,6 +32,8 @@ namespace NeuralNets
         // And the number of columns is the number of data points in a samples, for examle 768 b&w pixel values for the MNIST number set
         public Matrix Weights { get;  set; }
         public ColumnVector Biases { get;  set; }
+        public ColumnVector ActvationOutput { get; private set; }
+        public ColumnVector InputVector { get; private set; }
 
         public void UpdateWeights(Matrix w2_delta)
         {
@@ -41,6 +43,13 @@ namespace NeuralNets
         public void UpdateBiases(ColumnVector b_delta) 
         { 
             Biases = Biases - b_delta;
+        }
+        public void SetInputVector(ColumnVector z1) { this.InputVector = z1; }
+        public void SetActivationOutput(ColumnVector o1) { this.ActvationOutput = o1; }  
+        
+        public ColumnVector GetActivationFunctionDerivative()
+        {
+            return this.ActivationFunction.Derivative();
         }
     }
 

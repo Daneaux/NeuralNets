@@ -13,8 +13,10 @@ namespace NeuralNetsTests.ANNTests
         public void TestInitializeNetwork_CreatesCorrectLayers()
         {
             // Arrange
-            int inputDim = 784; // Example input dimension
-            NumberReaderANN network = new NumberReaderANN(inputDim);
+            int inputDim = 786; // Example input dimension
+            int hiddenDim = 16;
+            int outputDim = 10;
+            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
 
             // Act
             network.InitializeNetwork();
@@ -37,7 +39,9 @@ namespace NeuralNetsTests.ANNTests
         {
             // Arrange
             int inputDim = 2;
-            NumberReaderANN network = new NumberReaderANN(inputDim);
+            int hiddenDim = 2;
+            int outputDim = 2;
+            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
@@ -67,7 +71,9 @@ namespace NeuralNetsTests.ANNTests
         {
             // Arrange
             int inputDim = 2;
-            NumberReaderANN network = new NumberReaderANN(inputDim);
+            int hiddenDim = 2;
+            int outputDim = 2;
+            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
@@ -84,7 +90,8 @@ namespace NeuralNetsTests.ANNTests
             TrainingPair pair = new TrainingPair(new ColumnVector(new double[] { 0.4, 0.9 }), new ColumnVector(new double[] { 0 }));
 
             // Act
-            network.BackProp(pair);
+            var predictedOut = network.FeedForward(pair.Input);
+            network.BackProp(pair, predictedOut);
 
             // Assert
             // Check if weights and biases in both layers have been updated

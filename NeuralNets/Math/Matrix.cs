@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Net.NetworkInformation;
 using System.Text;
 
 namespace NeuralNets
@@ -106,7 +107,7 @@ namespace NeuralNets
         {
             if (this.Cols == colVec.Size)
             {
-                double[] vector = new double[colVec.Size];
+                double[] vector = new double[this.Rows];
                 for (int r = 0; r < Rows; r++)
                 {
                     vector[r] = DoRowTimesColumnVector(r, colVec);
@@ -184,12 +185,12 @@ namespace NeuralNets
         private double DoRowTimesColumnVector(int myRow, ColumnVector colVec)
         {
             Debug.Assert(colVec.Size == this.Cols);
-            double cum = 0;
-            for (int i = 0; i < Cols; i++)
+            double product = 0;
+            for(int c =0; c < Cols; c++)
             {
-                cum += this.Mat[myRow, i] * colVec[i];
+                product += this.Mat[myRow, c] * colVec[c];
             }
-            return cum;
+            return product;
         }
 
         private double DoRowVectorTimesColumn(RowVector rowVec, int myCol)
@@ -276,8 +277,18 @@ namespace NeuralNets
             }
         }
 
-        public ColumnVector(int size) : base(1, size)
+        public ColumnVector(int size) : base(size, 1)
         { }
+
+        public double ScalarSum()
+        {
+            double accum = 0.0;
+            for(int r = 0; r < Rows; r++)
+            {
+                accum += Mat[r, 0];
+            }
+            return accum;
+        }
 
         public static ColumnVector operator -(ColumnVector left, ColumnVector right)
         {
@@ -308,6 +319,18 @@ namespace NeuralNets
                 res[i] = this[i] + right[i];
             }
 
+            return new ColumnVector(res);
+        }
+
+        public static ColumnVector operator *(ColumnVector left, ColumnVector right) => left.Multiply(right);
+
+        public ColumnVector Multiply(ColumnVector right)
+        {
+            double[] res = new double[this.Size];
+            for(int i=0; i < this.Size; i++)
+            {
+                res[i] = this[i] * right[i];
+            }
             return new ColumnVector(res);
         }
 

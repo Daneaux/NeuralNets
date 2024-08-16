@@ -9,11 +9,11 @@ namespace NeuralNets
        // double Activate(double input);
         ColumnVector Activate(ColumnVector input);
         ColumnVector Derivative();
-        ColumnVector Derivative(ColumnVector input);
     }
 
     public class ReLUActivaction : IActivationFunction
     {
+        // seems inconsistent, should last actiavtion belong to the layer?  BUG TODO
         public ColumnVector? LastActivation { get; private set; }
 
         public ColumnVector Activate(ColumnVector input)
@@ -26,22 +26,22 @@ namespace NeuralNets
             return LastActivation;
         }
 
-        public ColumnVector Derivative(ColumnVector input)
+        public ColumnVector Derivative()
         {
-            ColumnVector derivative = new ColumnVector(input.Size);
-            for(int i = 0;i < input.Size;i++)
+            if(LastActivation == null)
             {
-                if (input[i] >= 0)
+                throw new InvalidOperationException();
+            }
+
+            ColumnVector derivative = new ColumnVector(LastActivation.Size);
+            for (int i = 0; i < LastActivation.Size; i++)
+            {
+                if (LastActivation[i] >= 0)
                     derivative[i] = 1;
                 else
                     derivative[i] = 0;
             }
             return derivative;
-        }
-
-        public ColumnVector Derivative()
-        {
-            throw new NotImplementedException();
         }
     }
 
@@ -69,13 +69,8 @@ namespace NeuralNets
         {
             Debug.Assert(LastActivation != null);
             ColumnVector derivative = this.LastActivation * (1.0 - this.LastActivation);
-            this.LastActivation = derivative;
+            //this.LastActivation = derivative; // bug?
             return derivative;
-        }
-
-        public ColumnVector Derivative(ColumnVector input)
-        {
-            throw new NotImplementedException();
         }
     }
 

@@ -7,7 +7,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNets", "NeuralNets.cs
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MnistReader_ANN", "..\MnistReader_ANN\MnistReader_ANN.csproj", "{451ADD25-A42E-4F60-B11B-56CF70FA2DCA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NeuralNetsTests", "..\NeuralNetsTests\NeuralNetsTests.csproj", "{AEFFAF22-62FF-4C61-A9DC-92415E9A194A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NeuralNetsTests", "..\NeuralNetsTests\NeuralNetsTests.csproj", "{AEFFAF22-62FF-4C61-A9DC-92415E9A194A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AnnHarness", "..\AnnHarness\AnnHarness.csproj", "{2D23694E-999C-40C2-AAF5-1068A9D607B0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -27,6 +29,10 @@ Global
 		{AEFFAF22-62FF-4C61-A9DC-92415E9A194A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{AEFFAF22-62FF-4C61-A9DC-92415E9A194A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{AEFFAF22-62FF-4C61-A9DC-92415E9A194A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2D23694E-999C-40C2-AAF5-1068A9D607B0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2D23694E-999C-40C2-AAF5-1068A9D607B0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2D23694E-999C-40C2-AAF5-1068A9D607B0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2D23694E-999C-40C2-AAF5-1068A9D607B0}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
