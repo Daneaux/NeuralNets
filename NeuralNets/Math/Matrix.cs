@@ -52,7 +52,8 @@ namespace NeuralNets
             {
                 for (int r = 0; r < Rows; r++)
                 {
-                    Mat[r, c] = (rnd.NextDouble() * width) + min;
+                   Mat[r, c] = (rnd.NextDouble() * width) + min;
+                   // for testing only:  Mat[r, c] = 0.5;
                 }
             }
         }
@@ -128,6 +129,20 @@ namespace NeuralNets
             set { this.Mat[r, c] = value; }
         }
 
+        public static Matrix operator *(double scalar, Matrix b) => b.Multiply(scalar);
+        public Matrix Multiply(double scalar)
+        {
+            Matrix res = new Matrix(Rows, Cols);
+            for (int r = 0; r < Rows; r++)
+            {
+                for (int c = 0; c < Cols; c++)
+                {
+                    res.Mat[r, c] = scalar * this[r, c];
+                }
+            }
+            return res;
+        }
+
         public static Matrix operator -(Matrix a, Matrix b) => a.Subtract(b);
 
         private Matrix Subtract(Matrix b)
@@ -135,7 +150,7 @@ namespace NeuralNets
             Debug.Assert(HasSameDimensions(b));
 
             // this minus b
-            if (this.Cols == b.Rows)
+            if (this.Cols == b.Cols && this.Rows == b.Rows)
             {
                 Matrix res = new Matrix(this.Rows, b.Cols);
                 for (int r = 0; r < Rows; r++)
@@ -241,11 +256,13 @@ namespace NeuralNets
         public int Size { get { return this.Cols; } }
         public RowVector(double[] inputVector) : base(1, inputVector.Length)
         {
-            for (int c = 0; c < Cols; c++)
+            for (int c = 0; c < Size; c++)
             {
                 Mat[0, c] = inputVector[c];
             }
         }
+
+        public RowVector(int size) :  base(1, size) { }
 
         public double this[int i]
         {
@@ -288,6 +305,21 @@ namespace NeuralNets
                 accum += Mat[r, 0];
             }
             return accum;
+        }
+
+        public static Matrix operator *(ColumnVector left, RowVector right) => left.OuterProduct(right);
+
+        private Matrix OuterProduct(RowVector right)
+        {
+            Matrix result = new Matrix(this.Size, right.Size);
+            for(int r = 0; r < this.Size; r++)
+            {
+                for (int c = 0; c < right.Size; c++)
+                {
+                    result[r, c] = this[r] * right[c];
+                }
+            }
+            return result;
         }
 
         public static ColumnVector operator -(ColumnVector left, ColumnVector right)
@@ -374,6 +406,16 @@ namespace NeuralNets
             }
 
             return new ColumnVector(res);
+        }
+
+        public RowVector Transpose()
+        {
+            RowVector result = new RowVector(this.Size);
+            for(int i = 0;i < this.Size;i++)
+            {
+                result[i] = this[i];
+            }
+            return result;
         }
 
         public double this[int i]

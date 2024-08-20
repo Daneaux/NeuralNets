@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,11 +22,28 @@ namespace NeuralNets
         public IActivationFunction ActivationFunction { get; protected set; }
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints) : base(nodeCount)
         {
+            int seed = 6874589;
             this.ActivationFunction = activationFunction;
             this.Weights = new Matrix(nodeCount, incomingDataPoints);
-            this.Weights.SetRandom(123, - Math.Sqrt(nodeCount), Math.Sqrt(nodeCount)); // Xavier initilization
+            this.Weights.SetRandom(seed, - Math.Sqrt(nodeCount), Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases = new ColumnVector(nodeCount);
-            this.Biases.SetRandom(123, -0.01, 0.01);            
+            this.Biases.SetRandom(seed, -0.01, 0.01);            
+        }
+
+        public WeightedLayer(
+            int nodeCount, 
+            IActivationFunction activationFunction, 
+            int incomingDataPoints,
+            Matrix initialWeights,
+            ColumnVector initialBiases) : base(nodeCount)
+        {
+            Debug.Assert(activationFunction != null);
+            this.Weights = initialWeights;
+            this.Biases = initialBiases;
+            Debug.Assert(this.Weights.Cols == this.Biases.Size);
+            Debug.Assert(this.Weights.Rows == incomingDataPoints);
+            this.ActivationFunction = activationFunction;
+
         }
 
         // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.

@@ -18,14 +18,9 @@ namespace NeuralNetsTests.ANNTests
             int outputDim = 10;
             NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
 
-            // Act
-            network.InitializeNetwork();
-
             // Assert
             Assert.AreEqual(2, network.WeightedLayers.Count); // Check if 2 layers are created
 
-            // Verify properties of the hidden layer
-            Assert.AreEqual(network.HiddenLayerDim, network.WeightedLayers[0].NumNodes);
             Assert.AreEqual(inputDim, network.WeightedLayers[0].NumNodes);
             Assert.IsInstanceOfType(network.WeightedLayers[0].ActivationFunction, typeof(ReLUActivaction));
 

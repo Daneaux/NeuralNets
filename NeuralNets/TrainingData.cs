@@ -20,16 +20,15 @@ namespace NeuralNets
 
     public class TrainingData
     {
-        public TrainingData(int inputDim, int outputDim, TrainingPair[] trainingPairs)
+        public TrainingData(int inputDim, int outputDim, List<TrainingPair> trainingPairs)
         {
             this.InputDimensions = inputDim;
             this.OutputDimensions = outputDim;
             this.TrainingPairs = trainingPairs;
-
         }
 
         public int InputDimensions { get; }
         public int OutputDimensions { get; }
-        public TrainingPair[] TrainingPairs { get; }
+        public List<TrainingPair> TrainingPairs { get; }
     }
 }
