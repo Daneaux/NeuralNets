@@ -6,7 +6,6 @@ namespace NeuralNets
     public interface IActivationFunction
     {
         ColumnVector? LastActivation { get; }
-       // double Activate(double input);
         ColumnVector Activate(ColumnVector input);
         ColumnVector Derivative();
     }
@@ -49,27 +48,24 @@ namespace NeuralNets
     {
         public ColumnVector? LastActivation { get; private set; }
 
-        public double Activate(double input)
-        {
-            return (1.0 / (1.0 + Math.Pow(Math.E, -input)));
-        }
-
         public ColumnVector Activate(ColumnVector input)
         {
-            ColumnVector act = new ColumnVector(input.Size);
+            LastActivation = new ColumnVector(input.Size);
             for (int i = 0; i < input.Size; i++)
             {
-                act[i] = (1.0 / (1.0 + Math.Pow(Math.E, -input[i])));
+                LastActivation[i] = (1.0 / (1.0 + Math.Pow(Math.E, -input[i])));
             }
-            LastActivation = act;
-            return act;
+            return LastActivation;
         }
 
         public ColumnVector Derivative()
         {
-            Debug.Assert(LastActivation != null);
+            if (LastActivation == null)
+            {
+                throw new InvalidOperationException();
+            }
+
             ColumnVector derivative = this.LastActivation * (1.0 - this.LastActivation);
-            //this.LastActivation = derivative; // bug?
             return derivative;
         }
     }

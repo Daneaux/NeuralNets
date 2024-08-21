@@ -48,10 +48,10 @@ namespace NumReaderNetwork
 
     public static class MnistReader
     {
-        private const string TrainImages = "C:\\Users\\Danny\\Downloads\\mnistdataset\\train-images.idx3-ubyte";
-        private const string TrainLabels = "C:\\Users\\Danny\\Downloads\\mnistdataset\\train-labels.idx1-ubyte";
-        private const string TestImages = "C:\\Users\\Danny\\Downloads\\mnistdataset\\t10k-images.idx3-ubyte";
-        private const string TestLabels = "C:\\Users\\Danny\\Downloads\\mnistdataset\\t10k-labels.idx1-ubyte";
+        private const string TrainImages = "mnistdataset\\train-images.idx3-ubyte";
+        private const string TrainLabels = "mnistdataset\\train-labels.idx1-ubyte";
+        private const string TestImages = "mnistdataset\\t10k-images.idx3-ubyte";
+        private const string TestLabels = "mnistdataset\\t10k-labels.idx1-ubyte";
 
         public static IEnumerable<Image> ReadTrainingData()
         {
@@ -71,6 +71,8 @@ namespace NumReaderNetwork
 
         private static IEnumerable<Image> Read(string imagesPath, string labelsPath)
         {
+            imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
+            labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
             BinaryReader labels = new BinaryReader(new FileStream(labelsPath, FileMode.Open));
             BinaryReader images = new BinaryReader(new FileStream(imagesPath, FileMode.Open));
 

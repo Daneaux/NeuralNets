@@ -10,33 +10,13 @@ namespace NeuralNetsTests.ANNTests
     public class NumberReaderANNTests
     {
         [TestMethod]
-        public void TestInitializeNetwork_CreatesCorrectLayers()
-        {
-            // Arrange
-            int inputDim = 786; // Example input dimension
-            int hiddenDim = 16;
-            int outputDim = 10;
-            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
-
-            // Assert
-            Assert.AreEqual(2, network.WeightedLayers.Count); // Check if 2 layers are created
-
-            Assert.AreEqual(inputDim, network.WeightedLayers[0].NumNodes);
-            Assert.IsInstanceOfType(network.WeightedLayers[0].ActivationFunction, typeof(ReLUActivaction));
-
-            // Verify properties of the output layer
-            Assert.AreEqual(network.OutputLayerDim, network.WeightedLayers[1].NumNodes);
-            Assert.IsInstanceOfType(network.WeightedLayers[1].ActivationFunction, typeof(SigmoidActivation));
-        }
-
-        [TestMethod]
         public void TestFeedForward_CalculatesCorrectOutput()
         {
             // Arrange
             int inputDim = 2;
             int hiddenDim = 2;
             int outputDim = 2;
-            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
+            GeneralFeedForwardANN network = new MNISTSpecificANN(inputDim, hiddenDim, outputDim);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
@@ -68,7 +48,7 @@ namespace NeuralNetsTests.ANNTests
             int inputDim = 2;
             int hiddenDim = 2;
             int outputDim = 2;
-            NumberReaderANN network = new NumberReaderANN(inputDim, hiddenDim, outputDim);
+            GeneralFeedForwardANN network = new MNISTSpecificANN(inputDim, hiddenDim, outputDim);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)

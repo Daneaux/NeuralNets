@@ -10,4 +10,19 @@
     <ProjectReference Include="..\NeuralNets\NeuralNets.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="mnistdataset\t10k-images.idx3-ubyte">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="mnistdataset\t10k-labels.idx1-ubyte">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="mnistdataset\train-images.idx3-ubyte">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="mnistdataset\train-labels.idx1-ubyte">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

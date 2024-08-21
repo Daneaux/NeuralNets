@@ -11,9 +11,9 @@ class AnnHarness
         int hiddenLayer = 16;
         int outputDim = 10;
 
-        NumberReaderANN ann = new NumberReaderANN(inputDim, hiddenLayer, outputDim);
+        MNISTSpecificANN ann = new MNISTSpecificANN(inputDim, hiddenLayer, outputDim);
 
-        int iterations = 1000;
+        int iterations = 100000;
         ann.TrainWithImages(iterations);
 
         return 0;

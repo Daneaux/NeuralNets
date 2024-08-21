@@ -14,11 +14,13 @@ namespace NeuralNetsTests.ANNTests
     public class ExampleAnn
     {
         [TestMethod]
-        public void BuildAndVerify()
+        public void SineWaveTest()
         {
             int inputDim = 1;
-            int hiddenLayer = 2;
+            int hiddenLayerDim = 4;
             int outputDim = 1;
+            double trainingRate = 0.1;
+            ILossFunction lossFunction = new SquaredLoss();
 
 
             TrainingData trainingData = new TrainingData(inputDim, outputDim, new List<TrainingPair>());
@@ -30,7 +32,10 @@ namespace NeuralNetsTests.ANNTests
                 trainingData.TrainingPairs.Add(new(new ColumnVector([i]), new ColumnVector([x])));
             }
 
-            NumberReaderANN ann = new NumberReaderANN(inputDim, hiddenLayer, outputDim);
+            WeightedLayer hiddenLayer = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), inputDim);
+            WeightedLayer outputLayer = new WeightedLayer(outputDim, new SigmoidActivation(), hiddenLayerDim);
+
+            GeneralFeedForwardANN ann = new GeneralFeedForwardANN(inputDim, new List<WeightedLayer> { hiddenLayer, outputLayer }, trainingRate, lossFunction);
 
             for (int x = 0; x < 2; x++)
             {
@@ -84,7 +89,7 @@ namespace NeuralNetsTests.ANNTests
             WeightedLayer outputLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w2, b2);
 
 
-            NumberReaderANN ann = new NumberReaderANN(
+            GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
                 inputDim, 
                 new List<WeightedLayer> { hiddenLayer, outputLayer }, 
                 trainingRate, null);
@@ -95,8 +100,10 @@ namespace NeuralNetsTests.ANNTests
                 ColumnVector finalOutput = ann.FeedForward(trainingData.TrainingPairs[0].Input);
                 totLoss = ann.GetTotallLoss(tp, finalOutput);
                 ann.BackProp(tp, finalOutput);
+                //ann.BackProp_2layer(tp, finalOutput);
             }
             Console.WriteLine("done error is " + totLoss);
+            Assert.AreEqual(totLoss, 0.0000024483375576262793, 0.00000001);
 
         }
     }
