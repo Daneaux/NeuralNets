@@ -246,6 +246,32 @@ namespace NeuralNets
             }
             Console.Write(str);
         }
+
+        public virtual Matrix Log()
+        {
+            Matrix logMat = new Matrix(this.Cols, this.Rows);
+            for (int i = 0; i < this.Rows; ++i)
+            {
+                for (int j = 0; j < this.Cols; ++j)
+                {
+                    logMat[i, j] = Math.Log(this.Mat[i, j]);
+                }
+            }
+            return logMat;
+        }
+
+        public virtual double Sum()
+        {
+            double sum = 0;
+            for (int i = 0; i < this.Rows; ++i)
+            {
+                for (int j = 0; j < this.Cols; ++j)
+                {
+                    sum += this.Mat[i, j];
+                }
+            }
+            return sum;
+        }
     }
 
     /*
@@ -294,10 +320,9 @@ namespace NeuralNets
             }
         }
 
-        public ColumnVector(int size) : base(size, 1)
-        { }
+        public ColumnVector(int size) : base(size, 1) { }
 
-        public double ScalarSum()
+        public override double Sum()
         {
             double accum = 0.0;
             for(int r = 0; r < Rows; r++)
@@ -416,6 +441,49 @@ namespace NeuralNets
                 result[i] = this[i];
             }
             return result;
+        }
+
+        public double GetMax()
+        {
+            double max = double.MinValue;
+            for (int i = 0; i < this.Size; i++)
+            {
+                max = Math.Max(max, this[i]);
+            }
+            return max;
+        }
+
+        public double SumExpEMinusMax(double max)
+        {
+            double scale = 0;
+            for (int i = 0; i < this.Size; i++)
+            {
+                scale += Math.Exp(this[i] - max);
+            }
+            return scale;
+        }
+
+        // todo: column vector not really supposed to know how to generate softmax ...
+        public ColumnVector SoftmaxHelper()
+        {
+            double max = this.GetMax();
+            double scaleFactor = this.SumExpEMinusMax(max);
+            ColumnVector softMaxVector = new ColumnVector(this.Size);
+            for (int i = 0; i < this.Size; i++)
+            {
+                softMaxVector[i] = Math.Exp(this[i] - max) / scaleFactor;
+            }
+            return softMaxVector;
+        }
+
+        public override ColumnVector Log()
+        {
+            ColumnVector vector = new ColumnVector(this.Size);
+            for(int i = 0;i < this.Size;i++)
+            {
+                vector[i] = Math.Log(this[i]);
+            }
+            return vector;
         }
 
         public double this[int i]

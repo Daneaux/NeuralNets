@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NumReaderNetwork;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -14,6 +15,7 @@ namespace NeuralNets
         public int OutputLayerDim { get; protected set; }
         //public InputLayer InputLayer { get; private set; }
         public List<WeightedLayer> WeightedLayers { get; set; } = [];
+        public int LayerCount { get {  return WeightedLayers.Count; } }
         public ILossFunction LossFunction { get; protected set; }
         public WeightedLayer OutputLayer { get { return WeightedLayers[WeightedLayers.Count - 1]; } }
 
@@ -41,15 +43,13 @@ namespace NeuralNets
         public ColumnVector FeedForward(ColumnVector inputVec)
         {
             Debug.Assert(inputVec.Size == this.InputDim);
-            Debug.Assert(WeightedLayers.Count == 2);
             ColumnVector prevActivation = inputVec;
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < this.LayerCount; i++)
             {
                 WeightedLayer currentLayer = WeightedLayers[i];
                 ColumnVector z1 = currentLayer.Weights * prevActivation;
                 ColumnVector z12 = z1 + currentLayer.Biases;
-                ColumnVector o1 = currentLayer.ActivationFunction.Activate(z12);
-                prevActivation = o1;
+                prevActivation = currentLayer.ActivationFunction.Activate(z12);
             }
             return prevActivation;
         }
@@ -143,15 +143,30 @@ namespace NeuralNets
             WeightedLayer outputLayer = WeightedLayers[totalLayers - 1];
             WeightedLayer secondToLastLayer = WeightedLayers[totalLayers - 2];
 
-            // partial product, before we start the per-w differentials.
-            ColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
-            ColumnVector ActivationPartial = outputLayer.ActivationFunction.Derivative();
-            ColumnVector outputLayeyrSigma = LossPartial * ActivationPartial;
+            ColumnVector outputLayerSigma;
+            // special case softmax and cross entropy
+            if (outputLayer.ActivationFunction is SoftMax)
+            {
+                Debug.Assert(this.LossFunction is CategoricalCrossEntropy ||
+                    this.LossFunction is SparseCategoricalCrossEntropy ||
+                    this.LossFunction is VanillaCrossEntropy);
 
-            Matrix scaledGradientWeights_outputLayer = BuildScaledGradientWeights(secondToLastLayer.LastActivationOutput, outputLayeyrSigma);
-            ColumnVector b2_delta = this.TrainingRate * outputLayeyrSigma * 1.0;
+                // after all the crazy derivatives of softmax * crossentrotpy, we just end up with: a - y
+                // which is 'activtion' of softmax minus the truth vector.  must be onehot encoded
+                outputLayerSigma = outputLayer.LastActivationOutput - trainingPair.Output;
+            }
+            else
+            {
+                // partial product, before we start the per-w differentials.
+                ColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
+                ColumnVector ActivationPartial = outputLayer.ActivationFunction.Derivative();
+                outputLayerSigma = LossPartial * ActivationPartial;
+            }
 
-            outputLayer.LastSigma = outputLayeyrSigma;
+            Matrix scaledGradientWeights_outputLayer = BuildScaledGradientWeights(secondToLastLayer.LastActivationOutput, outputLayerSigma);
+            ColumnVector b2_delta = this.TrainingRate * outputLayerSigma * 1.0;
+
+            outputLayer.LastSigma = outputLayerSigma;
             outputLayer.ScaledBiasDelta = b2_delta;
             outputLayer.ScaledWeightDelta = scaledGradientWeights_outputLayer;
 
@@ -166,8 +181,9 @@ namespace NeuralNets
                 ColumnVector PrevLayerSigma = layerToTheRight.LastSigma;
                 ColumnVector sum_over_all_de_dOl = layerToTheRight.Weights.GetTransposedMatrix() * PrevLayerSigma;
                 ColumnVector DOl_DZL = currentLayer.GetActivationFunctionDerivative() * sum_over_all_de_dOl;
+                currentLayer.LastSigma = DOl_DZL; // i think??
 
-                // If we're the first hiddne layer, L=0, then the last activation is the input from the input layer
+                // If we're the first hidden layer, L=0, then the last activation is the input from the input layer
                 // which isn't represented as a layer. But could be.
                 ColumnVector activationToTheLeft;
                 if (L == 0)
@@ -214,7 +230,7 @@ namespace NeuralNets
         public double GetTotallLoss(TrainingPair tp, ColumnVector predicted)
         {
             ColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted);
-            return lossVec.ScalarSum();
+            return lossVec.Sum();
         }
 
         public double GetAveragelLoss(TrainingPair tp, ColumnVector predicted)

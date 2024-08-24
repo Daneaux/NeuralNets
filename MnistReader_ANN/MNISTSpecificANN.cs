@@ -7,37 +7,37 @@ namespace NumReaderNetwork
         public MNISTSpecificANN(int hiddenLayerDim, int outputDim, double trainingRate) : base(28*28, trainingRate)
         {
             this.OutputLayerDim = outputDim;
-            this.LossFunction = new SquaredLoss();
-            WeightedLayers.Add(new WeightedLayer(hiddenLayerDim, new ReLUActivaction(), InputDim));
-            WeightedLayers.Add(new WeightedLayer(OutputLayerDim, new SigmoidActivation(), hiddenLayerDim));
+            this.LossFunction = new CategoricalCrossEntropy();
+            WeightedLayers.Add(new WeightedLayer(128, new ReLUActivaction(), InputDim));
+            WeightedLayers.Add(new WeightedLayer(64, new SigmoidActivation(), 128));
+            WeightedLayers.Add(new WeightedLayer(32, new SigmoidActivation(), 64));
+            WeightedLayers.Add(new WeightedLayer(OutputLayerDim, new SoftMax(), 32));
         }
-        public void TrainWithImages(int iterations)
+        public void TrainWithImages(int epochs)
         {
-            int i = 0;
-            foreach (Image image in MnistReader.ReadTrainingData())
+            for (int i = 0; i < epochs; i++)
             {
-                ColumnVector inputVector = ImageDataToColumnVector(image);
-                ColumnVector outputVector = LabelDataToColumnVector(image);
-                TrainingPair trainingPair = new TrainingPair(inputVector, outputVector);
-
-                ColumnVector prediction = this.FeedForward(inputVector);
-                BackProp(trainingPair, prediction);
-
-                double error = GetAveragelLoss(trainingPair, prediction);
-                if (i % 100 == 0)
+                int j = 0;
+                foreach (Image image in MnistReader.ReadTrainingData())
                 {
-                    Console.WriteLine($"{i}: Loss = {error}\n");
-                }
+                    ColumnVector inputVector = ImageDataToColumnVector(image);
+                    ColumnVector outputVector = OneHotEncodeLabelData(image);
+                    TrainingPair trainingPair = new TrainingPair(inputVector, outputVector);
 
-                if (i > iterations)
-                {
-                    break;
+                    ColumnVector prediction = this.FeedForward(inputVector);
+                    BackProp(trainingPair, prediction);
+
+                    double error = GetAveragelLoss(trainingPair, prediction);
+                    if (j % 100 == 0)
+                    {
+                        Console.WriteLine($"Epoch {i}, image {j}: Loss = {error}\n");
+                    }
+                    j++;
                 }
-                i++;
             }
         }
 
-        private ColumnVector LabelDataToColumnVector(Image image)
+        private ColumnVector OneHotEncodeLabelData(Image image)
         {
             // convert the label data (0,1,2, ...) into a columnvector. if the label is 7 (ie: byte == 7), then set the 7th double to 1.0
             double[] labelData = new double[this.OutputLayerDim];

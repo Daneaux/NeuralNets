@@ -7,14 +7,14 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-        int inputDim = 28 * 28;
-        int hiddenLayer = 16;
+        int hiddenLayer = 32;
         int outputDim = 10;
+        double trainingRate = 0.05;
 
-        MNISTSpecificANN ann = new MNISTSpecificANN(inputDim, hiddenLayer, outputDim);
+        MNISTSpecificANN ann = new MNISTSpecificANN(hiddenLayer, outputDim, trainingRate);
 
-        int iterations = 100000;
-        ann.TrainWithImages(iterations);
+        int epochs = 10;
+        ann.TrainWithImages(epochs);
 
         return 0;
 

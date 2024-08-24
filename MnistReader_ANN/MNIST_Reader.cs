@@ -87,16 +87,18 @@ namespace NumReaderNetwork
             for (int i = 0; i < numberOfImages; i++)
             {
                 var bytes = images.ReadBytes(width * height);
-                //var arr = new byte[height, width];
-
-                //arr.ForEach((j, k) => arr[j, k] = bytes[j * height + k]);
-
                 yield return new Image()
                 {
                     Data = bytes,
                     Label = labels.ReadByte()
                 };
             }
+            labels.Close();
+            images.Close();
+            labels.Dispose();
+            images.Dispose();
+            labels = null;
+            images = null;
         }
     }
 }

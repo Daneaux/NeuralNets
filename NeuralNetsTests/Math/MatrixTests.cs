@@ -12,6 +12,25 @@ namespace NeuralNets.Tests
     public class MatrixTests
     {
         [TestMethod()]
+        public void TestSoftMax()
+        {
+            ColumnVector vec = new ColumnVector(new double[] { 1.0, 2.0, 3.0 });
+            ColumnVector softMax = vec.SoftmaxHelper();
+            Assert.AreEqual(softMax[0], 0.09003057, 0.001);
+            Assert.AreEqual(softMax[1], 0.24472847, 0.001);
+            Assert.AreEqual(softMax[2], 0.66524096, 0.001);
+            Assert.AreEqual(softMax.Sum(), 1.0, 0.001);
+
+            // Make sure we're numerically stable
+            vec = new ColumnVector(new double[] { 10000, 20000, 30000 });
+            softMax = vec.SoftmaxHelper();
+            Assert.AreEqual(softMax[0], 0.0, 0.001);
+            Assert.AreEqual(softMax[1], 0.0, 0.001);
+            Assert.AreEqual(softMax[2], 1.0, 0.001);
+            Assert.AreEqual(softMax.Sum(), 1.0, 0.001);
+        }
+
+        [TestMethod()]
         public void CreateRandom()
         {
             Matrix m = new Matrix(3, 4);
