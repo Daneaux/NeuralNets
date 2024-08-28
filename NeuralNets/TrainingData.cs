@@ -8,27 +8,23 @@ namespace NeuralNets
 {
     public class TrainingPair
     {
+        public ColumnVector Input { get; }
+        public ColumnVector Output { get; }
+
         public TrainingPair(ColumnVector input, ColumnVector output)
         {
             this.Input = input;
             this.Output = output;
         }
-
-        public ColumnVector Input { get; }
-        public ColumnVector Output { get; }
     }
 
-    public class TrainingData
+    public interface ITrainingSet
     {
-        public TrainingData(int inputDim, int outputDim, List<TrainingPair> trainingPairs)
-        {
-            this.InputDimensions = inputDim;
-            this.OutputDimensions = outputDim;
-            this.TrainingPairs = trainingPairs;
-        }
+        public int InputDimension { get; }
+        public int OutputDimension { get; }
+        public int NumberOfSamples { get; }
+        public int NumberOfLabels { get; }
 
-        public int InputDimensions { get; }
-        public int OutputDimensions { get; }
-        public List<TrainingPair> TrainingPairs { get; }
+        IEnumerable<TrainingPair> GetTrainingPair(bool doRandom);
     }
 }

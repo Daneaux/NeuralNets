@@ -69,6 +69,33 @@ namespace NumReaderNetwork
             }
         }
 
+        public static void GetMNISTTrainingMetaData(out int numberOfImages, out int numberOfLabels, out int imageWidth, out int imageHeight)
+        {
+            string imagesPath = MnistReader.TrainImages;
+            string labelsPath = MnistReader.TrainLabels;
+
+            imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
+            labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
+            BinaryReader labels = new BinaryReader(new FileStream(labelsPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite));
+            BinaryReader images = new BinaryReader(new FileStream(imagesPath, FileMode.Open, FileAccess.ReadWrite, FileShare.ReadWrite));
+
+            int magicNumber = images.ReadBigInt32();
+            numberOfImages = images.ReadBigInt32();
+            imageWidth = images.ReadBigInt32();
+            imageHeight = images.ReadBigInt32();
+
+            int magicLabel = labels.ReadBigInt32();
+            numberOfLabels = labels.ReadBigInt32();
+
+            // overkill
+            labels.Close();
+            images.Close();
+            labels.Dispose();
+            images.Dispose();
+            labels = null;
+            images = null;
+        }
+
         private static IEnumerable<Image> Read(string imagesPath, string labelsPath)
         {
             imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;

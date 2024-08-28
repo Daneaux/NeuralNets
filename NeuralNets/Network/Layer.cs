@@ -32,11 +32,9 @@ namespace NeuralNets
         public IActivationFunction ActivationFunction { get; protected set; }
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed=12341324) : base(nodeCount)
         {
-            this.ActivationFunction = activationFunction;
-            this.Weights = new Matrix(nodeCount, incomingDataPoints);
-            this.Weights.SetRandom(randomSeed, - Math.Sqrt(nodeCount), Math.Sqrt(nodeCount)); // Xavier initilization
-            this.Biases = new ColumnVector(nodeCount);
-            this.Biases.SetRandom(randomSeed, -1.0, 1.0);      // todo: what should this range be?        
+            this.Initialize(activationFunction, incomingDataPoints, new Matrix(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
+            this.Weights.SetRandom(randomSeed, -Math.Sqrt(nodeCount), Math.Sqrt(nodeCount)); // Xavier initilization
+            this.Biases.SetRandom(randomSeed, -1.0, 1.0);
         }
 
         public WeightedLayer(
@@ -46,15 +44,23 @@ namespace NeuralNets
             Matrix initialWeights,
             ColumnVector initialBiases) : base(nodeCount)
         {
-            Debug.Assert(activationFunction != null);
+            Initialize( activationFunction, incomingDataPoints, initialWeights, initialBiases);
+        }
+
+        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, Matrix initialWeights, ColumnVector initialBiases)
+        {
             this.Weights = initialWeights;
             this.Biases = initialBiases;
-            Debug.Assert(this.Weights.Cols == this.Biases.Size);
-            Debug.Assert(this.Weights.Rows == incomingDataPoints);
+
+            Debug.Assert(activationFunction != null);
             this.ActivationFunction = activationFunction;
-            this.ScaledWeightDelta = null;
-            this.ScaledBiasDelta = null;
+
+            Debug.Assert(this.Weights.Rows == this.Biases.Size);
+            Debug.Assert(this.Weights.Cols == incomingDataPoints);
+
             this.LastSigma = null;
+            this.BiasGradient = new ColumnVector(this.NumNodes);
+            this.WeightGradient = new Matrix(this.Weights.Rows, this.Weights.Cols);
         }
 
         // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.
@@ -62,18 +68,21 @@ namespace NeuralNets
         public Matrix Weights { get; set; }
         public ColumnVector Biases { get; set; }
         public ColumnVector? LastActivationOutput { get { return this.ActivationFunction.LastActivation; } }
-        public Matrix ScaledWeightDelta { get; set; }
-        public ColumnVector ScaledBiasDelta { get; set; }
         public ColumnVector LastSigma { get; set; }
+        public Matrix WeightGradient { get; private set; } 
+        public ColumnVector BiasGradient { get; private set; }
 
-        public void UpdateWeights()
+
+        public void ScaleWeightAndBiasesGradient(double scaleFactor)
         {
-            Weights = Weights - this.ScaledWeightDelta;
+            this.BiasGradient *= scaleFactor;
+            this.WeightGradient *= scaleFactor;
         }
 
-        public void UpdateBiases() 
-        {
-            Biases = Biases - this.ScaledBiasDelta;
+        public void UpdateWeightsAndBiases()
+        { 
+            Weights = Weights - this.WeightGradient;
+            Biases = Biases - this.BiasGradient;
         } 
         
         public ColumnVector GetActivationFunctionDerivative()
@@ -81,10 +90,10 @@ namespace NeuralNets
             return this.ActivationFunction.Derivative();
         }
 
-        public void StashDeltas(Matrix scaledGradientWeights, ColumnVector biasDelta)
+        public void AccumulateGradients(Matrix weightGradient, ColumnVector biasGradient)
         {
-            this.ScaledWeightDelta = scaledGradientWeights;
-            this.ScaledBiasDelta = biasDelta;
+            this.WeightGradient += weightGradient;
+            this.BiasGradient += biasGradient;
         }
     }
 

@@ -7,14 +7,12 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-        int hiddenLayer = 32;
-        int outputDim = 10;
         double trainingRate = 0.05;
 
-        MNISTSpecificANN ann = new MNISTSpecificANN(hiddenLayer, outputDim, trainingRate);
+        MNISTSpecificANN ann = new MNISTSpecificANN(trainingRate);
 
         int epochs = 10;
-        ann.TrainWithImages(epochs);
+        ann.EpochTrain(epochs);
 
         return 0;
 

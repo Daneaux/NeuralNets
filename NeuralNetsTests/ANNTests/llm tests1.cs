@@ -16,7 +16,7 @@ namespace NeuralNetsTests.ANNTests
             int inputDim = 2;
             int hiddenDim = 2;
             int outputDim = 2;
-            GeneralFeedForwardANN network = new MNISTSpecificANN(inputDim, hiddenDim, outputDim);
+            GeneralFeedForwardANN network = new MNISTSpecificANN(0.01);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
@@ -48,7 +48,7 @@ namespace NeuralNetsTests.ANNTests
             int inputDim = 2;
             int hiddenDim = 2;
             int outputDim = 2;
-            GeneralFeedForwardANN network = new MNISTSpecificANN(inputDim, hiddenDim, outputDim);
+            GeneralFeedForwardANN network = new MNISTSpecificANN(0.01);
             network.WeightedLayers = new List<WeightedLayer>()
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)

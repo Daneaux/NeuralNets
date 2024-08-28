@@ -11,33 +11,96 @@ namespace NeuralNets
     public class GeneralFeedForwardANN
     {
         public double TrainingRate { get; protected set; }
+        public int BatchSize { get; protected set; }
         public int InputDim { get; protected set; }
-        public int OutputLayerDim { get; protected set; }
-        //public InputLayer InputLayer { get; private set; }
+        public int OutputDim { get; protected set; }
         public List<WeightedLayer> WeightedLayers { get; set; } = [];
         public int LayerCount { get {  return WeightedLayers.Count; } }
         public ILossFunction LossFunction { get; protected set; }
         public WeightedLayer OutputLayer { get { return WeightedLayers[WeightedLayers.Count - 1]; } }
 
-        protected GeneralFeedForwardANN(int inputDim, double trainingRate)
+        public bool DoRandomSamples { get; private set; }
+        public virtual ITrainingSet TrainingSet { get; protected set; }
+
+        protected GeneralFeedForwardANN(double trainingRate, int batchSize, ITrainingSet trainingSet)
         {
-            this.InputDim = inputDim;
             this.TrainingRate = trainingRate;
+            this.BatchSize = batchSize;
+            this.TrainingSet = trainingSet;
+            this.InputDim = trainingSet.InputDimension;
+            this.OutputDim = trainingSet.OutputDimension;
         }
 
-        public GeneralFeedForwardANN(int inputDim, List<WeightedLayer> layers, double trainingRate, ILossFunction lossFunction)
+        public GeneralFeedForwardANN(List<WeightedLayer> layers, double trainingRate, int batchSize, ILossFunction lossFunction, ITrainingSet trainingSet) : this(trainingRate, batchSize, trainingSet)
         {
             Debug.Assert(layers != null);
             Debug.Assert(layers.Count > 0);
-            if (lossFunction == null)
-            {
-                lossFunction = new SquaredLoss();
-            }
-            this.InputDim = inputDim;
-            this.TrainingRate = trainingRate;
+            lossFunction ??= new SquaredLoss();
             this.LossFunction = lossFunction;
             this.WeightedLayers = layers;
-            this.OutputLayerDim = this.OutputLayer.NumNodes;
+            Debug.Assert(OutputLayer.NumNodes == trainingSet.OutputDimension);
+            this.OutputDim = trainingSet.OutputDimension;
+        }
+
+        public void EpochTrain(int numEpochs)
+        {
+            // scope of training enumerator is entire epoch
+            for (int i = 0; i < numEpochs; i++)
+            {
+                this.BatchTrain();
+            }
+        }
+
+        public void BatchTrain()
+        {
+            // multiple feed forward, random samples from training set
+            // collect all outputs. average them
+            // get average loss (how?)
+            // then run a backprop based on average O and average L
+            // q: what's the right Y (truth) for N samples?
+            // we can average the loss. but then the derivative might be wrong for softmax + crossEntropy.
+
+            WeightedLayer outputLayer = this.OutputLayer;
+            IEnumerable<TrainingPair> trainingPairs = this.TrainingSet.GetTrainingPair(this.DoRandomSamples);
+            IEnumerator<TrainingPair> iterator = trainingPairs.GetEnumerator();
+
+            int batchCount = 0;
+            while (iterator.MoveNext())
+            {
+                TrainingPair trainingPair = null;
+                ColumnVector predictedOut = null;
+                for (int i = 0; i < this.BatchSize; i++, iterator.MoveNext())
+                {
+                    trainingPair = iterator.Current;
+                    predictedOut = this.FeedForward(trainingPair.Input);
+                    this.BackProp(trainingPair, predictedOut);
+                }
+
+                // using accumualted gradients:
+                // scale by 1/batchsize (ie: average) & learning rate
+                // scale by learning rate
+                for (int i = 0; i < this.WeightedLayers.Count; i++)
+                {
+                    WeightedLayer layer = this.WeightedLayers[i];
+                    double scaleFactor = this.TrainingRate / (double)this.BatchSize;
+                    layer.ScaleWeightAndBiasesGradient(scaleFactor);
+                }
+
+                // adjust all weights and biases
+                this.UpdateWeightsAndBiases();
+
+                // finished batch N
+                if (batchCount % 100 == 0)
+                {
+                    predictedOut = this.FeedForward(trainingPair.Input);
+                    double totalLoss = this.GetTotallLoss(trainingPair, predictedOut);
+                    Console.WriteLine($"Finished Batch {batchCount} with total loss = {totalLoss}");
+                }
+                batchCount++;
+            }
+
+            // remember that we do a real backprop per trianing case, but we just don't adjust the weights and biases
+            // instead we remember all the W and B gradient matrices and vectors. add them all up. get average. and then adjust all weights
         }
 
         public ColumnVector FeedForward(ColumnVector inputVec)
@@ -78,7 +141,7 @@ namespace NeuralNets
             // so the dot product of row1 and output vector or activation vector minus the bias is = Z (the input to the activation function)
 
             // so the gradient w' matrix needs to be rows of gradient weights (or weight deltas) that we get from all the partial derivative shenanigans
-            Matrix scaledGradientWeights_outputLayer = BuildScaledGradientWeights(hiddenLayer.LastActivationOutput, w2_sigma);
+            Matrix scaledGradientWeights_outputLayer = this.TrainingRate * BuildGradientWeights(hiddenLayer.LastActivationOutput, w2_sigma);
             ColumnVector b2_delta = this.TrainingRate * w2_sigma * 1.0;
 
 
@@ -111,7 +174,7 @@ namespace NeuralNets
             // partial weights 
             // ColumnVector DZl_Dv_times_dOl_dZl = trainingPair.Input * hiddenLayer.GetActivationFunctionDerivative();
             ColumnVector DOl_DZL = hiddenLayer.GetActivationFunctionDerivative() * sum_over_all_de_dOl;
-            Matrix scaledGradientWeights_hiddenLayer = BuildScaledGradientWeights(trainingPair.Input, DOl_DZL);
+            Matrix scaledGradientWeights_hiddenLayer = this.TrainingRate * BuildGradientWeights(trainingPair.Input, DOl_DZL);
 
             // partial biases full equation:
             // D(E)/D(bb) = D(zl)/D(bb) * d(Ol)/d(zl) * SUM_OVER_ALL_OUTGOING_EDGES[ D(E)/D(Ol) ]   (for example de1/dzl + de0/dzl + de2/dzl ... deN/dzl)
@@ -120,13 +183,11 @@ namespace NeuralNets
 
             // UPDATE THESE WEIGHTS AFTER BACK PROP IS DONE
             // Now: Update W2 weight matrix with w2_delta (and same for b)
-            outputLayer.StashDeltas(scaledGradientWeights_outputLayer, b2_delta);
-            outputLayer.UpdateWeights();
-            outputLayer.UpdateBiases();
+            outputLayer.AccumulateGradients(scaledGradientWeights_outputLayer, b2_delta);
+            outputLayer.UpdateWeightsAndBiases();
 
-            hiddenLayer.StashDeltas(scaledGradientWeights_hiddenLayer, b1_delta);
-            hiddenLayer.UpdateWeights();
-            hiddenLayer.UpdateBiases();
+            hiddenLayer.AccumulateGradients(scaledGradientWeights_hiddenLayer, b1_delta);
+            hiddenLayer.UpdateWeightsAndBiases();
         }
 
 
@@ -135,21 +196,19 @@ namespace NeuralNets
         //
         public void BackProp(TrainingPair trainingPair, ColumnVector predictedOut)
         {
-            int totalLayers = WeightedLayers.Count;
-
             //
-            // Special case the Outpu Layer
+            // Special case the Output Layer
             //
-            WeightedLayer outputLayer = WeightedLayers[totalLayers - 1];
-            WeightedLayer secondToLastLayer = WeightedLayers[totalLayers - 2];
+            WeightedLayer outputLayer = WeightedLayers[LayerCount - 1];
+            WeightedLayer secondToLastLayer = WeightedLayers[LayerCount - 2];
 
             ColumnVector outputLayerSigma;
             // special case softmax and cross entropy
             if (outputLayer.ActivationFunction is SoftMax)
             {
                 Debug.Assert(this.LossFunction is CategoricalCrossEntropy ||
-                    this.LossFunction is SparseCategoricalCrossEntropy ||
-                    this.LossFunction is VanillaCrossEntropy);
+                             this.LossFunction is SparseCategoricalCrossEntropy ||
+                             this.LossFunction is VanillaCrossEntropy);
 
                 // after all the crazy derivatives of softmax * crossentrotpy, we just end up with: a - y
                 // which is 'activtion' of softmax minus the truth vector.  must be onehot encoded
@@ -163,17 +222,16 @@ namespace NeuralNets
                 outputLayerSigma = LossPartial * ActivationPartial;
             }
 
-            Matrix scaledGradientWeights_outputLayer = BuildScaledGradientWeights(secondToLastLayer.LastActivationOutput, outputLayerSigma);
-            ColumnVector b2_delta = this.TrainingRate * outputLayerSigma * 1.0;
+            Matrix weightGradient_outputlayer = BuildGradientWeights(secondToLastLayer.LastActivationOutput, outputLayerSigma);
+            ColumnVector biasGradient = outputLayerSigma * 1.0;
 
             outputLayer.LastSigma = outputLayerSigma;
-            outputLayer.ScaledBiasDelta = b2_delta;
-            outputLayer.ScaledWeightDelta = scaledGradientWeights_outputLayer;
+            outputLayer.AccumulateGradients(weightGradient_outputlayer, biasGradient);
 
             //
             // Now do back prop through all the hidden layers (ie: not the output). Special case for the input layer. That's why we go all the way to zero.
             //
-            for (int L = totalLayers - 2; L >= 0; L--)
+            for (int L = LayerCount - 2; L >= 0; L--)
             {
                 WeightedLayer currentLayer = WeightedLayers[L];
                 WeightedLayer layerToTheRight = WeightedLayers[L + 1];
@@ -181,7 +239,7 @@ namespace NeuralNets
                 ColumnVector PrevLayerSigma = layerToTheRight.LastSigma;
                 ColumnVector sum_over_all_de_dOl = layerToTheRight.Weights.GetTransposedMatrix() * PrevLayerSigma;
                 ColumnVector DOl_DZL = currentLayer.GetActivationFunctionDerivative() * sum_over_all_de_dOl;
-                currentLayer.LastSigma = DOl_DZL; // i think??
+                currentLayer.LastSigma = DOl_DZL;
 
                 // If we're the first hidden layer, L=0, then the last activation is the input from the input layer
                 // which isn't represented as a layer. But could be.
@@ -196,21 +254,23 @@ namespace NeuralNets
                     activationToTheLeft = WeightedLayers[L - 1].LastActivationOutput;
                 }
 
-                Matrix scaledGradientWeights = BuildScaledGradientWeights(activationToTheLeft, DOl_DZL);
-                ColumnVector scaledBiasDelta = this.TrainingRate * DOl_DZL;
-                currentLayer.StashDeltas(scaledGradientWeights, scaledBiasDelta);
-            }
-
-            // Now go through the network and update all weights and biases with the learning rate
-            for (int L = totalLayers - 1; L >= 0; L--)
-            {
-                WeightedLayer layer = WeightedLayers[L];
-                layer.UpdateWeights();
-                layer.UpdateBiases();
+                Matrix gradientWeights = BuildGradientWeights(activationToTheLeft, DOl_DZL);
+                ColumnVector gradientBias = DOl_DZL;
+                currentLayer.AccumulateGradients(gradientWeights, gradientBias);
             }
         }
 
-        private Matrix BuildScaledGradientWeights(ColumnVector lastActivation, ColumnVector sigma)
+        public void UpdateWeightsAndBiases()
+        {
+            // Now go through the network and update all weights and biases with the learning rate
+            for (int L = LayerCount - 1; L >= 0; L--)
+            {
+                WeightedLayer layer = WeightedLayers[L];
+                layer.UpdateWeightsAndBiases();
+            }
+        }
+
+        private Matrix BuildGradientWeights(ColumnVector lastActivation, ColumnVector sigma)
         {
             // Do outer product
             // we want all the sigmas (on the right) times all the Outpus (from the left) to look like the wiehgt matrix
@@ -221,16 +281,18 @@ namespace NeuralNets
 
             // temp: inefficient for debugging
             Matrix gradientDelta = sigma * lastActivation.Transpose(); // outer product:  o1s1 o2s1 o3s1 o4s1 ... onS1    o1s2 o2s2 o3s2 ... oNs2 
-            // now scale by the learning rate
-            Matrix scaledGradientWeights = this.TrainingRate * gradientDelta;  // inneficient, scale one of the vectors first.
-
-            return scaledGradientWeights;
+            return gradientDelta;
         }
 
         public double GetTotallLoss(TrainingPair tp, ColumnVector predicted)
         {
             ColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted);
             return lossVec.Sum();
+        }
+
+        public ColumnVector GetLossVector(TrainingPair tp, ColumnVector predicted)
+        {
+            return this.LossFunction.Error(tp.Output, predicted);
         }
 
         public double GetAveragelLoss(TrainingPair tp, ColumnVector predicted)

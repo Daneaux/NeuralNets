@@ -58,6 +58,28 @@ namespace NeuralNets
             }
         }
 
+        public static Matrix operator +(Matrix a, Matrix b) => a.Add(b);
+
+        private Matrix Add(Matrix b)
+        {
+            if (this.Rows != b.Rows || this.Cols != b.Cols)
+            {
+                throw new ArgumentException("bad dimensions in Matrix.add");
+            }
+
+            Matrix res = new Matrix(Rows, Cols);
+            for (int r = 0; r < Rows; r++)
+            {
+                for (int c = 0; c < Cols; c++)
+                {
+                    res.Mat[r, c] = this[r, c] + b[r, c];
+                }
+            }
+
+            return res;
+        }
+
+
         // I'm on the left of 'm'
         public virtual Matrix Multiply(Matrix m)
         {
@@ -130,6 +152,7 @@ namespace NeuralNets
         }
 
         public static Matrix operator *(double scalar, Matrix b) => b.Multiply(scalar);
+        public static Matrix operator *(Matrix b, double scalar) => b.Multiply(scalar);
         public Matrix Multiply(double scalar)
         {
             Matrix res = new Matrix(Rows, Cols);
@@ -370,6 +393,7 @@ namespace NeuralNets
 
         private ColumnVector PlusColumnVector(ColumnVector right)
         {
+            Debug.Assert(this.Size == right.Size);
             double[] res = new double[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
