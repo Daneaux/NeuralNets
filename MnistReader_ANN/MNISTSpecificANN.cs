@@ -5,7 +5,7 @@ namespace NumReaderNetwork
 {
     public class MNISTSpecificANN : GeneralFeedForwardANN
     {
-        public MNISTSpecificANN(double trainingRate) : base(trainingRate, 64, new MNISTTrainingSet())
+        public MNISTSpecificANN(double trainingRate) : base(trainingRate, 128, new MNISTTrainingSet())
         {
             this.LossFunction = new CategoricalCrossEntropy();
             WeightedLayers.Add(new WeightedLayer(128, new ReLUActivaction(), InputDim));

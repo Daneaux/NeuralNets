@@ -24,7 +24,7 @@ namespace NeuralNets
         public int OutputDimension { get; }
         public int NumberOfSamples { get; }
         public int NumberOfLabels { get; }
-
-        IEnumerable<TrainingPair> GetTrainingPair(bool doRandom);
+        public List<TrainingPair> TrainingList { get; }
+        public List<TrainingPair> BuildNewRandomizedTrainingList();
     }
 }

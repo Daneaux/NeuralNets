@@ -61,20 +61,26 @@ namespace NeuralNets
             // we can average the loss. but then the derivative might be wrong for softmax + crossEntropy.
 
             WeightedLayer outputLayer = this.OutputLayer;
-            IEnumerable<TrainingPair> trainingPairs = this.TrainingSet.GetTrainingPair(this.DoRandomSamples);
-            IEnumerator<TrainingPair> iterator = trainingPairs.GetEnumerator();
-
+            List<TrainingPair> trainingPairs = this.TrainingSet.BuildNewRandomizedTrainingList();
+            int currentTP = 0;
             int batchCount = 0;
-            while (iterator.MoveNext())
+            int totalSamples = this.TrainingSet.NumberOfSamples;
+            int maxBatches = totalSamples / this.BatchSize;
+            for(int j = 0; j < maxBatches; j++)
             {
                 TrainingPair trainingPair = null;
                 ColumnVector predictedOut = null;
-                for (int i = 0; i < this.BatchSize; i++, iterator.MoveNext())
+
+                // debug only
+                int actualBatchSize = 0;
+                
+                for (int i = 0; i < this.BatchSize; i++, actualBatchSize++)
                 {
-                    trainingPair = iterator.Current;
+                    trainingPair = trainingPairs[currentTP++];
                     predictedOut = this.FeedForward(trainingPair.Input);
                     this.BackProp(trainingPair, predictedOut);
                 }
+                Debug.Assert(actualBatchSize == this.BatchSize);
 
                 // using accumualted gradients:
                 // scale by 1/batchsize (ie: average) & learning rate
@@ -97,7 +103,7 @@ namespace NeuralNets
                     Console.WriteLine($"Finished Batch {batchCount} with total loss = {totalLoss}");
                 }
                 batchCount++;
-            }
+            }           
 
             // remember that we do a real backprop per trianing case, but we just don't adjust the weights and biases
             // instead we remember all the W and B gradient matrices and vectors. add them all up. get average. and then adjust all weights
@@ -189,7 +195,6 @@ namespace NeuralNets
             hiddenLayer.AccumulateGradients(scaledGradientWeights_hiddenLayer, b1_delta);
             hiddenLayer.UpdateWeightsAndBiases();
         }
-
 
         //
         // generalized back propagation for many layers

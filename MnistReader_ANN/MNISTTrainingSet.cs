@@ -1,16 +1,17 @@
 ﻿using NeuralNets;
 using NumReaderNetwork;
+using System.Diagnostics;
 
 namespace MnistReader_ANN
 {
     internal class MNISTTrainingSet : ITrainingSet
     {
-        public MNISTTrainingSet() 
+        public MNISTTrainingSet()
         {
             this.OutputDimension = 10;
 
-            int width=0;
-            int height=0;
+            int width = 0;
+            int height = 0;
             int numLabels = 0;
             int numSamples = 0;
 
@@ -24,16 +25,28 @@ namespace MnistReader_ANN
         public int InputDimension { get; private set; }
         public int OutputDimension { get; private set; }
         public int NumberOfSamples { get; private set; }
-        public int NumberOfLabels {  get; private set; }
+        public int NumberOfLabels { get; private set; }
 
-        public IEnumerable<TrainingPair> GetTrainingPair(bool doRandom)
-        {            
-            // todo: do random... how?
-            foreach (Image image in MnistReader.ReadTrainingData())
+        public List<TrainingPair> TrainingList { get; private set; }
+        private List<Image> ImageList { get; set; } = null;
+        public List<TrainingPair> BuildNewRandomizedTrainingList()
+        {
+            Random rnd = new Random();
+            if (this.ImageList == null)
             {
-                yield return TrainingPairFromImage(image);
+                this.ImageList = MnistReader.ReadTrainingData().ToList();
+                Debug.Assert(ImageList.Count == 60000);
             }
+            List<TrainingPair> trainingPairs = new List<TrainingPair>((int)ImageList.Count);
+            foreach (Image image in ImageList)
+            {
+                trainingPairs.Add(TrainingPairFromImage(image));
+            }            
+
+            this.TrainingList = trainingPairs.OrderBy(x => rnd.Next()).ToList();
+            return this.TrainingList;
         }
+
         private TrainingPair TrainingPairFromImage(Image image)
         {
             ColumnVector inputVector = ImageDataToColumnVector(image);

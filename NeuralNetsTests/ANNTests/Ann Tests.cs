@@ -24,15 +24,21 @@ namespace NeuralNetsTests.ANNTests
 
             public int NumberOfLabels => 0;
 
-            public IEnumerable<TrainingPair> GetTrainingPair(bool doRandom)
+            public List<TrainingPair> TrainingList { get; private set; }
+
+            public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
+                Random rnd = new Random();
+                List<TrainingPair> trainingPairs = new List<TrainingPair>();
                 double x = 0.0;
-                for (int i = 0; i < NumberOfSamples; i ++)
+                for (int i = 0; i < NumberOfSamples; i++)
                 {
+                    x = rnd.NextDouble() * 2.0 * System.Math.PI;
                     double sinx = System.Math.Sin(x);
-                    yield return new TrainingPair(new ColumnVector([x]), new ColumnVector([sinx]));
-                    x += this.Increment;
+                    trainingPairs.Add(new TrainingPair(new ColumnVector([x]), new ColumnVector([sinx])));
                 }
+                this.TrainingList = trainingPairs;
+                return trainingPairs;
             }
         }
         [TestMethod]
@@ -59,9 +65,9 @@ namespace NeuralNetsTests.ANNTests
             Console.WriteLine($"tOTAL Loss = {ann.GetTotallLoss}\n");
         }
 
-        public class TestTrainingSet : ITrainingSet
+        public class MazurTrainingSet : ITrainingSet
         {
-            public TestTrainingSet(TrainingPair tp)
+            public MazurTrainingSet(TrainingPair tp)
             {
                 this.TrainingPair = tp;
             }
@@ -76,9 +82,11 @@ namespace NeuralNetsTests.ANNTests
 
             public TrainingPair TrainingPair { get; }
 
-            public IEnumerable<TrainingPair> GetTrainingPair(bool doRandom)
+            public List<TrainingPair> TrainingList { get; private set; }
+
+            public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
-                yield return this.TrainingPair;
+                return null;
             }
         }
 
@@ -117,7 +125,7 @@ namespace NeuralNetsTests.ANNTests
                 trainingRate, 
                 batchSize,
                 null,
-                new TestTrainingSet(tp));
+                new MazurTrainingSet(tp));
 
             //ann.TrainingData = trainingData;
 
