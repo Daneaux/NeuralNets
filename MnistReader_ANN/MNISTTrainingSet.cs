@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace MnistReader_ANN
 {
-    internal class MNISTTrainingSet : ITrainingSet
+    public class MNISTTrainingSet : ITrainingSet
     {
         public MNISTTrainingSet()
         {

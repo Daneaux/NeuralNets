@@ -5,37 +5,37 @@ namespace NeuralNets
 {
     public interface IActivationFunction
     {
-        ColumnVector? LastActivation { get; }
+       // ColumnVector? LastActivation { get; }
         ColumnVector Activate(ColumnVector input);
-        ColumnVector Derivative();
+        ColumnVector Derivative(ColumnVector lastActivation);
     }
 
     public class ReLUActivaction : IActivationFunction
     {
         // seems inconsistent, should last actiavtion belong to the layer?  BUG TODO
-        public ColumnVector? LastActivation { get; private set; }
+        //public ColumnVector? LastActivation { get; private set; }
 
         public ColumnVector Activate(ColumnVector input)
         {
-            LastActivation = new ColumnVector(input.Size);
+            ColumnVector activation = new ColumnVector(input.Size);
             for (int i = 0; i < input.Size; i++)
             {
-                LastActivation[i] = Math.Max(0, input[i]);
+                activation[i] = Math.Max(0, input[i]);
             }
-            return LastActivation;
+            return activation;
         }
 
-        public ColumnVector Derivative()
+        public ColumnVector Derivative(ColumnVector lastActivation)
         {
-            if(LastActivation == null)
+            if(lastActivation == null)
             {
                 throw new InvalidOperationException();
             }
 
-            ColumnVector derivative = new ColumnVector(LastActivation.Size);
-            for (int i = 0; i < LastActivation.Size; i++)
+            ColumnVector derivative = new ColumnVector(lastActivation.Size);
+            for (int i = 0; i < lastActivation.Size; i++)
             {
-                if (LastActivation[i] >= 0)
+                if (lastActivation[i] >= 0)
                     derivative[i] = 1;
                 else
                     derivative[i] = 0;
@@ -46,11 +46,9 @@ namespace NeuralNets
 
    public class SigmoidActivation : IActivationFunction
     {
-        public ColumnVector? LastActivation { get; private set; }
-
         public ColumnVector Activate(ColumnVector input)
         {
-            LastActivation = new ColumnVector(input.Size);
+            ColumnVector LastActivation = new ColumnVector(input.Size);
             for (int i = 0; i < input.Size; i++)
             {
                 LastActivation[i] = (1.0 / (1.0 + Math.Pow(Math.E, -input[i])));
@@ -58,14 +56,14 @@ namespace NeuralNets
             return LastActivation;
         }
 
-        public ColumnVector Derivative()
+        public ColumnVector Derivative(ColumnVector lastActivation)
         {
-            if (LastActivation == null)
+            if (lastActivation == null)
             {
                 throw new InvalidOperationException();
             }
 
-            ColumnVector derivative = this.LastActivation * (1.0 - this.LastActivation);
+            ColumnVector derivative = lastActivation * (1.0 - lastActivation);
             return derivative;
         }
     }

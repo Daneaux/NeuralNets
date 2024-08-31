@@ -1,4 +1,6 @@
-﻿using System;
+﻿using NeuralNets.Network;
+using NumReaderNetwork;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -29,7 +31,15 @@ namespace NeuralNets
     /// </summary>
     public class WeightedLayer : Layer
     {
-        public IActivationFunction ActivationFunction { get; protected set; }
+        public bool IsSoftMaxActivation
+        {
+            get
+            {
+                return this.ActivationFunction is SoftMax;
+            }
+        }
+
+        protected IActivationFunction ActivationFunction {  get; private set; }
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed=12341324) : base(nodeCount)
         {
             this.Initialize(activationFunction, incomingDataPoints, new Matrix(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
@@ -44,7 +54,7 @@ namespace NeuralNets
             Matrix initialWeights,
             ColumnVector initialBiases) : base(nodeCount)
         {
-            Initialize( activationFunction, incomingDataPoints, initialWeights, initialBiases);
+            Initialize(activationFunction, incomingDataPoints, initialWeights, initialBiases);
         }
 
         private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, Matrix initialWeights, ColumnVector initialBiases)
@@ -58,43 +68,48 @@ namespace NeuralNets
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == incomingDataPoints);
 
-            this.LastSigma = null;
-            this.BiasGradient = new ColumnVector(this.NumNodes);
-            this.WeightGradient = new Matrix(this.Weights.Rows, this.Weights.Cols);
+           // this.LastSigma = null;
+           // this.BiasGradient = new ColumnVector(this.NumNodes);
+           // this.WeightGradient = new Matrix(this.Weights.Rows, this.Weights.Cols);
+        }
+
+        public ColumnVector Activate(ColumnVector input)
+        {
+            return ActivationFunction.Activate(input);
+        }
+
+        public ColumnVector Derivative(ColumnVector lastActivation)
+        {
+            ColumnVector derivative = ActivationFunction.Derivative(lastActivation);
+
+            return derivative;
         }
 
         // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.
         // And the number of columns is the number of data points in a samples, for examle 768 b&w pixel values for the MNIST number set
         public Matrix Weights { get; set; }
         public ColumnVector Biases { get; set; }
-        public ColumnVector? LastActivationOutput { get { return this.ActivationFunction.LastActivation; } }
-        public ColumnVector LastSigma { get; set; }
-        public Matrix WeightGradient { get; private set; } 
-        public ColumnVector BiasGradient { get; private set; }
+        //public Matrix WeightGradient { get; private set; } 
+       // public ColumnVector BiasGradient { get; private set; }
 
 
-        public void ScaleWeightAndBiasesGradient(double scaleFactor)
+/*        public void ScaleWeightAndBiasesGradient(double scaleFactor)
         {
             this.BiasGradient *= scaleFactor;
             this.WeightGradient *= scaleFactor;
-        }
+        }*/
 
-        public void UpdateWeightsAndBiases()
-        { 
-            Weights = Weights - this.WeightGradient;
-            Biases = Biases - this.BiasGradient;
-        } 
-        
-        public ColumnVector GetActivationFunctionDerivative()
+        public void UpdateWeightsAndBiasesWithScaledGradients(Matrix weightGradient, ColumnVector biasGradient)
         {
-            return this.ActivationFunction.Derivative();
+            Weights = Weights - weightGradient;
+            Biases = Biases - biasGradient;
         }
 
-        public void AccumulateGradients(Matrix weightGradient, ColumnVector biasGradient)
+/*        public void AccumulateGradients(Matrix weightGradient, ColumnVector biasGradient)
         {
             this.WeightGradient += weightGradient;
             this.BiasGradient += biasGradient;
-        }
+        }*/
     }
 
     public class InputLayer : Layer 
