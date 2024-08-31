@@ -201,25 +201,13 @@ namespace NeuralNetsTests.ANNTests
             finalOutput = ctx3.FeedForward(tp.Input);
             totLoss = ann.GetTotallLoss(tp, finalOutput);
             Assert.AreEqual(0.28047, totLoss, 0.001);
-
-
             Console.WriteLine("done error is " + totLoss);
 
             totLoss = 0;
             for (int i = 0; i < 10000; i++)
             {
-                RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                RenderContext.BatchTrain(ctx4);
-
-                if(i==1000000)
-                {
-                    RenderContext ctx5 = new RenderContext(ann, 1, ts);
-                    ColumnVector pout = ctx5.FeedForward(tp.Input);
-                    totLoss = ctx5.Network.GetTotallLoss(tp, pout);
-                }
+                RenderContext.BatchTrain(ctx3);
             }
-
-
 
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
@@ -227,9 +215,8 @@ namespace NeuralNetsTests.ANNTests
                 totLoss = ctx4.Network.GetTotallLoss(tp, pout);
             }
 
-            //totLoss = ann.GetTotallLoss(tp, ann.FeedForward(tp.Input));
             Console.WriteLine("done error is " + totLoss);
-            Assert.AreEqual(totLoss, 1.5081705298794045E-07, 0.00000001);
+            Assert.AreEqual(totLoss, 2.4483375576262793E-06, 0.00000001);
         }
 
         [TestMethod]
