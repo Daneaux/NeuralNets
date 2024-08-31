@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Diagnostics;
 
 namespace NeuralNets.Network
 {
@@ -105,17 +100,23 @@ namespace NeuralNets.Network
                 List<RenderContext> renderContexts = new List<RenderContext>();
 
 
-                // todo: parallel.For               
-                for (int i = 0; i < parentContext.BatchSize; i++, actualBatchSize++)
+                Object thisLock = new object();
+                // 
+                //for (int i = 0; i < parentContext.BatchSize; i++)
+                Parallel.For(0, parentContext.BatchSize, i =>
                 {
                     RenderContext ctx = new RenderContext(parentContext.Network, 0, null); // todo: hmm, mabe need to specialize the render context??
                     trainingPair = trainingPairs[currentTP++];
                     predictedOut = ctx.FeedForward(trainingPair.Input);
                     ctx.BackProp(trainingPair, predictedOut);
                     // LOCK
-                    renderContexts.Add(ctx);
+                    lock (thisLock)
+                    {
+                        renderContexts.Add(ctx);
+                        actualBatchSize++;
+                    }
                     // UNLOCK
-                }
+                });
                 Debug.Assert(actualBatchSize == parentContext.BatchSize);
 
                 // All the RenderContexts above (in the render batch) now have their own gradients
