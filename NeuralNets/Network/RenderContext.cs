@@ -69,11 +69,11 @@ namespace NeuralNets.Network
             // scope of training enumerator is entire epoch
             for (int i = 0; i < numEpochs; i++)
             {
-                RenderContext.BatchTrain(this);
+                RenderContext.BatchTrain(this, i);
             }
         }
 
-        public static void BatchTrain(RenderContext parentContext)
+        public static void BatchTrain(RenderContext parentContext, int epochNum)
         {
             // multiple feed forward, random samples from training set
             // collect all outputs. average them
@@ -99,6 +99,8 @@ namespace NeuralNets.Network
                 // single entry on this guy
                 List<RenderContext> renderContexts = new List<RenderContext>();
 
+                // debug only
+                int a = Thread.CurrentThread.ManagedThreadId;
 
                 Object thisLock = new object();
                 // 
@@ -121,7 +123,6 @@ namespace NeuralNets.Network
 
                 // All the RenderContexts above (in the render batch) now have their own gradients
                 // Sum and average all gradients
-                // LOCK (we should be single threaded here anyway but just make sure)
 
                 Matrix[] weightGradients = new Matrix[parentContext.LayerCount];
                 ColumnVector[] biasGradients = new ColumnVector[parentContext.LayerCount];
@@ -139,6 +140,8 @@ namespace NeuralNets.Network
                             biasGradients[L] + renderContexts[rc].BiasGradient[L];
                     }
                 }
+
+                Debug.Assert(a == Thread.CurrentThread.ManagedThreadId);
 
                 // scale by 1/batchsize (ie: average) & learning rate at the same time
                 for (int L = 0; L < parentContext.LayerCount; L++)
@@ -158,7 +161,7 @@ namespace NeuralNets.Network
                     RenderContext ctx = new RenderContext(parentContext.Network, 0, null); 
                     predictedOut = ctx.FeedForward(trainingPair.Input);
                     double totalLoss = ctx.Network.GetTotallLoss(trainingPair, predictedOut);
-                    Console.WriteLine($"Finished Batch {batchCount} with total loss = {totalLoss}");
+                    Console.WriteLine($"Epoch {epochNum}, batch size:{parentContext.BatchSize}. Finished Batch {batchCount} with total loss = {totalLoss}");
                 }
                 batchCount++;
             }

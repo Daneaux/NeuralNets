@@ -9,10 +9,10 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-        double trainingRate = 0.05;
+        double trainingRate = 0.1;
 
         MNISTSpecificANN ann = new MNISTSpecificANN(trainingRate, 28 * 28, 10); // shouldn't know this. bub bug todo
-        RenderContext ctx = new RenderContext(ann, 128, new MNISTTrainingSet());
+        RenderContext ctx = new RenderContext(ann, 300, new MNISTTrainingSet());
 
         int epochs = 10;
         ctx.EpochTrain(epochs);

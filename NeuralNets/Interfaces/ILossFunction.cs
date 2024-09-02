@@ -133,9 +133,7 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         // Expects "predicted" to be the output from SoftMax
         public double ScalarLoss(ColumnVector truth, ColumnVector predicted)
         {
-            double N = 1.0;
             double NInv = -1.0;
-
             ColumnVector logYHat = predicted.Log();
             return NInv * logYHat.Sum();
         }
