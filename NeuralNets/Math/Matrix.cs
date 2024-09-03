@@ -1,22 +1,21 @@
 ﻿using System.Diagnostics;
-using System.Net.NetworkInformation;
 using System.Text;
 
 namespace NeuralNets
 {
     public class Matrix
     {
-        public double[,] Mat { get; private set; }
+        public float[,] Mat { get; private set; }
         public int Rows { get; private set; }
         public int Cols { get; private set; }
         public Matrix(int r, int c)
         {
             Rows = r;
             Cols = c;
-            Mat = new double[Rows, Cols];
+            Mat = new float[Rows, Cols];
         }
 
-        public Matrix(double[] inputVector) : this(inputVector.Length, 1)
+        public Matrix(float[] inputVector) : this(inputVector.Length, 1)
         {
             for (int r = 0; r < Rows; r++)
             {
@@ -37,22 +36,22 @@ namespace NeuralNets
             }
         }
 
-        public Matrix(double[,] m)
+        public Matrix(float[,] m)
         {
             Rows = m.GetLength(0);
             Cols = m.GetLength(1);
             this.Mat = m; // no deep copy, better not change my matrix dude!
         }
 
-        public void SetRandom(int seed, double min, double max)
+        public void SetRandom(int seed, float min, float max)
         {
             Random rnd = new Random(seed);
-            double width = max - min;
+            float width = max - min;
             for (int c = 0; c < Cols; c++)
             {
                 for (int r = 0; r < Rows; r++)
                 {
-                   Mat[r, c] = (rnd.NextDouble() * width) + min;
+                   Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
                    // for testing only:  Mat[r, c] = 0.5;
                 }
             }
@@ -111,7 +110,7 @@ namespace NeuralNets
         {
             if (left.Size == this.Rows)
             {
-                double[] vector = new double[left.Size];
+                float[] vector = new float[left.Size];
                 for (int c = 0; c < this.Cols; c++)
                 {
                     vector[c] = DoRowVectorTimesColumn(left, c);
@@ -130,7 +129,7 @@ namespace NeuralNets
         {
             if (this.Cols == colVec.Size)
             {
-                double[] vector = new double[this.Rows];
+                float[] vector = new float[this.Rows];
                 for (int r = 0; r < Rows; r++)
                 {
                     vector[r] = DoRowTimesColumnVector(r, colVec);
@@ -145,15 +144,15 @@ namespace NeuralNets
         }
 
         public static Matrix operator *(Matrix a, Matrix b) => a.Multiply(b);
-        public double this[int r, int c]
+        public float this[int r, int c]
         {
             get { return this.Mat[r, c]; }
             set { this.Mat[r, c] = value; }
         }
 
-        public static Matrix operator *(double scalar, Matrix b) => b.Multiply(scalar);
-        public static Matrix operator *(Matrix b, double scalar) => b.Multiply(scalar);
-        public Matrix Multiply(double scalar)
+        public static Matrix operator *(float scalar, Matrix b) => b.Multiply(scalar);
+        public static Matrix operator *(Matrix b, float scalar) => b.Multiply(scalar);
+        public Matrix Multiply(float scalar)
         {
             Matrix res = new Matrix(Rows, Cols);
             for (int r = 0; r < Rows; r++)
@@ -210,9 +209,9 @@ namespace NeuralNets
 
         private bool HasSameDimensions(Matrix b) => (Rows == b.Rows) && (Cols == b.Cols);
 
-        private double DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix rightMatrix)
+        private float DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix rightMatrix)
         {
-            double cum = 0;
+            float cum = 0;
             for (int i = 0; i < Cols; i++)
             {
                 cum += this[myRow, i] * rightMatrix[i, rightMatrixCol];
@@ -220,10 +219,10 @@ namespace NeuralNets
             return cum;
         }
 
-        private double DoRowTimesColumnVector(int myRow, ColumnVector colVec)
+        private float DoRowTimesColumnVector(int myRow, ColumnVector colVec)
         {
             Debug.Assert(colVec.Size == this.Cols);
-            double product = 0;
+            float product = 0;
             for(int c =0; c < Cols; c++)
             {
                 product += this.Mat[myRow, c] * colVec[c];
@@ -231,10 +230,10 @@ namespace NeuralNets
             return product;
         }
 
-        private double DoRowVectorTimesColumn(RowVector rowVec, int myCol)
+        private float DoRowVectorTimesColumn(RowVector rowVec, int myCol)
         {
             Debug.Assert(rowVec.Size == this.Rows);
-            double cum = 0;
+            float cum = 0;
             for (int i = 0; i < rowVec.Size; i++)
             {
                 cum += rowVec[i] * this.Mat[i, myCol];
@@ -277,15 +276,15 @@ namespace NeuralNets
             {
                 for (int j = 0; j < this.Cols; ++j)
                 {
-                    logMat[i, j] = Math.Log(this.Mat[i, j]);
+                    logMat[i, j] = (float)Math.Log(this.Mat[i, j]);
                 }
             }
             return logMat;
         }
 
-        public virtual double Sum()
+        public virtual float Sum()
         {
-            double sum = 0;
+            float sum = 0;
             for (int i = 0; i < this.Rows; ++i)
             {
                 for (int j = 0; j < this.Cols; ++j)
@@ -303,7 +302,7 @@ namespace NeuralNets
     public class RowVector : Matrix
     {
         public int Size { get { return this.Cols; } }
-        public RowVector(double[] inputVector) : base(1, inputVector.Length)
+        public RowVector(float[] inputVector) : base(1, inputVector.Length)
         {
             for (int c = 0; c < Size; c++)
             {
@@ -313,7 +312,7 @@ namespace NeuralNets
 
         public RowVector(int size) :  base(1, size) { }
 
-        public double this[int i]
+        public float this[int i]
         {
             get { return this.Mat[0, i]; }
             set { this.Mat[0, i] = value; }
@@ -335,7 +334,7 @@ namespace NeuralNets
     public class ColumnVector : Matrix
     {
         public int Size { get { return this.Rows; } }
-        public ColumnVector(double[] inputVector) : base(inputVector.Length, 1)
+        public ColumnVector(float[] inputVector) : base(inputVector.Length, 1)
         {
             for (int r = 0; r < Rows; r++)
             {
@@ -345,9 +344,9 @@ namespace NeuralNets
 
         public ColumnVector(int size) : base(size, 1) { }
 
-        public override double Sum()
+        public override float Sum()
         {
-            double accum = 0.0;
+            float accum = 0;
             for(int r = 0; r < Rows; r++)
             {
                 accum += Mat[r, 0];
@@ -377,7 +376,7 @@ namespace NeuralNets
 
         private ColumnVector MinusColumnVector(ColumnVector right)
         {
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for(int i = 0; i < this.Size; i++)
             {
                 res[i] = this[i] - right[i];
@@ -394,7 +393,7 @@ namespace NeuralNets
         private ColumnVector PlusColumnVector(ColumnVector right)
         {
             Debug.Assert(this.Size == right.Size);
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
                 res[i] = this[i] + right[i];
@@ -407,7 +406,7 @@ namespace NeuralNets
 
         public ColumnVector Multiply(ColumnVector right)
         {
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for(int i=0; i < this.Size; i++)
             {
                 res[i] = this[i] * right[i];
@@ -415,12 +414,12 @@ namespace NeuralNets
             return new ColumnVector(res);
         }
 
-        public static ColumnVector operator *(double scalar, ColumnVector vec) => vec.ScalarMultiply(scalar);
-        public static ColumnVector operator *(ColumnVector vec, double scalar) => vec.ScalarMultiply(scalar);
+        public static ColumnVector operator *(float scalar, ColumnVector vec) => vec.ScalarMultiply(scalar);
+        public static ColumnVector operator *(ColumnVector vec, float scalar) => vec.ScalarMultiply(scalar);
 
-        private  ColumnVector ScalarMultiply(double scalar)
+        private  ColumnVector ScalarMultiply(float scalar)
         {
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
                 res[i] = this[i] * scalar;
@@ -429,12 +428,12 @@ namespace NeuralNets
             return new ColumnVector(res);
         }
 
-        public static ColumnVector operator +(ColumnVector vec, double scalar) => vec.ScalarAddition(scalar);
-        public static ColumnVector operator +(double scalar, ColumnVector vec) => vec.ScalarAddition(scalar);
+        public static ColumnVector operator +(ColumnVector vec, float scalar) => vec.ScalarAddition(scalar);
+        public static ColumnVector operator +(float scalar, ColumnVector vec) => vec.ScalarAddition(scalar);
 
-        private ColumnVector ScalarAddition(double scalar)
+        private ColumnVector ScalarAddition(float scalar)
         {
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
                 res[i] = this[i] + scalar;
@@ -443,12 +442,12 @@ namespace NeuralNets
             return new ColumnVector(res);
         }
 
-        public static ColumnVector operator -(ColumnVector vec, double scalar) => vec.ScalarAddition(-scalar);
-        public static ColumnVector operator -(double scalar, ColumnVector vec) => vec.ScalarSubtract(scalar);
+        public static ColumnVector operator -(ColumnVector vec, float scalar) => vec.ScalarAddition(-scalar);
+        public static ColumnVector operator -(float scalar, ColumnVector vec) => vec.ScalarSubtract(scalar);
 
-        private ColumnVector ScalarSubtract(double scalar)
+        private ColumnVector ScalarSubtract(float scalar)
         {
-            double[] res = new double[this.Size];
+            float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
                 res[i] = scalar - this[i];
@@ -467,9 +466,9 @@ namespace NeuralNets
             return result;
         }
 
-        public double GetMax()
+        public float GetMax()
         {
-            double max = double.MinValue;
+            float max = float.MinValue;
             for (int i = 0; i < this.Size; i++)
             {
                 max = Math.Max(max, this[i]);
@@ -477,12 +476,12 @@ namespace NeuralNets
             return max;
         }
 
-        public double SumExpEMinusMax(double max)
+        public float SumExpEMinusMax(float max)
         {
-            double scale = 0;
+            float scale = 0;
             for (int i = 0; i < this.Size; i++)
             {
-                scale += Math.Exp(this[i] - max);
+               scale += (float)Math.Exp(this[i] - max);
             }
             return scale;
         }
@@ -490,12 +489,12 @@ namespace NeuralNets
         // todo: column vector not really supposed to know how to generate softmax ...
         public ColumnVector SoftmaxHelper()
         {
-            double max = this.GetMax();
-            double scaleFactor = this.SumExpEMinusMax(max);
+            float max = this.GetMax();
+            float scaleFactor = this.SumExpEMinusMax(max);
             ColumnVector softMaxVector = new ColumnVector(this.Size);
             for (int i = 0; i < this.Size; i++)
             {
-                softMaxVector[i] = Math.Exp(this[i] - max) / scaleFactor;
+                softMaxVector[i] = (float)(Math.Exp(this[i] - max) / scaleFactor);
             }
             return softMaxVector;
         }
@@ -505,12 +504,12 @@ namespace NeuralNets
             ColumnVector vector = new ColumnVector(this.Size);
             for(int i = 0;i < this.Size;i++)
             {
-                vector[i] = Math.Log(this[i]);
+                vector[i] = (float)Math.Log(this[i]);
             }
             return vector;
         }
 
-        public double this[int i]
+        public float this[int i]
         {
             get { return this.Mat[i, 0]; }
             set { this.Mat[i, 0] = value; }
@@ -528,7 +527,7 @@ namespace NeuralNets
             return null;
         }
 
-        public double Determinant()
+        public float Determinant()
         {
             return 0;
         }

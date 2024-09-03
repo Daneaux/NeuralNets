@@ -21,7 +21,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Constructor_WithDoubleArray_ShouldInitializeColumnVector()
         {
-            double[] vector = { 1.0, 2.0, 3.0 };
+            float[] vector = { 1, 2, 3 };
             var matrix = new Matrix(vector);
             Assert.AreEqual(3, matrix.Rows);
             Assert.AreEqual(1, matrix.Cols);
@@ -33,8 +33,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Multiply_ShouldReturnCorrectMatrixProduct()
         {
-            var matrixA = new Matrix(new double[,] { { 1, 2 }, { 3, 4 } });
-            var matrixB = new Matrix(new double[,] { { 2, 0 }, { 1, 2 } });
+            var matrixA = new Matrix(new float[,] { { 1, 2 }, { 3, 4 } });
+            var matrixB = new Matrix(new float[,] { { 2, 0 }, { 1, 2 } });
             var result = matrixA.Multiply(matrixB);
 
             Assert.AreEqual(2, result.Rows);
@@ -57,8 +57,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void HadamardProduct_ShouldReturnCorrectElementwiseProduct()
         {
-            var matrixA = new Matrix(new double[,] { { 1, 2 }, { 3, 4 } });
-            var matrixB = new Matrix(new double[,] { { 2, 0 }, { 1, 2 } });
+            var matrixA = new Matrix(new float[,] { { 1, 2 }, { 3, 4 } });
+            var matrixB = new Matrix(new float[,] { { 2, 0 }, { 1, 2 } });
             var result = matrixA.HadamardProduct(matrixB);
 
             Assert.AreEqual(2, result.Rows);
@@ -72,8 +72,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Subtract_ShouldReturnCorrectMatrixDifference()
         {
-            var matrixA = new Matrix(new double[,] { { 5, 7 }, { 9, 11 } });
-            var matrixB = new Matrix(new double[,] { { 2, 3 }, { 4, 5 } });
+            var matrixA = new Matrix(new float[,] { { 5, 7 }, { 9, 11 } });
+            var matrixB = new Matrix(new float[,] { { 2, 3 }, { 4, 5 } });
             var result = matrixA - matrixB;
 
             Assert.AreEqual(3, result[0, 0]);
@@ -85,7 +85,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void GetTransposedMatrix_ShouldReturnCorrectTranspose()
         {
-            var matrix = new Matrix(new double[,] { { 1, 2, 3 }, { 4, 5, 6 } });
+            var matrix = new Matrix(new float[,] { { 1, 2, 3 }, { 4, 5, 6 } });
             var transposed = matrix.GetTransposedMatrix();
 
             Assert.AreEqual(3, transposed.Rows);
@@ -105,8 +105,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void ScalarMultiply_ShouldReturnCorrectResult()
         {
-            var vector = new ColumnVector(new double[] { 1.0, 2.0, 3.0 });
-            var result = vector * 2.0;
+            var vector = new ColumnVector(new float[] { 1, 2, 3 });
+            var result = vector * 2;
 
             Assert.AreEqual(2.0, result[0]);
             Assert.AreEqual(4.0, result[1]);
@@ -116,8 +116,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void ScalarAddition_ShouldReturnCorrectResult()
         {
-            var vector = new ColumnVector(new double[] { 1.0, 2.0, 3.0 });
-            var result = vector + 2.0;
+            var vector = new ColumnVector(new float[] { 1, 2, 3 });
+            var result = vector + 2;
 
             Assert.AreEqual(3.0, result[0]);
             Assert.AreEqual(4.0, result[1]);
@@ -127,8 +127,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Subtract_ShouldReturnCorrectColumnVectorDifference()
         {
-            var vectorA = new ColumnVector(new double[] { 5.0, 7.0, 9.0 });
-            var vectorB = new ColumnVector(new double[] { 2.0, 3.0, 4.0 });
+            var vectorA = new ColumnVector(new float[] { 5, 7, 9 });
+            var vectorB = new ColumnVector(new float[] { 2, 3, 4 });
             var result = vectorA - vectorB;
 
             Assert.AreEqual(3.0, result[0]);
@@ -143,7 +143,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Constructor_ShouldInitializeCorrectRowVector()
         {
-            double[] vector = { 1.0, 2.0, 3.0 };
+            float[] vector = { 1, 2, 3 };
             var rowVector = new RowVector(vector);
 
             Assert.AreEqual(1, rowVector.Rows);
@@ -156,8 +156,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void RowVectorTimesMatrix_ShouldReturnCorrectResult()
         {
-            var rowVector = new RowVector(new double[] { 1.0, 2.0 });
-            var matrix = new Matrix(new double[,] { { 3, 4 }, { 5, 6 } });
+            var rowVector = new RowVector(new float[] { 1, 2 });
+            var matrix = new Matrix(new float[,] { { 3, 4 }, { 5, 6 } });
             var result = rowVector * matrix;
 
             Assert.AreEqual(1, result.Rows);

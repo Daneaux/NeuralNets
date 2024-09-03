@@ -43,8 +43,8 @@ namespace NeuralNets
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed=12341324) : base(nodeCount)
         {
             this.Initialize(activationFunction, incomingDataPoints, new Matrix(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
-            this.Weights.SetRandom(randomSeed, -Math.Sqrt(nodeCount), Math.Sqrt(nodeCount)); // Xavier initilization
-            this.Biases.SetRandom(randomSeed, -1.0, 1.0);
+            this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
+            this.Biases.SetRandom(randomSeed, -1, 10);
         }
 
         public WeightedLayer(
@@ -93,7 +93,7 @@ namespace NeuralNets
        // public ColumnVector BiasGradient { get; private set; }
 
 
-/*        public void ScaleWeightAndBiasesGradient(double scaleFactor)
+/*        public void ScaleWeightAndBiasesGradient(float scaleFactor)
         {
             this.BiasGradient *= scaleFactor;
             this.WeightGradient *= scaleFactor;

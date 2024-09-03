@@ -8,7 +8,7 @@ namespace NeuralNetsTests.ANNTests
 
     public class SimpleTrainingSet : ITrainingSet
     {
-        public double Increment { get; }
+        public float Increment { get; }
 
         public SimpleTrainingSet()
         {
@@ -27,8 +27,8 @@ namespace NeuralNetsTests.ANNTests
         public List<TrainingPair> BuildNewRandomizedTrainingList()
         {
             TrainingPair tp = new TrainingPair(
-                    new ColumnVector(new double[] { 0.4, 0.9 }),
-                    new ColumnVector(new double[] { 0.8357 })
+                    new ColumnVector(new float[] { 0.4f, 0.9f }),
+                    new ColumnVector(new float[] { 0.8357f })
                     );
             this.TrainingList = new List<TrainingPair>() { tp };
             return this.TrainingList;
@@ -50,18 +50,18 @@ namespace NeuralNetsTests.ANNTests
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
                 {
-                    Weights = new Matrix(new double[,] { { 0.5, 0.2 }, { 0.1, 0.8 } }),
-                    Biases = new ColumnVector([0.3, 0.6])
+                    Weights = new Matrix(new float[,] { { 0.5f, 0.2f }, { 0.1f, 0.8f } }),
+                    Biases = new ColumnVector([0.3f, 0.6f])
                 },
                 new WeightedLayer(1, new SigmoidActivation(), 2)
                 {
-                    Weights = new Matrix(new double[,] { { 0.7, 0.9 } }),
-                    Biases = new ColumnVector(new double[] { 0.1 })
+                    Weights = new Matrix(new float[,] { { 0.7f, 0.9f } }),
+                    Biases = new ColumnVector(new float[] { 0.1f })
                 }
             };
 
             ITrainingSet ts = new SimpleTrainingSet();
-            GeneralFeedForwardANN network = new GeneralFeedForwardANN(layers, 0.01, inputDim, outputDim, new SquaredLoss());
+            GeneralFeedForwardANN network = new GeneralFeedForwardANN(layers, 0.01f, inputDim, outputDim, new SquaredLoss());
             RenderContext ctx = new RenderContext(network, 1, ts);
 
             // Act
@@ -86,16 +86,16 @@ namespace NeuralNetsTests.ANNTests
             {
                 new WeightedLayer(2, new ReLUActivaction(), inputDim)
                 {
-                    Weights = new Matrix(new double[,] { { 0.5, 0.2 }, { 0.1, 0.8 } }),
+                    Weights = new Matrix(new float[,] { { 0.5, 0.2 }, { 0.1, 0.8 } }),
                     Biases = new ColumnVector([0.3, 0.6])
                 },
                 new WeightedLayer(1, new SigmoidActivation(), 2)
                 {
-                    Weights = new Matrix(new double[,] { { 0.7, 0.9 } }),
-                    Biases = new ColumnVector(new double[] { 0.1 })
+                    Weights = new Matrix(new float[,] { { 0.7, 0.9 } }),
+                    Biases = new ColumnVector(new float[] { 0.1 })
                 }
             };
-            TrainingPair pair = new TrainingPair(new ColumnVector(new double[] { 0.4, 0.9 }), new ColumnVector(new double[] { 0 }));
+            TrainingPair pair = new TrainingPair(new ColumnVector(new float[] { 0.4, 0.9 }), new ColumnVector(new float[] { 0 }));
 
             // Act
             var predictedOut = network.FeedForward(ctx, pair.Input);

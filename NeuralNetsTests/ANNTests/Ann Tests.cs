@@ -9,9 +9,9 @@ namespace NeuralNetsTests.ANNTests
 
         public class SineWaveTrainingSet : ITrainingSet
         {
-            public double Increment { get; }
+            public float Increment { get; }
 
-            public SineWaveTrainingSet(int numSamples, double increment)
+            public SineWaveTrainingSet(int numSamples, float increment)
             {
                 this.NumberOfSamples = numSamples;
                 this.Increment = increment;
@@ -31,11 +31,11 @@ namespace NeuralNetsTests.ANNTests
             {
                 Random rnd = new Random();
                 List<TrainingPair> trainingPairs = new List<TrainingPair>();
-                double x = 0.0;
+                float x = 0;
                 for (int i = 0; i < NumberOfSamples; i++)
                 {
-                    x = rnd.NextDouble() * 2.0 * System.Math.PI;
-                    double sinx = System.Math.Sin(x);
+                    x = (float)(rnd.NextDouble() * 2 * System.Math.PI);
+                    float sinx = (float)System.Math.Sin(x);
                     trainingPairs.Add(new TrainingPair(new ColumnVector([x]), new ColumnVector([sinx])));
                 }
                 this.TrainingList = trainingPairs;
@@ -48,14 +48,14 @@ namespace NeuralNetsTests.ANNTests
             int inputDim = 1;
             int hiddenLayerDim = 4;
             int outputDim = 1;
-            double trainingRate = 0.1;
+            float trainingRate = 0.1F;
             int batchSize = 32;
             ILossFunction lossFunction = new SquaredLoss();
 
             WeightedLayer hiddenLayer = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), inputDim);
             WeightedLayer outputLayer = new WeightedLayer(outputDim, new SigmoidActivation(), hiddenLayerDim);
 
-            ITrainingSet ts = new SineWaveTrainingSet(1000, 0.05);
+            ITrainingSet ts = new SineWaveTrainingSet(1000, 0.05F);
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
                 new List<WeightedLayer> { hiddenLayer, outputLayer },
                 trainingRate,
@@ -88,7 +88,7 @@ namespace NeuralNetsTests.ANNTests
 
             public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
-                return new List<TrainingPair> { new(new ColumnVector([0.05, 0.10]), new ColumnVector([0.01, 0.99])) };
+                return new List<TrainingPair> { new(new ColumnVector([0.05F, 0.10F]), new ColumnVector([0.01F, 0.99F])) };
             }
         }
 
@@ -96,25 +96,25 @@ namespace NeuralNetsTests.ANNTests
         public void MattMazurExample()
         {
 
-            double trainingRate = 0.5;
+            float trainingRate = 0.5F;
             int inputDim = 2;
             int batchSize = 1;
             int outputDim = 2;
 
-            TrainingPair tp = new(new ColumnVector([0.05, 0.10]), new ColumnVector([0.01, 0.99]));
+            TrainingPair tp = new(new ColumnVector([0.05F, 0.10F]), new ColumnVector([0.01F, 0.99F]));
 
-            Matrix w1 = new Matrix(new double[,] {
-                { 0.15, 0.2 },
-                { 0.25, 0.30 }
+            Matrix w1 = new Matrix(new float[,] {
+                { 0.15F, 0.2F },
+                { 0.25F, 0.30F }
             });
 
-            Matrix w2 = new Matrix(new double[,] {
-                { 0.40, 0.45 },
-                { 0.50, 0.55 }
+            Matrix w2 = new Matrix(new float[,] {
+                { 0.40f, 0.45f },
+                { 0.50f, 0.55f }
             });
 
-            ColumnVector b1 = new ColumnVector(new double[] { 0.35, 0.35 });
-            ColumnVector b2 = new ColumnVector(new double[] { 0.60, 0.60 });
+            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
+            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
 
 
             WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
@@ -131,7 +131,7 @@ namespace NeuralNetsTests.ANNTests
 
             RenderContext ctx = new RenderContext(ann, batchSize, ts);
 
-            double totLoss = 0;
+            float totLoss = 0;
 
             ColumnVector finalOutput = ctx.FeedForward(tp.Input);
 
@@ -177,20 +177,20 @@ namespace NeuralNetsTests.ANNTests
             // 
             // hand rolled feed forward and test!
             //
-            double z1 = hiddenLayer.Weights[0, 0] * tp.Input[0] + hiddenLayer.Weights[0, 1] * tp.Input[1] + hiddenLayer.Biases[0];
-            double z2 = hiddenLayer.Weights[1, 0] * tp.Input[0] + hiddenLayer.Weights[1, 1] * tp.Input[1] + hiddenLayer.Biases[1];
+            float z1 = hiddenLayer.Weights[0, 0] * tp.Input[0] + hiddenLayer.Weights[0, 1] * tp.Input[1] + hiddenLayer.Biases[0];
+            float z2 = hiddenLayer.Weights[1, 0] * tp.Input[0] + hiddenLayer.Weights[1, 1] * tp.Input[1] + hiddenLayer.Biases[1];
 
             ColumnVector a = hiddenLayer.Activate(new ColumnVector([z1, z2]));
 
-            double oz1 = outputLayer.Weights[0, 0] * a[0] + outputLayer.Weights[0, 1] * a[1] + outputLayer.Biases[0];
-            double oz2 = outputLayer.Weights[1, 0] * a[0] + outputLayer.Weights[1, 1] * a[1] + outputLayer.Biases[1];
+            float oz1 = outputLayer.Weights[0, 0] * a[0] + outputLayer.Weights[0, 1] * a[1] + outputLayer.Biases[0];
+            float oz2 = outputLayer.Weights[1, 0] * a[0] + outputLayer.Weights[1, 1] * a[1] + outputLayer.Biases[1];
 
             ColumnVector oa = outputLayer.Activate(new ColumnVector([oz1, oz2]));
 
             // truth - predicted
-            double error1 = 0.5 * (tp.Output[0] - oa[0]) * (tp.Output[0] - oa[0]);
-            double error2 = 0.5 * (tp.Output[1] - oa[1]) * (tp.Output[1] - oa[1]);
-            double totalErrorPass2 = error1 + error2;
+            float error1 = 0.5f * (tp.Output[0] - oa[0]) * (tp.Output[0] - oa[0]);
+            float error2 = 0.5f * (tp.Output[1] - oa[1]) * (tp.Output[1] - oa[1]);
+            float totalErrorPass2 = error1 + error2;
             Assert.AreEqual(0.28047, totalErrorPass2, 0.001);
 
 
@@ -206,7 +206,7 @@ namespace NeuralNetsTests.ANNTests
             totLoss = 0;
             for (int i = 0; i < 10000; i++)
             {
-                RenderContext.BatchTrain(ctx3);
+                RenderContext.BatchTrain(ctx3, 1);
             }
 
             {
@@ -223,25 +223,25 @@ namespace NeuralNetsTests.ANNTests
         public void MattMazurExample2()
         {
 
-            double trainingRate = 0.5;
+            float trainingRate = 0.5f;
             int inputDim = 2;
             int batchSize = 1;
             int outputDim = 2;
 
-            TrainingPair tp = new(new ColumnVector([0.05, 0.10]), new ColumnVector([0.01, 0.99]));
+            TrainingPair tp = new(new ColumnVector([0.05f, 0.10f]), new ColumnVector([0.01f, 0.99f]));
 
-            Matrix w1 = new Matrix(new double[,] {
-                { 0.15, 0.2 },
-                { 0.25, 0.30 }
+            Matrix w1 = new Matrix(new float[,] {
+                { 0.15f, 0.2f },
+                { 0.25f, 0.30f }
             });
 
-            Matrix w2 = new Matrix(new double[,] {
-                { 0.40, 0.45 },
-                { 0.50, 0.55 }
+            Matrix w2 = new Matrix(new float[,] {
+                { 0.40f, 0.45f },
+                { 0.50f, 0.55f }
             });
 
-            ColumnVector b1 = new ColumnVector(new double[] { 0.35, 0.35 });
-            ColumnVector b2 = new ColumnVector(new double[] { 0.60, 0.60 });
+            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
+            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
 
 
             WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
@@ -258,7 +258,7 @@ namespace NeuralNetsTests.ANNTests
 
             RenderContext ctx = new RenderContext(ann, batchSize, ts);
 
-            double totLoss = 0;
+            float totLoss = 0;
 
             ColumnVector finalOutput = ctx.FeedForward(tp.Input);
 
@@ -287,7 +287,7 @@ namespace NeuralNetsTests.ANNTests
             //
 
             RenderContext parentContext = new RenderContext(ann, 1, ts);
-            RenderContext.BatchTrain(parentContext);
+            RenderContext.BatchTrain(parentContext, 1);
 
             Assert.AreEqual(outputLayer.Weights[0, 0], 0.35891648, 0.00001);
             Assert.AreEqual(outputLayer.Weights[0, 1], 0.408666186, 0.00001);
@@ -314,7 +314,7 @@ namespace NeuralNetsTests.ANNTests
             for (int i = 0; i < 10000; i++)
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                RenderContext.BatchTrain(ctx4);
+                RenderContext.BatchTrain(ctx4, 1);
             }
 
             {

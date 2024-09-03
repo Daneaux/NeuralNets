@@ -16,7 +16,7 @@ namespace NeuralNets.Network
         public int InputDim => Network.InputDim;
         public int OutputDim => Network.OutputDim;
         public int LayerCount => Network.LayerCount;
-        public double TrainingRate => Network.TrainingRate;
+        public float TrainingRate => Network.TrainingRate;
         public WeightedLayer OutputLayer => Network.OutputLayer;
         public ILossFunction LossFunction => Network.LossFunction;
         public List<WeightedLayer> WeightedLayers => Network.WeightedLayers;
@@ -146,7 +146,7 @@ namespace NeuralNets.Network
                 // scale by 1/batchsize (ie: average) & learning rate at the same time
                 for (int L = 0; L < parentContext.LayerCount; L++)
                 {
-                    double scaleFactor = parentContext.TrainingRate / (double)parentContext.BatchSize;
+                    float scaleFactor = parentContext.TrainingRate / (float)parentContext.BatchSize;
                     biasGradients[L] *= scaleFactor;
                     weightGradients[L] *= scaleFactor;
 
@@ -160,7 +160,7 @@ namespace NeuralNets.Network
                 {
                     RenderContext ctx = new RenderContext(parentContext.Network, 0, null); 
                     predictedOut = ctx.FeedForward(trainingPair.Input);
-                    double totalLoss = ctx.Network.GetTotallLoss(trainingPair, predictedOut);
+                    float totalLoss = ctx.Network.GetTotallLoss(trainingPair, predictedOut);
                     Console.WriteLine($"Epoch {epochNum}, batch size:{parentContext.BatchSize}. Finished Batch {batchCount} with total loss = {totalLoss}");
                 }
                 batchCount++;
@@ -172,7 +172,7 @@ namespace NeuralNets.Network
 
         public void ScaleAndUpdateWeightsBiasesHelper(int L)
         {
-            double scaleFactor = this.TrainingRate / (double)this.BatchSize;
+            float scaleFactor = this.TrainingRate / (float)this.BatchSize;
             this.BiasGradient[L] *= scaleFactor;
             this.WeightGradient[L] *= scaleFactor;
             this.WeightedLayers[L].UpdateWeightsAndBiasesWithScaledGradients(this.WeightGradient[L], this.BiasGradient[L]);
@@ -304,7 +304,7 @@ namespace NeuralNets.Network
             }
 
             Matrix outputWeightGradient = BuildGradientWeightsHelper(this.ActivationContext[LayerCount - 2], outputLayerSigma);
-            ColumnVector outputBiasGradient = outputLayerSigma * 1.0;
+            ColumnVector outputBiasGradient = outputLayerSigma * 1;
 
             this.SetlayerSigma(outputLayerIndex, outputLayerSigma);
             this.SetLayerGradients(outputLayerIndex, outputWeightGradient, outputBiasGradient);

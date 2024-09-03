@@ -51,7 +51,7 @@ namespace NeuralNets
             ColumnVector LastActivation = new ColumnVector(input.Size);
             for (int i = 0; i < input.Size; i++)
             {
-                LastActivation[i] = (1.0 / (1.0 + Math.Pow(Math.E, -input[i])));
+                LastActivation[i] = ((float)(1.0 / (1.0 + Math.Pow(Math.E, -input[i]))));
             }
             return LastActivation;
         }
@@ -63,7 +63,7 @@ namespace NeuralNets
                 throw new InvalidOperationException();
             }
 
-            ColumnVector derivative = lastActivation * (1.0 - lastActivation);
+            ColumnVector derivative = lastActivation * (1 - lastActivation);
             return derivative;
         }
     }

@@ -9,7 +9,7 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-        double trainingRate = 0.1;
+        float trainingRate = 0.1f;
 
         MNISTSpecificANN ann = new MNISTSpecificANN(trainingRate, 28 * 28, 10); // shouldn't know this. bub bug todo
         RenderContext ctx = new RenderContext(ann, 300, new MNISTTrainingSet());

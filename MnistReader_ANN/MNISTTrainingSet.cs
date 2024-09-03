@@ -57,20 +57,20 @@ namespace MnistReader_ANN
 
         private ColumnVector OneHotEncodeLabelData(Image image)
         {
-            // convert the label data (0,1,2, ...) into a columnvector. if the label is 7 (ie: byte == 7), then set the 7th double to 1.0
-            double[] labelData = new double[this.OutputDimension];
-            labelData[(int)image.Label] = 1.0;
+            // convert the label data (0,1,2, ...) into a columnvector. if the label is 7 (ie: byte == 7), then set the 7th float to 1.0
+            float[] labelData = new float[this.OutputDimension];
+            labelData[(int)image.Label] = 1;
             return new ColumnVector(labelData);
         }
 
         private static ColumnVector ImageDataToColumnVector(Image image)
         {
             // convert the image data into a columnvector
-            double[] imageData = new double[image.Size];
+            float[] imageData = new float[image.Size];
             int i = 0;
             foreach (byte b in image.Data)
             {
-                imageData[i++] = (double)b;
+                imageData[i++] = (float)b;
             }
 
             return new ColumnVector(imageData);

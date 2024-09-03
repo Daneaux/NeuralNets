@@ -14,20 +14,20 @@ namespace NeuralNets.Tests
         [TestMethod()]
         public void TestSoftMax()
         {
-            ColumnVector vec = new ColumnVector(new double[] { 1.0, 2.0, 3.0 });
+            ColumnVector vec = new ColumnVector(new float[] { 1, 2, 3 });
             ColumnVector softMax = vec.SoftmaxHelper();
             Assert.AreEqual(softMax[0], 0.09003057, 0.001);
             Assert.AreEqual(softMax[1], 0.24472847, 0.001);
             Assert.AreEqual(softMax[2], 0.66524096, 0.001);
-            Assert.AreEqual(softMax.Sum(), 1.0, 0.001);
+            Assert.AreEqual(softMax.Sum(), 1, 0.001);
 
             // Make sure we're numerically stable
-            vec = new ColumnVector(new double[] { 10000, 20000, 30000 });
+            vec = new ColumnVector(new float[] { 10000, 20000, 30000 });
             softMax = vec.SoftmaxHelper();
-            Assert.AreEqual(softMax[0], 0.0, 0.001);
-            Assert.AreEqual(softMax[1], 0.0, 0.001);
-            Assert.AreEqual(softMax[2], 1.0, 0.001);
-            Assert.AreEqual(softMax.Sum(), 1.0, 0.001);
+            Assert.AreEqual(softMax[0], 0, 0.001);
+            Assert.AreEqual(softMax[1], 0, 0.001);
+            Assert.AreEqual(softMax[2], 1, 0.001);
+            Assert.AreEqual(softMax.Sum(), 1, 0.001);
         }
 
         [TestMethod()]
@@ -40,9 +40,9 @@ namespace NeuralNets.Tests
         [TestMethod]
         public void HadamardProduct()
         {
-            double[,] ddd = new double[3, 3]{
-                {1.0, 2.0, 9.0},
-                {4.0, 5.0, 6.0},
+            float[,] ddd = new float[3, 3]{
+                {1, 2, 9},
+                {4, 5, 6},
                 {7, 8, 9}};
             Matrix m1 = new Matrix(ddd);
             Matrix m2 = new Matrix(ddd);
@@ -59,14 +59,14 @@ namespace NeuralNets.Tests
         [TestMethod]
         public void MultiplyOperator()
         {
-            double[,] ddd = new double[2, 3]
+            float[,] ddd = new float[2, 3]
 {
-                {1.0, 2.0, 9.0},
-                {4.0, 5.0, 6.0}
+                {1, 2, 9},
+                {4, 5, 6}
 };
             Matrix m1 = new Matrix(ddd);
 
-            double[,] eee = new double[3, 2]
+            float[,] eee = new float[3, 2]
             {
                 {1, 4},
                 {2, 5},

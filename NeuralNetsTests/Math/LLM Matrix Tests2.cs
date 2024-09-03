@@ -27,7 +27,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Matrix_ConstructorFromVector_SetsValuesCorrectly()
         {
-            double[] vector = { 1.0, 2.0, 3.0 };
+            float[] vector = { 1, 2, 3 };
             Matrix matrix = new Matrix(vector);
 
             Assert.AreEqual(vector.Length, matrix.Rows);
@@ -45,12 +45,12 @@ namespace NeuralNetsTests.Math
             int cols = 3;
             Matrix matrix = new Matrix(rows, cols);
             int seed = 42;
-            double min = 1.0;
-            double max = 5.0;
+            float min = 1;
+            float max = 5;
 
             matrix.SetRandom(seed, min, max);
 
-            foreach (double value in matrix.Mat)
+            foreach (float value in matrix.Mat)
             {
                 Assert.IsTrue(value >= min && value <= max);
             }
@@ -59,13 +59,13 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Matrix_Multiply_MultipliesMatricesCorrectly()
         {
-            double[,] aArray = { { 1, 2 }, { 3, 4 } };
-            double[,] bArray = { { 2, 0 }, { 1, 2 } };
+            float[,] aArray = { { 1, 2 }, { 3, 4 } };
+            float[,] bArray = { { 2, 0 }, { 1, 2 } };
             Matrix a = new Matrix(aArray);
             Matrix b = new Matrix(bArray);
             Matrix result = a * b;
 
-            double[,] expectedArray = { { 4, 4 }, { 10, 8 } };
+            float[,] expectedArray = { { 4, 4 }, { 10, 8 } };
             Matrix expected = new Matrix(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
@@ -81,8 +81,8 @@ namespace NeuralNetsTests.Math
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void Matrix_Multiply_DifferentDimensionsThrowsException()
         {
-            double[,] aArray = { { 1, 2 }, { 3, 4 } };
-            double[,] bArray = { { 2, 0, 1 }, { 1, 2, 3 }, { 1, 2, 3 } };
+            float[,] aArray = { { 1, 2 }, { 3, 4 } };
+            float[,] bArray = { { 2, 0, 1 }, { 1, 2, 3 }, { 1, 2, 3 } };
             Matrix a = new Matrix(aArray);
             Matrix b = new Matrix(bArray);
 
@@ -92,13 +92,13 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Matrix_Subtract_SubtractsMatricesCorrectly()
         {
-            double[,] aArray = { { 5, 6 }, { 7, 8 } };
-            double[,] bArray = { { 1, 2 }, { 3, 4 } };
+            float[,] aArray = { { 5, 6 }, { 7, 8 } };
+            float[,] bArray = { { 1, 2 }, { 3, 4 } };
             Matrix a = new Matrix(aArray);
             Matrix b = new Matrix(bArray);
             Matrix result = a - b;
 
-            double[,] expectedArray = { { 4, 4 }, { 4, 4 } };
+            float[,] expectedArray = { { 4, 4 }, { 4, 4 } };
             Matrix expected = new Matrix(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
@@ -113,13 +113,13 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Matrix_HadamardProduct_ComputesCorrectly()
         {
-            double[,] aArray = { { 1, 2 }, { 3, 4 } };
-            double[,] bArray = { { 2, 0 }, { 1, 2 } };
+            float[,] aArray = { { 1, 2 }, { 3, 4 } };
+            float[,] bArray = { { 2, 0 }, { 1, 2 } };
             Matrix a = new Matrix(aArray);
             Matrix b = new Matrix(bArray);
             Matrix result = a.HadamardProduct(b);
 
-            double[,] expectedArray = { { 2, 0 }, { 3, 8 } };
+            float[,] expectedArray = { { 2, 0 }, { 3, 8 } };
             Matrix expected = new Matrix(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
@@ -134,11 +134,11 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Matrix_GetTransposedMatrix_ComputesCorrectly()
         {
-            double[,] originalArray = { { 1, 2, 3 }, { 4, 5, 6 } };
+            float[,] originalArray = { { 1, 2, 3 }, { 4, 5, 6 } };
             Matrix original = new Matrix(originalArray);
             Matrix transposed = original.GetTransposedMatrix();
 
-            double[,] expectedArray = { { 1, 4 }, { 2, 5 }, { 3, 6 } };
+            float[,] expectedArray = { { 1, 4 }, { 2, 5 }, { 3, 6 } };
             Matrix expected = new Matrix(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
@@ -157,7 +157,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void RowVector_Constructor_SetsValuesCorrectly()
         {
-            double[] vector = { 1.0, 2.0, 3.0 };
+            float[] vector = { 1, 2, 3 };
             RowVector rowVector = new RowVector(vector);
 
             Assert.AreEqual(1, rowVector.Rows);
@@ -175,7 +175,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void ColumnVector_Constructor_SetsValuesCorrectly()
         {
-            double[] vector = { 1.0, 2.0, 3.0 };
+            float[] vector = { 1, 2, 3 };
             ColumnVector columnVector = new ColumnVector(vector);
 
             Assert.AreEqual(vector.Length, columnVector.Rows);

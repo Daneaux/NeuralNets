@@ -18,7 +18,7 @@ namespace NeuralNets
     /// </summary>
     public class GeneralFeedForwardANN
     {
-        public double TrainingRate { get; protected set; }
+        public float TrainingRate { get; protected set; }
         public int BatchSize { get; protected set; }
         public int InputDim { get; protected set; }
         public int OutputDim { get; protected set; }
@@ -27,7 +27,7 @@ namespace NeuralNets
         public ILossFunction LossFunction { get; protected set; }
         public WeightedLayer OutputLayer { get { return WeightedLayers[WeightedLayers.Count - 1]; } }
 
-        protected GeneralFeedForwardANN(double trainingRate, int inputDim, int outputDim)
+        protected GeneralFeedForwardANN(float trainingRate, int inputDim, int outputDim)
         {
             this.TrainingRate = trainingRate;
             this.InputDim = inputDim;
@@ -36,7 +36,7 @@ namespace NeuralNets
 
         public GeneralFeedForwardANN(
             List<WeightedLayer> layers, 
-            double trainingRate, 
+            float trainingRate, 
             int inputDim,
             int outputDim,
             ILossFunction lossFunction) : this(trainingRate, inputDim, outputDim)
@@ -48,7 +48,7 @@ namespace NeuralNets
             this.WeightedLayers = layers;
         }
 
-        public double GetTotallLoss(TrainingPair tp, ColumnVector predicted)
+        public float GetTotallLoss(TrainingPair tp, ColumnVector predicted)
         {
             ColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted);
             return lossVec.Sum();
@@ -59,9 +59,9 @@ namespace NeuralNets
             return this.LossFunction.Error(tp.Output, predicted);
         }
 
-        public double GetAveragelLoss(TrainingPair tp, ColumnVector predicted)
+        public float GetAveragelLoss(TrainingPair tp, ColumnVector predicted)
         {
-            return this.GetTotallLoss(tp, predicted) / (double)predicted.Size;
+            return this.GetTotallLoss(tp, predicted) / (float)predicted.Size;
         }
     }
 }
