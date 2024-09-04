@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet.Annotations" Version="0.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\MnistReader_ANN\MnistReader_ANN.csproj" />
     <ProjectReference Include="..\NeuralNets\NeuralNets.csproj" />
   </ItemGroup>

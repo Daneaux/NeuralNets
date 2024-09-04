@@ -46,6 +46,8 @@ namespace IntrinsicMatrix
         public int Rows { get; private set; }
         public int Cols { get; private set; }
 
+        public static AvxMatrix operator+(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddAvx512(rhs);
+
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe AvxMatrix AddAvx512(AvxMatrix b)
         {
