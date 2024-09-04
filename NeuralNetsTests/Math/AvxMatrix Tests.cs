@@ -97,7 +97,153 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        [Benchmark]
+        public void TestMatrixMultiplySquare()
+        {
+            // Define and initialize a 17x3 matrix with some test values
+            int rows = 57;
+            int cols = 57;
+            float[,] matrixA = new float[rows, cols];
+
+            // Fill the matrix with some test values
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixA[r, c] = r + c;
+                }
+            }
+
+            float[,] matrixB = new float[rows, cols];
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixB[r, c] = r + c;
+                }
+            }
+
+            AvxMatrix m1 = new AvxMatrix(matrixA);
+            AvxMatrix m2 = new AvxMatrix(matrixB);
+            AvxMatrix m3 = m1 * m2;
+
+            Matrix mm1 = new Matrix(matrixA);
+            Matrix mm2 = new Matrix(matrixB);
+            Matrix truth = mm1 * mm2;
+
+            Assert.AreEqual(m1.Rows, m2.Rows);
+            Assert.AreEqual(m2.Rows, m3.Rows);
+            Assert.AreEqual(m1.Cols, m2.Cols);
+            Assert.AreEqual(m2.Cols, m3.Cols);
+
+            for (int r = 0; r < m3.Rows; r++)
+            {
+                for (int c = 0; c < m3.Cols; c++)
+                {
+                    Assert.AreEqual(truth[r, c], m3[r, c]);
+                }
+            }
+        }
+
+        [TestMethod]
+        public void TestMatrixMultiply_Small_rectangular()
+        {
+            // Define and initialize a 17x3 matrix with some test values
+            int rows = 3;
+            int cols = 2;
+            float[,] matrixA = new float[rows, cols];
+
+            // Fill the matrix with some test values
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixA[r, c] = r + c;
+                }
+            }
+
+            rows = 2;
+            cols = 5;
+
+            float[,] matrixB = new float[rows, cols];
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixB[r, c] = r + c;
+                }
+            }
+
+            AvxMatrix m1 = new AvxMatrix(matrixA);
+            AvxMatrix m2 = new AvxMatrix(matrixB);
+            AvxMatrix m3 = m1 * m2;
+
+            Matrix mm1 = new Matrix(matrixA);
+            Matrix mm2 = new Matrix(matrixB);
+            Matrix truth = mm1 * mm2;
+
+            // Assert.AreEqual(m1.Cols, m3.Rows);
+
+            for (int r = 0; r < m3.Rows; r++)
+            {
+                for (int c = 0; c < m3.Cols; c++)
+                {
+                    Assert.AreEqual(truth[r, c], m3[r, c]);
+                }
+            }
+
+        }
+
+        [TestMethod]
+        public void TestMatrixMultiply_Large()
+        {
+            // Define and initialize a 17x3 matrix with some test values
+            int rows = 21;
+            int cols = 17;
+            float[,] matrixA = new float[rows, cols];
+
+            // Fill the matrix with some test values
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixA[r, c] = r + c;
+                }
+            }
+
+
+            rows = 17;
+            cols = 27;
+
+            float[,] matrixB = new float[rows, cols];
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixB[r, c] = r + c;
+                }
+            }
+
+            AvxMatrix m1 = new AvxMatrix(matrixA);
+            AvxMatrix m2 = new AvxMatrix(matrixB);
+            AvxMatrix m3 = m1 * m2;
+
+            Matrix mm1 = new Matrix(matrixA);
+            Matrix mm2 = new Matrix(matrixB);
+            Matrix truth = mm1 * mm2;
+
+           // Assert.AreEqual(m1.Cols, m3.Rows);
+
+            for (int r = 0; r < m3.Rows; r++)
+            {
+                for (int c = 0; c < m3.Cols; c++)
+                {
+                    Assert.AreEqual(truth[r, c], m3[r, c]);
+                }
+            }
+
+        }
+
+        [TestMethod]
         public void NaiveAdd()
         {
 

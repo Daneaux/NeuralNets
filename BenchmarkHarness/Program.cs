@@ -3,6 +3,7 @@
 using NeuralNets;
 using IntrinsicMatrix;
 using BenchmarkDotNet.Running;
+using Microsoft.CodeAnalysis.Emit;
 
 public class Program
 {
@@ -15,10 +16,26 @@ public class Program
 
 public class IntrinsicsBenchmarks
 {
+    private AvxMatrix m1;
+    private AvxMatrix m2;
+
+    private Matrix nm1;
+    private Matrix nm2;
     [GlobalSetup]
     public void Setup()
     {
+        int seed = 1253443;
+        m1 = new AvxMatrix(1000, 1000);
+        m2 = new AvxMatrix(1000, 1000);
 
+        m1.SetRandom(seed, -100, 100);
+        m2.SetRandom(seed, -100, 100);
+
+        nm1 = new Matrix(1000, 1000);
+        nm2 = new Matrix(1000, 1000);
+
+        nm1.SetRandom(seed, -1000, 1000);
+        nm2.SetRandom(seed, -1000, 1000);
     }
 
     [GlobalCleanup]
@@ -29,26 +46,32 @@ public class IntrinsicsBenchmarks
     [Benchmark]
     public void NaiveMultiply()
     {
-        Matrix m1 = new Matrix(100, 100);
-        Matrix m2 = new Matrix(100, 100);
-
-        Matrix m3 = m1 * m2;
+        Matrix m3 = nm1 * nm2;
     }
 
     [Benchmark]
     public void IntrinsicAdd()
     {
-        AvxMatrix m1 = new AvxMatrix(100, 100);
-        AvxMatrix m2 = new AvxMatrix(100, 100);
         AvxMatrix m3 = m1 + m2;
     }
 
     [Benchmark]
     public void NaiveAdd()
     {
-        Matrix m1 = new Matrix(100, 100);
-        Matrix m2 = new Matrix(100, 100);
-        Matrix m3 = m1 + m2;
+        Matrix nm3 = nm1 + nm2;
     }
+
+    [Benchmark]
+    public void IntrinsicMult()
+    {
+        AvxMatrix m3 = m1 * m2;
+    }
+
+
+/*    [Benchmark]
+    public void IntrinsicMult_TransposeFirst()
+    {
+        //AvxMatrix m3 = m1 * m2;
+    }*/
 
 }

@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace NeuralNets
@@ -209,6 +210,7 @@ namespace NeuralNets
 
         private bool HasSameDimensions(Matrix b) => (Rows == b.Rows) && (Cols == b.Cols);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private float DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix rightMatrix)
         {
             float cum = 0;

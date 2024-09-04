@@ -1,4 +1,7 @@
-﻿using System.Runtime.Intrinsics;
+﻿using System;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 namespace IntrinsicMatrix
@@ -41,6 +44,18 @@ namespace IntrinsicMatrix
             Rows = rows;
             Cols = cols;
             Mat = new float[rows, cols];
+        }
+        public void SetRandom(int seed, float min, float max)
+        {
+            Random rnd = new Random(seed);
+            float width = max - min;
+            for (int c = 0; c < Cols; c++)
+            {
+                for (int r = 0; r < Rows; r++)
+                {
+                    Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
+                }
+            }
         }
 
         public int Rows { get; private set; }
@@ -123,54 +138,103 @@ namespace IntrinsicMatrix
             return result;
         }
 
+        public static AvxMatrix operator *(AvxMatrix lhs, AvxMatrix rhs) => lhs.MatrixTimesMatrix(rhs);
 
-        private AvxMatrix Add_avx(AvxMatrix b)
+        // no transpose, no tile
+        private unsafe AvxMatrix MatrixTimesMatrix(AvxMatrix rhs)
         {
-            if (this.Rows != b.Rows || this.Cols != b.Cols)
+            Debug.Assert(this.Cols == rhs.Rows);
+            const int floatsPerVector = 16;
+            int numVectorsPerColumnRHS = rhs.Rows / floatsPerVector;
+            int remainingVectorsPerColumnRHS = rhs.Rows % floatsPerVector;
+
+            int numVecPerRowLHS = this.Cols / floatsPerVector;
+            int remainingVecPerRowLHS = this.Cols % floatsPerVector;
+
+            AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
+            int mat2Stride = rhs.Cols;  // this skips a whole row, wraps around to the next element in the column.
+
+            fixed (float* m1 = this.Mat,
+                          m2 = rhs.Mat,
+                          d1 = result.Mat)
             {
-                throw new ArgumentException("bad dimensions in Matrix.add");
-            }
+                float* mat1 = m1;
+                float* mat2 = m2;
+                float* dest = d1;
 
-            AvxMatrix res = new AvxMatrix(Rows, Cols);
-
-            int vectorSize = Vector512<float>.Count; // AVX-512 processes 8 doubles at a time (512 bits / 64 bits per float)
-
-            for (int r = 0; r < Rows; r++)
-            {
-                int c = 0;
-
-                // Check if the CPU supports AVX-512
-                if (Avx512F.IsSupported)
+                // grab a lhs row.
+                for (int r = 0; r < this.Rows; r++)
                 {
-                    // Process in chunks of vectorSize
-                    for (; c <= Cols - vectorSize; c += vectorSize)
+                    //
+                    // doing ONE row (left to right) on the LHS times ONE column on the RHS
+                    //
+
+                    // holding this ONE row steady, do every column
+                    for (int c = 0; c < rhs.Cols; c++)
                     {
-                        /*                        Vector512<float> vec1 = Vector512.Create(
-                            this.Mat[r, c], this.Mat[r, c + 1], this.Mat[r, c + 2], this.Mat[r, c + 3],
-                            this.Mat[r, c + 4], this.Mat[r, c + 5], this.Mat[r, c + 6], this.Mat[r, c + 7]
-                            );
-                                                Vector512<float> vec2 = Vector512.Create(
-                            b.Mat[r, c], b.Mat[r, c + 1], b.Mat[r, c + 2], b.Mat[r, c + 3],
-                            b.Mat[r, c + 4], b.Mat[r, c + 5], b.Mat[r, c + 6], b.Mat[r, c + 7]
-                            );*/
-                        //var vec1 = Vector512.Load(&Mat[r, c]);
-                        //var vec2 = Vector512.Load(&b.Mat[r, c]);
-                        //var vecRes = vec1 + vec2;
-                        //vecRes.Store(&res.Mat[r, c]);
-                        // Store the result back into the result matrix (safe method)
+                        // reset Mat1 ... yes we're redoing the row in LHS every single time... it'd be better maybe to store it as a list of vectors? dunno.
+                        mat1 = m1 +  r * this.Cols;
+                        mat2 = m2 + c; // reset the column pointer to be at the top of the next column. which is 'start' plus number of columns we've done
+                        float currentDot = 0;
 
-                        //vecRes.CopyTo(res.Mat, r * Cols + c);
-                    }
+                        // in this row, grab increments of 16 from the row and then do remainder
+                        // stop when we're reach the end multiple of 16, then do remainder below
+                        Debug.Assert(numVectorsPerColumnRHS == numVecPerRowLHS);
+                        for (int vectorCount = 0; vectorCount < numVecPerRowLHS; vectorCount++, mat1 += floatsPerVector, mat2 += mat2Stride * floatsPerVector)
+                        {
+                            Vector512<float> lhsRow = Vector512.Load<float>(mat1);
+                            Vector512<float> rhsCol = CollectColumnFromAt(mat2, mat2Stride, floatsPerVector);
+                            currentDot += Vector512.Dot(lhsRow, rhsCol);
+                        }
+
+                        // do remainder
+                        Debug.Assert(remainingVecPerRowLHS == remainingVectorsPerColumnRHS);
+                        for (int i = 0; i < remainingVecPerRowLHS; i++, mat1++, mat2 += mat2Stride)
+                        {
+                            currentDot += (*mat1) * (*mat2);
+                        }
+
+                        // store in result[x,y]
+                        *dest = currentDot;
+                        dest++;
+                    }                    
                 }
-
-                // Process any remaining elements
-                /*                for (; c < Cols; c++)
-                                {
-                                    res.Mat[r, c] = this[r, c] + b[r, c];
-                                }*/
             }
 
-            return res;
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private unsafe Vector512<float> CollectColumnFromAt(float *start, int stride, int howManytoTake)
+        {
+            Debug.Assert(howManytoTake >= 16);
+
+            float[] floats = new float[16];
+            for (int r = 0; r < howManytoTake; r++, start += stride)
+            {
+                floats[r] = *start;
+            }
+
+            return  Vector512.Create<float>(floats);
+        }
+
+        // try transpose, no tile
+        private AvxMatrix MatrixTimesMatrix_TransposeRHS(AvxMatrix rhs)
+        {
+            Debug.Assert(this.Cols == rhs.Rows);
+            AvxMatrix result = new AvxMatrix(rhs.Cols, this.Rows);
+
+            return null;
+
+        }
+
+        // try tile
+        private AvxMatrix MatrixTimesMatrix_Tiled(AvxMatrix rhs)
+        {
+            Debug.Assert(this.Cols == rhs.Rows);
+            AvxMatrix result = new AvxMatrix(rhs.Cols, this.Rows);
+
+            return null;
         }
     }
 }
