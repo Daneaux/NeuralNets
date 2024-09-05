@@ -36,7 +36,7 @@ namespace NeuralNetsTests.Math
             AvxMatrix m1 = new AvxMatrix(matrixA);
             AvxMatrix m2 = new AvxMatrix(matrixB);
 
-            AvxMatrix m3 = m1.AddAvx512(m2);
+            AvxMatrix m3 = m1.AddMatrix(m2);
 
             Assert.AreEqual(m1.Rows, m2.Rows);
             Assert.AreEqual(m2.Rows, m3.Rows);
@@ -232,6 +232,59 @@ namespace NeuralNetsTests.Math
             Matrix truth = mm1 * mm2;
 
            // Assert.AreEqual(m1.Cols, m3.Rows);
+
+            for (int r = 0; r < m3.Rows; r++)
+            {
+                for (int c = 0; c < m3.Cols; c++)
+                {
+                    Assert.AreEqual(truth[r, c], m3[r, c]);
+                }
+            }
+
+        }
+
+
+        [TestMethod]
+        public void TestMatrixMultiply_Transpose_Large()
+        {
+            // Define and initialize a 17x3 matrix with some test values
+            int rows = 3;
+            int cols = 3;
+            float[,] matrixA = new float[rows, cols];
+
+            // Fill the matrix with some test values
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixA[r, c] = r + c *2;
+                }
+            }
+
+            rows = 3;
+            cols = 3;
+
+            float[,] matrixB = new float[rows, cols];
+            for (int r = 0; r < rows; r++)
+            {
+                for (int c = 0; c < cols; c++)
+                {
+                    matrixB[r, c] = r + c * 3;
+                }
+            }
+
+            Matrix B = new Matrix(matrixB);
+            B = B.GetTransposedMatrix();
+
+            AvxMatrix m1 = new AvxMatrix(matrixA);
+            AvxMatrix m2 = new AvxMatrix(B.Mat);  // transposed version of B
+            AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2);
+
+            Matrix mm1 = new Matrix(matrixA);
+            Matrix mm2 = new Matrix(matrixB);
+            Matrix truth = mm1 * mm2;
+
+            // Assert.AreEqual(m1.Cols, m3.Rows);
 
             for (int r = 0; r < m3.Rows; r++)
             {

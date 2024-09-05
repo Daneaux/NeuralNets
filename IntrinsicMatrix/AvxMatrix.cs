@@ -61,10 +61,10 @@ namespace IntrinsicMatrix
         public int Rows { get; private set; }
         public int Cols { get; private set; }
 
-        public static AvxMatrix operator+(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddAvx512(rhs);
+        public static AvxMatrix operator+(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe AvxMatrix AddAvx512(AvxMatrix b)
+        public unsafe AvxMatrix AddMatrix(AvxMatrix b)
         {
             const int floatsPerVector = 16;
             int size = Rows * Cols;
@@ -173,7 +173,7 @@ namespace IntrinsicMatrix
                     for (int c = 0; c < rhs.Cols; c++)
                     {
                         // reset Mat1 ... yes we're redoing the row in LHS every single time... it'd be better maybe to store it as a list of vectors? dunno.
-                        mat1 = m1 +  r * this.Cols;
+                        mat1 = m1 + r * this.Cols;
                         mat2 = m2 + c; // reset the column pointer to be at the top of the next column. which is 'start' plus number of columns we've done
                         float currentDot = 0;
 
@@ -219,13 +219,58 @@ namespace IntrinsicMatrix
         }
 
         // try transpose, no tile
-        private AvxMatrix MatrixTimesMatrix_TransposeRHS(AvxMatrix rhs)
+        public unsafe AvxMatrix MatrixTimesMatrix_TransposedRHS(AvxMatrix rhs)
         {
-            Debug.Assert(this.Cols == rhs.Rows);
-            AvxMatrix result = new AvxMatrix(rhs.Cols, this.Rows);
+            // 
+            // assumes transposed rhs
+            // 
+            Debug.Assert(this.Cols == rhs.Cols);
+            const int floatsPerVector = 16;
+            int numVectorsPerColumnRHS = rhs.Rows / floatsPerVector;
+            int remainingVectorsPerColumnRHS = rhs.Rows % floatsPerVector;
 
-            return null;
+            int numVecPerRowLHS = this.Cols / floatsPerVector;
+            int remainingVecPerRowLHS = this.Cols % floatsPerVector;
 
+            // result is still in the correct shape, but rhs is transposed.
+            AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
+
+            fixed (float* m1 = this.Mat,
+                          m2 = rhs.Mat,
+                          d1 = result.Mat)
+            {
+                float* mat1 = m1;
+                float* mat2 = m2;
+                float* dest = d1;
+
+                for (int r = 0; r < Rows; r++)
+                {
+                    for (int rhsRowIndex = 0; rhsRowIndex < this.Rows; rhsRowIndex++)
+                    {
+                        // note: we're re-reading the same row many times. is there a way to cache it? next version: use r1 partial against all the corresponding c1's
+                        mat1 = m1 + r * this.Cols; // point to the beginning of the same lhs row (until we increment r)
+
+                        mat2 = m2 + rhsRowIndex * this.Cols; // point to the biggingin of the next rhs row
+
+                        float v1DotCol = 0;
+                        for (int c = 0; c < numVecPerRowLHS; c++, mat1 += 16, mat2 += 16)
+                        {
+                            Vector512<float> lhsRow = Vector512.Load<float>(mat1);
+                            Vector512<float> rhsRow = Vector512.Load<float>(mat2);
+                            v1DotCol += Vector512.Dot(lhsRow, rhsRow);
+                        }
+
+                        // do remainder
+                        for (int i = 0; i < remainingVecPerRowLHS; i++, mat1++, mat2++)
+                        {
+                            v1DotCol += (*mat1) * (*mat2);
+                        }
+                        *dest = v1DotCol;
+                        dest++;
+                    }
+                }
+            }
+            return result;
         }
 
         // try tile

@@ -18,6 +18,7 @@ public class IntrinsicsBenchmarks
 {
     private AvxMatrix m1;
     private AvxMatrix m2;
+    private AvxMatrix m2T;
 
     private Matrix nm1;
     private Matrix nm2;
@@ -27,6 +28,7 @@ public class IntrinsicsBenchmarks
         int seed = 1253443;
         m1 = new AvxMatrix(1000, 1000);
         m2 = new AvxMatrix(1000, 1000);
+        
 
         m1.SetRandom(seed, -100, 100);
         m2.SetRandom(seed, -100, 100);
@@ -36,6 +38,9 @@ public class IntrinsicsBenchmarks
 
         nm1.SetRandom(seed, -1000, 1000);
         nm2.SetRandom(seed, -1000, 1000);
+
+        var T = nm2.GetTransposedMatrix();
+        m2T = new AvxMatrix(T.Mat);
     }
 
     [GlobalCleanup]
@@ -68,10 +73,10 @@ public class IntrinsicsBenchmarks
     }
 
 
-/*    [Benchmark]
+    [Benchmark]
     public void IntrinsicMult_TransposeFirst()
     {
-        //AvxMatrix m3 = m1 * m2;
-    }*/
+        AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2T);
+    }
 
 }
