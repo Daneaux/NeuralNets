@@ -25,16 +25,16 @@ public class IntrinsicsBenchmarks
     [GlobalSetup]
     public void Setup()
     {
+        int matSize = 400;
         int seed = 1253443;
-        m1 = new AvxMatrix(1000, 1000);
-        m2 = new AvxMatrix(1000, 1000);
-        
+        m1 = new AvxMatrix(matSize, matSize);
+        m2 = new AvxMatrix(matSize, matSize);
 
         m1.SetRandom(seed, -100, 100);
         m2.SetRandom(seed, -100, 100);
 
-        nm1 = new Matrix(1000, 1000);
-        nm2 = new Matrix(1000, 1000);
+        nm1 = new Matrix(matSize, matSize);
+        nm2 = new Matrix(matSize, matSize);
 
         nm1.SetRandom(seed, -1000, 1000);
         nm2.SetRandom(seed, -1000, 1000);
@@ -54,17 +54,17 @@ public class IntrinsicsBenchmarks
         Matrix m3 = nm1 * nm2;
     }
 
-    [Benchmark]
+/*    [Benchmark]
     public void IntrinsicAdd()
     {
         AvxMatrix m3 = m1 + m2;
-    }
+    }*/
 
-    [Benchmark]
+/*    [Benchmark]
     public void NaiveAdd()
     {
         Matrix nm3 = nm1 + nm2;
-    }
+    }*/
 
     [Benchmark]
     public void IntrinsicMult()
@@ -72,11 +72,16 @@ public class IntrinsicsBenchmarks
         AvxMatrix m3 = m1 * m2;
     }
 
-
     [Benchmark]
     public void IntrinsicMult_TransposeFirst()
     {
         AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2T);
+    }
+
+    [Benchmark]
+    public void IntrinsicMult_Tiled()
+    {
+        AvxMatrix m3 = m1.MatrixMultiply_Tiled(m2);
     }
 
 }

@@ -30,6 +30,7 @@ namespace IntrinsicMatrix
         public float this[int r, int c]
         {
             get { return this.Mat[r, c]; }
+            set { this.Mat[r, c] = value; }
         }
 
         public AvxMatrix(float[,] mat) 
@@ -273,13 +274,149 @@ namespace IntrinsicMatrix
             return result;
         }
 
-        // try tile
-        private AvxMatrix MatrixTimesMatrix_Tiled(AvxMatrix rhs)
+        public AvxMatrix MatrixMultiply_Tiled(AvxMatrix rhs)
         {
-            Debug.Assert(this.Cols == rhs.Rows);
-            AvxMatrix result = new AvxMatrix(rhs.Cols, this.Rows);
+            // how many tiles? how much left over on the edges?
+            // i'm so done with columns and rows. we're doign to use W and H! that's it dammit, wdith (columns) and height (rows).
+            const int tileSize = 16;
 
+            int w1 = this.Cols;
+            int h1 = this.Rows;
+
+            int w2 = rhs.Cols;
+            int h2 = rhs.Rows;
+
+            int tw1 = w1 / tileSize;
+            int th1 = h1 / tileSize;
+            int tw2 = w2 / tileSize;
+            int th2 = h2 / tileSize;
+
+            Debug.Assert(tw1 == th2);
+
+            AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
+
+            // for each tile width
+            for (int lhsRow = 0; lhsRow < th1; lhsRow++)
+            {
+                for (int rhsCol = 0; rhsCol < tw1; rhsCol++)
+                {
+                    // multiply row Y times column X (but using tiles)
+                    DoRowColMultipleTileProduct(result, this, tileSize, rhs, rhsCol, lhsRow, tw1);
+                }
+            }
+
+            // TODO BUG: remainder!
+
+            return result;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void DoRowColMultipleTileProduct(AvxMatrix dest, AvxMatrix lhs, int tileSize, AvxMatrix rhs, int x, int y, int numTiles)
+        {
+            // tile row y, and tile column y: multiply all tiles (across the row and down the rhs column, as though they're floats).
+            // is the tile dot product!
+
+            for (int tileNumber = 0; tileNumber < numTiles; tileNumber++)
+            {
+                // 1 - Grab the tile as vectors from the LHS matrix
+                Vector512<float>[] lhsTile = GetHorizontalTileVectorArray(this, tileSize, y, tileNumber);
+                // 2 - Grab the tile as vectors from the RHS matrix
+                Vector512<float>[] rhsTile = GetVerticalTileVectorArray(rhs, tileSize, x, tileNumber);
+                // 3 - dot product and accumulate
+                DoOneTileDotProductAndStore(dest, lhsTile, rhsTile, tileSize, x, y);
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void DoOneTileDotProductAndStore(AvxMatrix dest, Vector512<float>[] lhsTile, Vector512<float>[] rhsTile, int tileSize, int x, int y)
+        {
+            int XStride = dest.Cols;
+            // figure out where dest goes (we have the x,y tile coordinate, which we need to map to the w,h FLOAT starting point in the destination matrix
+            // dot product all the vectors to generate another 16x16 dest matrix, a tile, and store it.
+            Debug.Assert(lhsTile.Length == rhsTile.Length);
+            Debug.Assert(lhsTile.Length == tileSize);
+
+            float[,] tempResult = new float[tileSize, tileSize];
+            for(int yy = 0; yy < tileSize; yy++)
+            {
+                for(int xx = 0; xx < tileSize; xx++)
+                {
+                    dest[yy, xx] += Vector512.Dot(lhsTile[yy], rhsTile[xx]);
+                }
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe Vector512<float>[] GetHorizontalTileVectorArray(AvxMatrix lhs, int tileSize, int tileRowIndex, int tileNumber)
+        {
+            // x and y are the "tile" col and row, but not an actual index into the matrix.
+            // so if y is 3, and the tileSize is 16, then we skip 3x16 rows, and each row is Col floats, so we skip: col*3*16 floats. to get the top left of the tile.
+            // then, tileNumber tells us how many tiles to move into the row. 
+            // so we add tileNumer * tileSize to our pointer.
+
+            Vector512<float>[] vectors = new Vector512<float>[tileSize];
+
+            fixed (float* m1 = lhs.Mat)
+            {
+                float* topLeftOfTile = m1 + (tileRowIndex * tileSize * lhs.Cols);
+                topLeftOfTile += tileSize * tileNumber;
+
+                // now get 16 float Vector512's. Skip col stride for each vector
+                float* topLeft = topLeftOfTile;
+                for (int i = 0; i < tileSize; i++, topLeft += lhs.Cols)
+                {
+                    vectors[i] = Vector512.Load<float>(topLeft);
+                }
+            }
+            return vectors;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static unsafe Vector512<float>[] GetVerticalTileVectorArray(AvxMatrix rhs, int tileSize, int tileColIndex, int tileNumber)
+        {
+            // x and y are the "tile" col and row, but not an actual index into the matrix.
+            // so if y is 3, and the tileSize is 16, then we skip 3x16 rows, and each row is Col floats, so we skip: col*3*16 floats. to get the top left of the tile.
+            // then, tileNumber tells us how many tiles to move down into the column. 
+            // so we add tileNumer * Cols * tileSize to our pointer.
+
+            Vector512<float>[] vectors = new Vector512<float>[tileSize];
+
+            fixed (float* m1 = rhs.Mat)
+            {
+                // each float array represents a verical slice on the tile. ie: we're tranposing in place
+                float[][] vecs = new float[tileSize][];
+                for (int i = 0; i < tileSize; i++)
+                {
+                    vecs[i] = new float[tileSize];
+                }
+
+                float* topLeftOfTile = m1 + (tileNumber * tileSize * rhs.Cols) + (tileColIndex * tileSize);                
+
+                // now get 16 float Vector512's. Skip col stride for each vector. collect vertical vectors
+                float* topLeft = topLeftOfTile;
+                for (int i = 0; i < tileSize; i++, topLeft += rhs.Cols)
+                {    
+                    // j = vertical slice 
+                    // i = horizontal index. (ie: which row)
+                    for (int j = 0; j < tileSize; j++)
+                    {
+                        vecs[j][i] = *(topLeft+j);
+                    }
+                }
+
+                // copy (ugh) to Vector512. would be nice to avoid a copy
+                for (int i = 0; i < tileSize; i++)
+                {
+                    vectors[i] = Vector512.Create<float>(vecs[i]);
+                }
+            }
+            return vectors;
+        }
+
+        private unsafe Vector512<float>[] Transpose(Vector512<float>[] vectors)
+        {
             return null;
         }
+
     }
 }
