@@ -1,5 +1,5 @@
 ﻿using NeuralNets.Network;
-using NumReaderNetwork;
+using NeuralNets;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

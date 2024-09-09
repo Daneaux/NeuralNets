@@ -1,9 +1,34 @@
-﻿using System.Diagnostics;
+﻿using BenchmarkDotNet.Reports;
+using IntrinsicMatrix;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace NeuralNets
 {
+
+    public static class Extension
+    {
+        public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)
+        {
+            return new AvxColumnVector(columnVector.Column);
+        }
+
+        public static ColumnVector ToColumnVector(this AvxColumnVector avxColumnVector)
+        {
+            return new ColumnVector(avxColumnVector.Column);
+        }
+
+        public static Matrix2D ToMatrix2d(this AvxMatrix matrix)
+        {
+            return new Matrix2D(matrix.Mat);
+        }
+
+        public static AvxMatrix ToAvxMatrix(this Matrix2D matrix)
+        {
+            return new AvxMatrix(matrix.Mat);            
+        }
+    }
 
     public abstract class Matrix_Base
     {

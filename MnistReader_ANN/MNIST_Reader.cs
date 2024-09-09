@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace NumReaderNetwork
+namespace NeuralNets
 {
 
     /* USAGE

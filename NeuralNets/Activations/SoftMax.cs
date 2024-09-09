@@ -1,7 +1,7 @@
 ﻿using NeuralNets;
 using System.Diagnostics;
 
-namespace NumReaderNetwork
+namespace NeuralNets
 {
     public class SoftMax : IActivationFunction
     {

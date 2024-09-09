@@ -1,5 +1,5 @@
 ﻿using NeuralNets;
-using NumReaderNetwork;
+using NeuralNets;
 using System.Diagnostics;
 
 namespace MnistReader_ANN

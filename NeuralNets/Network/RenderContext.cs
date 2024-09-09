@@ -188,7 +188,7 @@ namespace NeuralNets.Network
             this.WeightedLayers[L].UpdateWeightsAndBiasesWithScaledGradients(this.WeightGradient[L], this.BiasGradient[L]);
         }
 
-        public ColumnVector FeedForward(ColumnVector inputVec)
+        public ColumnVector FeedForward_naive(ColumnVector inputVec)
         {
             Debug.Assert(inputVec.Size == this.InputDim);
             ColumnVector prevActivation = inputVec;
@@ -203,7 +203,7 @@ namespace NeuralNets.Network
             return prevActivation;
         }
 
-        public ColumnVector FeedForward_avx(ColumnVector inputVec)
+        public ColumnVector FeedForward(ColumnVector inputVec)
         {
             Debug.Assert(inputVec.Size == this.InputDim);
             ColumnVector prevActivation = inputVec;
@@ -212,9 +212,9 @@ namespace NeuralNets.Network
                 WeightedLayer currentLayer = WeightedLayers[i];
                 AvxMatrix w1 = new AvxMatrix(currentLayer.Weights.Mat);
                 AvxColumnVector pa = new AvxColumnVector(prevActivation.Column);
-                ColumnVector z1 = currentLayer.Weights * prevActivation;
-                ColumnVector z12 = z1 + currentLayer.Biases;
-                prevActivation = currentLayer.Activate(z12);
+                AvxColumnVector z1 = new AvxMatrix(currentLayer.Weights.Mat) * new AvxColumnVector(prevActivation.Column);
+                AvxColumnVector z12 = z1 + new AvxColumnVector(currentLayer.Biases.Column);
+                prevActivation = currentLayer.Activate(new ColumnVector(z12.Column));
                 this.SetLastActivation(i, prevActivation);
             }
             return prevActivation;
@@ -299,7 +299,7 @@ namespace NeuralNets.Network
         //
         // generalized back propagation for many layers
         //
-        public void BackProp( TrainingPair trainingPair, ColumnVector predictedOut)
+        public void BackProp_naive( TrainingPair trainingPair, ColumnVector predictedOut)
         {
             //
             // Special case the Output Layer
@@ -330,7 +330,7 @@ namespace NeuralNets.Network
                 outputLayerSigma = LossPartial * ActivationPartial;
             }
 
-            Matrix2D outputWeightGradient = BuildGradientWeightsHelper(this.ActivationContext[LayerCount - 2], outputLayerSigma);
+            Matrix2D outputWeightGradient = BuildGradientWeightsHelper_naive(this.ActivationContext[LayerCount - 2], outputLayerSigma);
             ColumnVector outputBiasGradient = outputLayerSigma * 1;
 
             this.SetlayerSigma(outputLayerIndex, outputLayerSigma);
@@ -362,9 +362,79 @@ namespace NeuralNets.Network
                     activationToTheLeft = this.ActivationContext[L - 1];
                 }
 
-                Matrix2D currentLayerGradientWeights = BuildGradientWeightsHelper(activationToTheLeft, DOl_DZL);
+                Matrix2D currentLayerGradientWeights = BuildGradientWeightsHelper_naive(activationToTheLeft, DOl_DZL);
                 ColumnVector currentLayerGradientBias = DOl_DZL;
                 this.SetLayerGradients(L, currentLayerGradientWeights, currentLayerGradientBias);
+            }
+        }
+
+        // avx accelerated
+        public void BackProp(TrainingPair trainingPair, ColumnVector predictedOut)
+        {
+            //
+            // Special case the Output Layer
+            //
+            int outputLayerIndex = LayerCount - 1;
+            int secondToLastLayerIndex = LayerCount - 2;
+            WeightedLayer outputLayer = WeightedLayers[outputLayerIndex];
+            WeightedLayer secondToLastLayer = WeightedLayers[secondToLastLayerIndex];
+
+            AvxColumnVector outputLayerSigma;
+            // special case softmax and cross entropy
+            if (outputLayer.IsSoftMaxActivation)
+            {
+                Debug.Assert(this.LossFunction is CategoricalCrossEntropy ||
+                             this.LossFunction is SparseCategoricalCrossEntropy ||
+                             this.LossFunction is VanillaCrossEntropy);
+
+                // after all the crazy derivatives of softmax * crossentrotpy, we just end up with: a - y
+                // which is 'activtion' of softmax minus the truth vector.  must be onehot encoded
+                outputLayerSigma = new AvxColumnVector(ActivationContext[outputLayerIndex].Column) - new AvxColumnVector(trainingPair.Output.Column);
+            }
+            else
+            {
+                // partial product, before we start the per-w differentials.
+                ColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
+                ColumnVector ActivationPartial = outputLayer.Derivative(this.ActivationContext[outputLayerIndex]);
+                this.SetLastDerivative(outputLayerIndex, ActivationPartial);
+                outputLayerSigma = new AvxColumnVector(LossPartial.Column) * new AvxColumnVector(ActivationPartial.Column);
+            }
+
+            AvxMatrix outputWeightGradient = BuildGradientWeightsHelper(new AvxColumnVector(this.ActivationContext[LayerCount - 2].Column), outputLayerSigma);
+            AvxColumnVector outputBiasGradient = outputLayerSigma;
+
+            this.SetlayerSigma(outputLayerIndex, new ColumnVector(outputLayerSigma.Column));
+            this.SetLayerGradients(outputLayerIndex, new Matrix2D(outputWeightGradient.Mat), new ColumnVector(outputBiasGradient.Column));
+
+            //
+            // Now do back prop through all the hidden layers (ie: not the output). Special case for the input layer. That's why we go all the way to zero.
+            //
+            for (int L = LayerCount - 2; L >= 0; L--)
+            {
+                WeightedLayer currentLayer = WeightedLayers[L];
+                WeightedLayer layerToTheRight = WeightedLayers[L + 1];
+
+                ColumnVector layerToTheRightSigma = this.Sigma[L + 1];
+                ColumnVector sum_over_all_de_dOl = layerToTheRight.Weights.GetTransposedMatrix() * layerToTheRightSigma;
+                ColumnVector DOl_DZL = currentLayer.Derivative(this.ActivationContext[L]) * sum_over_all_de_dOl;
+                this.SetlayerSigma(L, DOl_DZL);
+
+                // If we're the first hidden layer, L=0, then the last activation is the input from the input layer
+                // which isn't represented as a layer. But could be.
+                ColumnVector activationToTheLeft;
+                if (L == 0)
+                {
+                    // no one to the left, use input from training
+                    activationToTheLeft = trainingPair.Input;
+                }
+                else
+                {
+                    activationToTheLeft = this.ActivationContext[L - 1];
+                }
+
+                AvxMatrix currentLayerGradientWeights = BuildGradientWeightsHelper(activationToTheLeft.ToAvxVector(), DOl_DZL.ToAvxVector());
+                ColumnVector currentLayerGradientBias = DOl_DZL;
+                this.SetLayerGradients(L, currentLayerGradientWeights.ToMatrix2d(), currentLayerGradientBias);
             }
         }
 
@@ -374,7 +444,7 @@ namespace NeuralNets.Network
             this.WeightGradient[L] = weightGradient;
         }
 
-        private Matrix2D BuildGradientWeightsHelper(ColumnVector lastActivation, ColumnVector sigma)
+        private Matrix2D BuildGradientWeightsHelper_naive(ColumnVector lastActivation, ColumnVector sigma)
         {
             // Do outer product
             // we want all the sigmas (on the right) times all the Outpus (from the left) to look like the wiehgt matrix
@@ -385,6 +455,12 @@ namespace NeuralNets.Network
 
             // outer product:  o1s1 o2s1 o3s1 o4s1 ... onS1    o1s2 o2s2 o3s2 ... oNs2 
             Matrix2D gradientDelta = sigma * lastActivation.Transpose();
+            return gradientDelta;
+        }
+
+        private AvxMatrix BuildGradientWeightsHelper(AvxColumnVector lastActivation, AvxColumnVector sigma)
+        {
+            AvxMatrix gradientDelta = sigma.OuterProduct(lastActivation);
             return gradientDelta;
         }
 

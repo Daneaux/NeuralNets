@@ -1,6 +1,4 @@
 ﻿using NeuralNets;
-using NeuralNets.Network;
-using NumReaderNetwork;
 
 namespace NeuralNetsTests.ANNTests
 {

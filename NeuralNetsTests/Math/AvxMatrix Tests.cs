@@ -345,6 +345,41 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
+        public void TestOuterProduct()
+        {
+            int numLeft = 20;
+            int numRight = 19;
+
+            float[] lhs = new float[numLeft];
+            for (int c = 0; c < numLeft; c++)
+            {
+                lhs[c] = (float)(c + 12f + c*2.5f);
+            }
+
+            float[] rhs = new float[numRight];
+            for(int r = 0; r < numRight; r++)
+            {
+                rhs[r] = (float)(r * r);
+            }
+
+            AvxColumnVector lhsAVx = new AvxColumnVector(lhs);
+            AvxColumnVector rhsAvx = new AvxColumnVector(rhs);
+
+            AvxMatrix result = lhsAVx.OuterProduct(rhsAvx);
+
+            Assert.AreEqual(result.Rows, lhs.Length);
+            Assert.AreEqual(result.Cols, rhs.Length);
+
+            for(int r = 0; r < result.Rows; r++)
+            {
+                for(int c = 0; c < result.Cols; c++)
+                {
+                    Assert.AreEqual(result[r,c], lhs[r] * rhs[c]); 
+                }
+            }
+        }
+
+        [TestMethod]
         public void NaiveAdd()
         {
 

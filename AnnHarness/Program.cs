@@ -3,7 +3,7 @@ using System;
 using MnistReader_ANN;
 using NeuralNets;
 using NeuralNets.Network;
-using NumReaderNetwork;
+using NeuralNets;
 
 class AnnHarness
 {

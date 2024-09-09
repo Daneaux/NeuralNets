@@ -1,7 +1,7 @@
 ﻿using MnistReader_ANN;
 using NeuralNets;
 
-namespace NumReaderNetwork
+namespace NeuralNets
 {
     public class MNISTSpecificANN : GeneralFeedForwardANN
     {        
