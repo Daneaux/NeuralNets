@@ -380,9 +380,53 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void NaiveAdd()
+        public void TestTranspose()
         {
+            float[,] floats4x4 = new float[,]
+                { {1, 2, 3, 4},
+                  {5, 6, 7, 8},
+                  {9, 10, 11, 12},
+                  {11, 12, 13, 14}
+                };
 
+            AvxMatrix Mat4x4 = new AvxMatrix(floats4x4);
+            AvxMatrix MT = AvxMatrix.Transpose(Mat4x4);
+
+            for (int i = 0; i < Mat4x4.Rows; i++)
+            {
+                for (int j = 0; j < Mat4x4.Cols; j++)
+                {
+                    Assert.AreEqual(Mat4x4[i, j], MT[j, i]);
+                }
+            }
+
+
+
+        }
+
+        [TestMethod]
+        public void TestTransposeLarge()
+        {
+            int sz = 4 * 16;
+            float[,] floatsMat = new float[sz, sz];
+            for(int i= 0; i < sz; i++)
+            {
+                for(int j= 0; j < sz; j++)
+                {
+                    floatsMat[i, j] = (float)i + (float)j + (float)i;
+                }
+            }
+
+            AvxMatrix Mat = new AvxMatrix(floatsMat);
+            AvxMatrix MT = AvxMatrix.Transpose(Mat);
+
+            for (int i = 0; i < Mat.Rows; i++)
+            {
+                for (int j = 0; j < Mat.Cols; j++)
+                {
+                    Assert.AreEqual(Mat[i, j], MT[j, i]);
+                }
+            }
         }
     }
 }

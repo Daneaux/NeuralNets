@@ -152,7 +152,7 @@ namespace IntrinsicMatrix
                 float* resultMatrix = rm;
 
                 for (int i = 0; i < this.Size; i++, col++)
-                {                    
+                {
                     float lhsMUlt = *col;
                     row = r; // reset row pointer. Remember there's just one row and one column.
                     for (int j = 0; j < numVecPerRHS; j++, row += floatsPerVector, resultMatrix += floatsPerVector)
@@ -184,9 +184,9 @@ namespace IntrinsicMatrix
             set { this.Mat[r, c] = value; }
         }
 
-        public AvxMatrix(float[,] mat) 
+        public AvxMatrix(float[,] mat)
         {
-            Mat = mat; 
+            Mat = mat;
             Rows = Mat.GetLength(0);
             Cols = Mat.GetLength(1);
         }
@@ -213,7 +213,7 @@ namespace IntrinsicMatrix
         public int Rows { get; private set; }
         public int Cols { get; private set; }
 
-        public static AvxMatrix operator+(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
+        public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe AvxMatrix AddMatrix(AvxMatrix b)
@@ -350,7 +350,7 @@ namespace IntrinsicMatrix
                         // store in result[x,y]
                         *dest = currentDot;
                         dest++;
-                    }                    
+                    }
                 }
             }
 
@@ -358,7 +358,7 @@ namespace IntrinsicMatrix
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private unsafe Vector512<float> CollectColumnFromAt(float *start, int stride, int howManytoTake)
+        private unsafe Vector512<float> CollectColumnFromAt(float* start, int stride, int howManytoTake)
         {
             Debug.Assert(howManytoTake >= 16);
 
@@ -368,7 +368,7 @@ namespace IntrinsicMatrix
                 floats[r] = *start;
             }
 
-            return  Vector512.Create<float>(floats);
+            return Vector512.Create<float>(floats);
         }
 
         // try transpose, no tile
@@ -467,26 +467,26 @@ namespace IntrinsicMatrix
                 0, 0,
                 0, 0,
                 0, 0,
-                result);               
+                result);
 
 
             return result;
         }
 
         private static void SubMatrixMultiplyNaive(
-            AvxMatrix lhs, AvxMatrix rhs, 
-            int lhsX, int lhsY, 
-            int rhsX, int rhsY, 
+            AvxMatrix lhs, AvxMatrix rhs,
+            int lhsX, int lhsY,
+            int rhsX, int rhsY,
             int subMatrixWidthLHS, int subMatrixHeightLHS,
             int subMatrixWidthRHS, int subMatrixHeightRHS,  // terrible parameter names
             AvxMatrix dest)
         {
-            for(int lhsRow = lhsY; lhsRow < lhsY + subMatrixHeightLHS; lhsRow++)
+            for (int lhsRow = lhsY; lhsRow < lhsY + subMatrixHeightLHS; lhsRow++)
             {
-                for(int rhsCol = rhsX; rhsCol < (rhsX + subMatrixWidthRHS); rhsCol++)
+                for (int rhsCol = rhsX; rhsCol < (rhsX + subMatrixWidthRHS); rhsCol++)
                 {
                     Debug.Assert(subMatrixWidthLHS == subMatrixHeightRHS);
-                    for(int i = 0; i < subMatrixHeightLHS; i++)
+                    for (int i = 0; i < subMatrixHeightLHS; i++)
                     {
                         // lhs index
                         int lx = lhsRow;
@@ -541,9 +541,9 @@ namespace IntrinsicMatrix
             Debug.Assert(lhsTile.Length == tileSize);
 
             float[,] tempResult = new float[tileSize, tileSize];
-            for(int yy = 0; yy < tileSize; yy++)
+            for (int yy = 0; yy < tileSize; yy++)
             {
-                for(int xx = 0; xx < tileSize; xx++)
+                for (int xx = 0; xx < tileSize; xx++)
                 {
                     dest[yy, xx] += Vector512.Dot(lhsTile[yy], rhsTile[xx]);
                 }
@@ -594,17 +594,17 @@ namespace IntrinsicMatrix
                     vecs[i] = new float[tileSize];
                 }
 
-                float* topLeftOfTile = m1 + (tileNumber * tileSize * rhs.Cols) + (tileColIndex * tileSize);                
+                float* topLeftOfTile = m1 + (tileNumber * tileSize * rhs.Cols) + (tileColIndex * tileSize);
 
                 // now get 16 float Vector512's. Skip col stride for each vector. collect vertical vectors
                 float* topLeft = topLeftOfTile;
                 for (int i = 0; i < tileSize; i++, topLeft += rhs.Cols)
-                {    
+                {
                     // j = vertical slice 
                     // i = horizontal index. (ie: which row)
                     for (int j = 0; j < tileSize; j++)
                     {
-                        vecs[j][i] = *(topLeft+j);
+                        vecs[j][i] = *(topLeft + j);
                     }
                 }
 
@@ -618,16 +618,87 @@ namespace IntrinsicMatrix
         }
 
 
-        // TODO: finish
-        private static unsafe AvxMatrix Transpose(AvxMatrix matrix)
+        /*                    __m128 row1 = _mm_load_ps(&A[0 * lda]);
+
+        __m128 row2 = _mm_load_ps(&A[1 * lda]);
+        __m128 row3 = _mm_load_ps(&A[2 * lda]);
+        __m128 row4 = _mm_load_ps(&A[3 * lda]);
+        _MM_TRANSPOSE4_PS(row1, row2, row3, row4);
+        _mm_store_ps(&B[0 * ldb], row1);
+        _mm_store_ps(&B[1 * ldb], row2);
+        _mm_store_ps(&B[2 * ldb], row3);
+        _mm_store_ps(&B[3 * ldb], row4);*/
+
+        /*
+         *  __m128 tmp3, tmp2, tmp1, tmp0;                          \
+                                                                    \
+            tmp0   = _mm_shuffle_ps((row0), (row1), 0x44);          \
+            tmp2   = _mm_shuffle_ps((row0), (row1), 0xEE);          \
+            tmp1   = _mm_shuffle_ps((row2), (row3), 0x44);          \
+            tmp3   = _mm_shuffle_ps((row2), (row3), 0xEE);          \
+                                                                    \
+            (row0) = _mm_shuffle_ps(tmp0, tmp1, 0x88);              \
+            (row1) = _mm_shuffle_ps(tmp0, tmp1, 0xDD);              \
+            (row2) = _mm_shuffle_ps(tmp2, tmp3, 0x88);              \
+            (row3) = _mm_shuffle_ps(tmp2, tmp3, 0xDD);              \
+        }*/
+        private static unsafe void transpose4x4_SSE(float* A, float* B, int lda, int ldb)
         {
+
+            Vector128<float> row0 = Vector128.Load<float>(A + (0 * lda));
+            Vector128<float> row1 = Vector128.Load<float>(A + (1 * lda));
+            Vector128<float> row2 = Vector128.Load<float>(A + (2 * lda));
+            Vector128<float> row3 = Vector128.Load<float>(A + (3 * lda));
+
+            // transpose 4x4
+            Vector128<float> tmp0 = Sse.Shuffle(row0, row1, 0x44);
+            Vector128<float> tmp2 = Sse.Shuffle(row0, row1, 0xEE);
+            Vector128<float> tmp1 = Sse.Shuffle(row2, row3, 0x44);
+            Vector128<float> tmp3 = Sse.Shuffle(row2, row3, 0xEE);
+
+            row0 = Sse.Shuffle(tmp0, tmp1, 0x88);
+            row1 = Sse.Shuffle(tmp0, tmp1, 0xDD);
+            row2 = Sse.Shuffle(tmp2, tmp3, 0x88);
+            row3 = Sse.Shuffle(tmp2, tmp3, 0xDD);
+
+            Vector128.Store<float>(row0, B + (0 * ldb));
+            Vector128.Store<float>(row1, B + (1 * ldb));
+            Vector128.Store<float>(row2, B + (2 * ldb));
+            Vector128.Store<float>(row3, B + (3 * ldb));
+        }
+
+        public static unsafe AvxMatrix Transpose(AvxMatrix matrix)
+        {
+            int block_size = 16;
             AvxMatrix result = new AvxMatrix(matrix.Cols, matrix.Rows);
-            fixed (float* m1 = matrix.Mat)
+            int n = matrix.Rows;
+            int m = matrix.Cols;
+            int lda = matrix.Cols;// * sizeof(float);  // width , ie: stride
+            int ldb = matrix.Rows;// * sizeof(float);  // widge for dest
+
+            fixed (float* A = matrix.Mat,
+                          B = result.Mat)
             {
-                
+                //transpose_block_SSE4x4(float* A, float* B, const int n, const int m, const int lda, const int ldb,const int block_size) 
+
+                for (int i = 0; i < n; i += block_size)
+                {
+                    for (int j = 0; j < m; j += block_size)
+                    {
+                        int max_i2 = i + block_size < n ? i + block_size : n;
+                        int max_j2 = j + block_size < m ? j + block_size : m;
+                        for (int i2 = i; i2 < max_i2; i2 += 4)
+                        {
+                            for (int j2 = j; j2 < max_j2; j2 += 4)
+                            {
+                                //transpose4x4_SSE(&A[i2 * lda + j2], &B[j2 * ldb + i2], lda, ldb);
+                                transpose4x4_SSE(A + (i2 * lda + j2), B + (j2 * ldb + i2), lda, ldb);
+                            }
+                        }
+                    }
+                }
             }
             return result;
         }
-
     }
 }

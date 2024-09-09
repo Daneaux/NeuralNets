@@ -25,20 +25,6 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void Matrix_ConstructorFromVector_SetsValuesCorrectly()
-        {
-            float[] vector = { 1, 2, 3 };
-            ColumnVector colVec = new ColumnVector(vector);
-
-            Assert.AreEqual(vector.Length, colVec.Rows);
-            Assert.AreEqual(1, colVec.Cols);
-            for (int i = 0; i < vector.Length; i++)
-            {
-                Assert.AreEqual(vector[i], colVec[i, 0]);
-            }
-        }
-
-        [TestMethod]
         public void Matrix_SetRandom_SetsValuesWithinRange()
         {
             int rows = 3;
@@ -151,39 +137,5 @@ namespace NeuralNetsTests.Math
         }
     }
 
-    [TestClass]
-    public class RowVectorTests2
-    {
-        [TestMethod]
-        public void RowVector_Constructor_SetsValuesCorrectly()
-        {
-            float[] vector = { 1, 2, 3 };
-            RowVector rowVector = new RowVector(vector);
 
-            Assert.AreEqual(1, rowVector.Rows);
-            Assert.AreEqual(vector.Length, rowVector.Cols);
-            for (int i = 0; i < vector.Length; i++)
-            {
-                Assert.AreEqual(vector[i], rowVector[0, i]);
-            }
-        }
-    }
-
-    [TestClass]
-    public class ColumnVectorTests2
-    {
-        [TestMethod]
-        public void ColumnVector_Constructor_SetsValuesCorrectly()
-        {
-            float[] vector = { 1, 2, 3 };
-            ColumnVector columnVector = new ColumnVector(vector);
-
-            Assert.AreEqual(vector.Length, columnVector.Rows);
-            Assert.AreEqual(1, columnVector.Cols);
-            for (int i = 0; i < vector.Length; i++)
-            {
-                Assert.AreEqual(vector[i], columnVector[i, 0]);
-            }
-        }
-    }
 }

@@ -25,19 +25,20 @@ public class IntrinsicsBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        int matSize = 400;
+        int matSize = 1024;
+        int range = 100;
         int seed = 1253443;
         m1 = new AvxMatrix(matSize, matSize);
         m2 = new AvxMatrix(matSize, matSize);
 
-        m1.SetRandom(seed, -100, 100);
-        m2.SetRandom(seed, -100, 100);
+        m1.SetRandom(seed, -range, range);
+        m2.SetRandom(seed, -range, range);
 
         nm1 = new Matrix2D(matSize, matSize);
         nm2 = new Matrix2D(matSize, matSize);
 
-        nm1.SetRandom(seed, -1000, 1000);
-        nm2.SetRandom(seed, -1000, 1000);
+        nm1.SetRandom(seed, -range, range);
+        nm2.SetRandom(seed, -range, range);
 
         var T = nm2.GetTransposedMatrix();
         m2T = new AvxMatrix(T.Mat);
@@ -54,22 +55,34 @@ public class IntrinsicsBenchmarks
         Matrix2D m3 = nm1 * nm2;
     }
 
-/*    [Benchmark]
-    public void IntrinsicAdd()
-    {
-        AvxMatrix m3 = m1 + m2;
-    }*/
+    /*    [Benchmark]
+        public void IntrinsicAdd()
+        {
+            AvxMatrix m3 = m1 + m2;
+        }*/
 
-/*    [Benchmark]
-    public void NaiveAdd()
-    {
-        Matrix nm3 = nm1 + nm2;
-    }*/
+    /*    [Benchmark]
+        public void NaiveAdd()
+        {
+            Matrix nm3 = nm1 + nm2;
+        }*/
 
     [Benchmark]
     public void IntrinsicMult()
     {
         AvxMatrix m3 = m1 * m2;
+    }
+
+    [Benchmark]
+    public void TransposeNaive()
+    {
+        Matrix2D mT = nm1.GetTransposedMatrix();
+    }
+
+    [Benchmark]
+    public void TransposeAvx()
+    {
+        AvxMatrix MT = AvxMatrix.Transpose(m1);
     }
 
     [Benchmark]
