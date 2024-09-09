@@ -1,11 +1,5 @@
-﻿using NeuralNets.Network;
-using NeuralNets;
-using System;
-using System.Collections.Generic;
+﻿using MatrixLibrary;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NeuralNets
 {

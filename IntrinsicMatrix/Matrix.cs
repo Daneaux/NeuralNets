@@ -1,12 +1,9 @@
-﻿using BenchmarkDotNet.Reports;
-using IntrinsicMatrix;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
 
-namespace NeuralNets
+namespace MatrixLibrary
 {
-
     public static class Extension
     {
         public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)

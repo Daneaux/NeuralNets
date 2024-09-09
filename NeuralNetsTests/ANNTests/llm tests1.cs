@@ -1,9 +1,8 @@
-﻿using NeuralNets;
+﻿using MatrixLibrary;
+using NeuralNets;
 
 namespace NeuralNetsTests.ANNTests
 {
-
-
     public class SimpleTrainingSet : ITrainingSet
     {
         public float Increment { get; }

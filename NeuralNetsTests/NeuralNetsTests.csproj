@@ -21,7 +21,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\IntrinsicMatrix\IntrinsicMatrix.csproj" />
+    <ProjectReference Include="..\IntrinsicMatrix\MatrixLibrary.csproj" />
     <ProjectReference Include="..\MnistReader_ANN\MnistReader_ANN.csproj" />
     <ProjectReference Include="..\NeuralNets\NeuralNets.csproj" />
   </ItemGroup>

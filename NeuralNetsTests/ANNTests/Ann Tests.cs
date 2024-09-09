@@ -1,5 +1,5 @@
-﻿using NeuralNets;
-using NeuralNets.Network;
+﻿using MatrixLibrary;
+using NeuralNets;
 
 namespace NeuralNetsTests.ANNTests
 {

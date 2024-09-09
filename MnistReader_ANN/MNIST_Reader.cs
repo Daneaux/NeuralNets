@@ -1,6 +1,6 @@
 ﻿using System.Drawing;
 
-namespace NeuralNets
+namespace MnistReader_ANN
 {
 
     /* USAGE
@@ -22,28 +22,28 @@ namespace NeuralNets
     {
         public byte Label { get; set; }
         public required byte[] Data { get; set; }
-        public int Size { get { return this.Data.Length; } }
+        public int Size { get { return Data.Length; } }
     }
 
     public static class Extensions
     {
         public static int ReadBigInt32(this BinaryReader br)
         {
-            var bytes = br.ReadBytes(sizeof(Int32));
+            var bytes = br.ReadBytes(sizeof(int));
             if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
             return BitConverter.ToInt32(bytes, 0);
         }
 
-/*        public static void ForEach<T>(this T[,] source, Action<int, int> action)
-        {
-            for (int w = 0; w < source.GetLength(0); w++)
-            {
-                for (int h = 0; h < source.GetLength(1); h++)
+        /*        public static void ForEach<T>(this T[,] source, Action<int, int> action)
                 {
-                    action(w, h);
-                }
-            }
-        }*/
+                    for (int w = 0; w < source.GetLength(0); w++)
+                    {
+                        for (int h = 0; h < source.GetLength(1); h++)
+                        {
+                            action(w, h);
+                        }
+                    }
+                }*/
     }
 
     public static class MnistReader
@@ -71,8 +71,8 @@ namespace NeuralNets
 
         public static void GetMNISTTrainingMetaData(out int numberOfImages, out int numberOfLabels, out int imageWidth, out int imageHeight)
         {
-            string imagesPath = MnistReader.TrainImages;
-            string labelsPath = MnistReader.TrainLabels;
+            string imagesPath = TrainImages;
+            string labelsPath = TrainLabels;
 
             imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
             labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;

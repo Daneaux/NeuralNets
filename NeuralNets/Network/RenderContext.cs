@@ -1,7 +1,7 @@
-﻿using IntrinsicMatrix;
+﻿using MatrixLibrary;
 using System.Diagnostics;
 
-namespace NeuralNets.Network
+namespace NeuralNets
 {
     public class RenderContext
     {

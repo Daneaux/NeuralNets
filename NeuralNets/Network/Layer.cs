@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using MatrixLibrary;
+using System.Diagnostics;
 
 namespace NeuralNets
 {

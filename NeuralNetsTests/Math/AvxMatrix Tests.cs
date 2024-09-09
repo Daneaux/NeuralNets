@@ -1,5 +1,5 @@
 using BenchmarkDotNet.Attributes;
-using IntrinsicMatrix;
+using MatrixLibrary;
 using NeuralNets;
 
 namespace NeuralNetsTests.Math

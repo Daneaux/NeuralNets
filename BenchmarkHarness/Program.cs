@@ -1,9 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
-//using BenchmarkDotNet.Running;
-using NeuralNets;
-using IntrinsicMatrix;
+using MatrixLibrary;
 using BenchmarkDotNet.Running;
-using Microsoft.CodeAnalysis.Emit;
 
 public class Program
 {

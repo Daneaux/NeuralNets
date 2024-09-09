@@ -1,10 +1,9 @@
-﻿using MnistReader_ANN;
-using NeuralNets;
+﻿using NeuralNets;
 
-namespace NeuralNets
+namespace MnistReader_ANN
 {
     public class MNISTSpecificANN : GeneralFeedForwardANN
-    {        
+    {
         public MNISTSpecificANN(float trainingRate, int inputDim, int outputDim) : base(trainingRate, inputDim, outputDim) //, 128, new MNISTTrainingSet())
         {
             this.LossFunction = new CategoricalCrossEntropy();

@@ -19,7 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\IntrinsicMatrix\IntrinsicMatrix.csproj" />
+    <ProjectReference Include="..\IntrinsicMatrix\MatrixLibrary.csproj" />
   </ItemGroup>
 
 </Project>

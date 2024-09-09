@@ -1,4 +1,4 @@
-﻿using NeuralNets;
+﻿using MatrixLibrary;
 using NeuralNets;
 using System.Diagnostics;
 
