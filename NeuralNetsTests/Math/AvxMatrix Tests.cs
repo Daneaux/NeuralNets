@@ -126,9 +126,9 @@ namespace NeuralNetsTests.Math
             AvxMatrix m2 = new AvxMatrix(matrixB);
             AvxMatrix m3 = m1 * m2;
 
-            Matrix mm1 = new Matrix(matrixA);
-            Matrix mm2 = new Matrix(matrixB);
-            Matrix truth = mm1 * mm2;
+            Matrix2D mm1 = new Matrix2D(matrixA);
+            Matrix2D mm2 = new Matrix2D(matrixB);
+            Matrix2D truth = mm1 * mm2;
 
             Assert.AreEqual(m1.Rows, m2.Rows);
             Assert.AreEqual(m2.Rows, m3.Rows);
@@ -177,9 +177,9 @@ namespace NeuralNetsTests.Math
             AvxMatrix m2 = new AvxMatrix(matrixB);
             AvxMatrix m3 = m1 * m2;
 
-            Matrix mm1 = new Matrix(matrixA);
-            Matrix mm2 = new Matrix(matrixB);
-            Matrix truth = mm1 * mm2;
+            Matrix2D mm1 = new Matrix2D(matrixA);
+            Matrix2D mm2 = new Matrix2D(matrixB);
+            Matrix2D truth = mm1 * mm2;
 
             // Assert.AreEqual(m1.Cols, m3.Rows);
 
@@ -227,9 +227,9 @@ namespace NeuralNetsTests.Math
             AvxMatrix m2 = new AvxMatrix(matrixB);
             AvxMatrix m3 = m1 * m2;
 
-            Matrix mm1 = new Matrix(matrixA);
-            Matrix mm2 = new Matrix(matrixB);
-            Matrix truth = mm1 * mm2;
+            Matrix2D mm1 = new Matrix2D(matrixA);
+            Matrix2D mm2 = new Matrix2D(matrixB);
+            Matrix2D truth = mm1 * mm2;
 
            // Assert.AreEqual(m1.Cols, m3.Rows);
 
@@ -273,16 +273,16 @@ namespace NeuralNetsTests.Math
                 }
             }
 
-            Matrix B = new Matrix(matrixB);
+            Matrix2D B = new Matrix2D(matrixB);
             B = B.GetTransposedMatrix();
 
             AvxMatrix m1 = new AvxMatrix(matrixA);
             AvxMatrix m2 = new AvxMatrix(B.Mat);  // transposed version of B
             AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2);
 
-            Matrix mm1 = new Matrix(matrixA);
-            Matrix mm2 = new Matrix(matrixB);
-            Matrix truth = mm1 * mm2;
+            Matrix2D mm1 = new Matrix2D(matrixA);
+            Matrix2D mm2 = new Matrix2D(matrixB);
+            Matrix2D truth = mm1 * mm2;
 
             // Assert.AreEqual(m1.Cols, m3.Rows);
 
@@ -329,9 +329,9 @@ namespace NeuralNetsTests.Math
             AvxMatrix m2 = new AvxMatrix(matrixB); 
             AvxMatrix m3 = m1.MatrixMultiply_Tiled(m2);
 
-            Matrix mm1 = new Matrix(matrixA);
-            Matrix mm2 = new Matrix(matrixB);
-            Matrix truth = mm1 * mm2;
+            Matrix2D mm1 = new Matrix2D(matrixA);
+            Matrix2D mm2 = new Matrix2D(matrixB);
+            Matrix2D truth = mm1 * mm2;
 
             // Assert.AreEqual(m1.Cols, m3.Rows);
 

@@ -5,7 +5,6 @@ namespace NumReaderNetwork
 {
     public class SoftMax : IActivationFunction
     {
-       //public ColumnVector? LastActivation { get; private set; }
 
         public ColumnVector Activate(ColumnVector input)
         {

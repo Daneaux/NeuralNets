@@ -13,28 +13,16 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Constructor_ShouldInitializeCorrectRowsAndColumns()
         {
-            var matrix = new Matrix(3, 2);
+            var matrix = new Matrix2D(3, 2);
             Assert.AreEqual(3, matrix.Rows);
             Assert.AreEqual(2, matrix.Cols);
         }
 
         [TestMethod]
-        public void Constructor_WithDoubleArray_ShouldInitializeColumnVector()
-        {
-            float[] vector = { 1, 2, 3 };
-            var matrix = new Matrix(vector);
-            Assert.AreEqual(3, matrix.Rows);
-            Assert.AreEqual(1, matrix.Cols);
-            Assert.AreEqual(1.0, matrix[0, 0]);
-            Assert.AreEqual(2.0, matrix[1, 0]);
-            Assert.AreEqual(3.0, matrix[2, 0]);
-        }
-
-        [TestMethod]
         public void Multiply_ShouldReturnCorrectMatrixProduct()
         {
-            var matrixA = new Matrix(new float[,] { { 1, 2 }, { 3, 4 } });
-            var matrixB = new Matrix(new float[,] { { 2, 0 }, { 1, 2 } });
+            var matrixA = new Matrix2D(new float[,] { { 1, 2 }, { 3, 4 } });
+            var matrixB = new Matrix2D(new float[,] { { 2, 0 }, { 1, 2 } });
             var result = matrixA.Multiply(matrixB);
 
             Assert.AreEqual(2, result.Rows);
@@ -49,16 +37,16 @@ namespace NeuralNetsTests.Math
         [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void Multiply_ShouldThrowExceptionForInvalidDimensions()
         {
-            var matrixA = new Matrix(2, 3);
-            var matrixB = new Matrix(2, 2);
+            var matrixA = new Matrix2D(2, 3);
+            var matrixB = new Matrix2D(2, 2);
             var result = matrixA.Multiply(matrixB);
         }
 
         [TestMethod]
         public void HadamardProduct_ShouldReturnCorrectElementwiseProduct()
         {
-            var matrixA = new Matrix(new float[,] { { 1, 2 }, { 3, 4 } });
-            var matrixB = new Matrix(new float[,] { { 2, 0 }, { 1, 2 } });
+            var matrixA = new Matrix2D(new float[,] { { 1, 2 }, { 3, 4 } });
+            var matrixB = new Matrix2D(new float[,] { { 2, 0 }, { 1, 2 } });
             var result = matrixA.HadamardProduct(matrixB);
 
             Assert.AreEqual(2, result.Rows);
@@ -72,8 +60,8 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void Subtract_ShouldReturnCorrectMatrixDifference()
         {
-            var matrixA = new Matrix(new float[,] { { 5, 7 }, { 9, 11 } });
-            var matrixB = new Matrix(new float[,] { { 2, 3 }, { 4, 5 } });
+            var matrixA = new Matrix2D(new float[,] { { 5, 7 }, { 9, 11 } });
+            var matrixB = new Matrix2D(new float[,] { { 2, 3 }, { 4, 5 } });
             var result = matrixA - matrixB;
 
             Assert.AreEqual(3, result[0, 0]);
@@ -85,7 +73,7 @@ namespace NeuralNetsTests.Math
         [TestMethod]
         public void GetTransposedMatrix_ShouldReturnCorrectTranspose()
         {
-            var matrix = new Matrix(new float[,] { { 1, 2, 3 }, { 4, 5, 6 } });
+            var matrix = new Matrix2D(new float[,] { { 1, 2, 3 }, { 4, 5, 6 } });
             var transposed = matrix.GetTransposedMatrix();
 
             Assert.AreEqual(3, transposed.Rows);
@@ -157,7 +145,7 @@ namespace NeuralNetsTests.Math
         public void RowVectorTimesMatrix_ShouldReturnCorrectResult()
         {
             var rowVector = new RowVector(new float[] { 1, 2 });
-            var matrix = new Matrix(new float[,] { { 3, 4 }, { 5, 6 } });
+            var matrix = new Matrix2D(new float[,] { { 3, 4 }, { 5, 6 } });
             var result = rowVector * matrix;
 
             Assert.AreEqual(1, result.Rows);

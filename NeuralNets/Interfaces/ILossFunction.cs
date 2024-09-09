@@ -68,23 +68,23 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
             return this.Error(truth, predicted).Sum();
         }
 
-        public float ScalarLossBatch(Matrix truth, Matrix predicted)
+        public float ScalarLossBatch(Matrix2D truth, Matrix2D predicted)
         {
-            Matrix oneHotSamples = this.OneHotEncode(truth);
-            Matrix logYHAT = predicted.Log();
-            Matrix YTimeYHat = oneHotSamples * logYHAT;
+            Matrix2D oneHotSamples = this.OneHotEncode(truth);
+            Matrix2D logYHAT = predicted.Log();
+            Matrix2D YTimeYHat = oneHotSamples * logYHAT;
             float sum = YTimeYHat.Sum();
             return sum;
         }
 
         // Assumes number of "classes" is the same as sample.Size.
         // In other words, the sample vector (predicted) has X entries, let's say, and that's exactly the number of classes.
-        public Matrix OneHotEncode(Matrix samples)
+        public Matrix2D OneHotEncode(Matrix2D samples)
         {
             int N = samples.Rows;
             float invN = -1 / (float)N;
 
-            Matrix m = new Matrix(samples.Rows, samples.Cols);
+            Matrix2D m = new Matrix2D(samples.Rows, samples.Cols);
             for (int i = 0; i < N; i++)
             {
                 //ColumnVector sample = samples[i];
@@ -141,14 +141,14 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         // not clear if the input needs to be an array with the actual value of the class, like [0,0,0,4,0,0,0,0] which means the 4th index is a four, that is we recognized a four in the image input.
         // totally broken, need to re-read this and get it right:
         // https://arjun-sarkar786.medium.com/implementation-of-all-loss-functions-deep-learning-in-numpy-tensorflow-and-pytorch-e20e72626ebd
-        public float ScalarLossBatch(Matrix truth, Matrix predicted)
+        public float ScalarLossBatch(Matrix2D truth, Matrix2D predicted)
         {
             throw new NotImplementedException();
             int N = truth.Rows;
             float invN = -1 / (float)N;
 
-            Matrix logYHAT = predicted.Log();
-            Matrix YTimeYHat = 1 * logYHAT;
+            Matrix2D logYHAT = predicted.Log();
+            Matrix2D YTimeYHat = 1 * logYHAT;
             float sum = YTimeYHat.Sum();
             return sum;
         }

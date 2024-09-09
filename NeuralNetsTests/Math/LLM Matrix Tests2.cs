@@ -18,7 +18,7 @@ namespace NeuralNetsTests.Math
         {
             int rows = 3;
             int cols = 4;
-            Matrix matrix = new Matrix(rows, cols);
+            Matrix2D matrix = new Matrix2D(rows, cols);
 
             Assert.AreEqual(rows, matrix.Rows);
             Assert.AreEqual(cols, matrix.Cols);
@@ -28,13 +28,13 @@ namespace NeuralNetsTests.Math
         public void Matrix_ConstructorFromVector_SetsValuesCorrectly()
         {
             float[] vector = { 1, 2, 3 };
-            Matrix matrix = new Matrix(vector);
+            ColumnVector colVec = new ColumnVector(vector);
 
-            Assert.AreEqual(vector.Length, matrix.Rows);
-            Assert.AreEqual(1, matrix.Cols);
+            Assert.AreEqual(vector.Length, colVec.Rows);
+            Assert.AreEqual(1, colVec.Cols);
             for (int i = 0; i < vector.Length; i++)
             {
-                Assert.AreEqual(vector[i], matrix[i, 0]);
+                Assert.AreEqual(vector[i], colVec[i, 0]);
             }
         }
 
@@ -43,7 +43,7 @@ namespace NeuralNetsTests.Math
         {
             int rows = 3;
             int cols = 3;
-            Matrix matrix = new Matrix(rows, cols);
+            Matrix2D matrix = new Matrix2D(rows, cols);
             int seed = 42;
             float min = 1;
             float max = 5;
@@ -61,12 +61,12 @@ namespace NeuralNetsTests.Math
         {
             float[,] aArray = { { 1, 2 }, { 3, 4 } };
             float[,] bArray = { { 2, 0 }, { 1, 2 } };
-            Matrix a = new Matrix(aArray);
-            Matrix b = new Matrix(bArray);
-            Matrix result = a * b;
+            Matrix2D a = new Matrix2D(aArray);
+            Matrix2D b = new Matrix2D(bArray);
+            Matrix2D result = a * b;
 
             float[,] expectedArray = { { 4, 4 }, { 10, 8 } };
-            Matrix expected = new Matrix(expectedArray);
+            Matrix2D expected = new Matrix2D(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
             {
@@ -83,10 +83,10 @@ namespace NeuralNetsTests.Math
         {
             float[,] aArray = { { 1, 2 }, { 3, 4 } };
             float[,] bArray = { { 2, 0, 1 }, { 1, 2, 3 }, { 1, 2, 3 } };
-            Matrix a = new Matrix(aArray);
-            Matrix b = new Matrix(bArray);
+            Matrix2D a = new Matrix2D(aArray);
+            Matrix2D b = new Matrix2D(bArray);
 
-            Matrix result = a * b; // This should throw an exception
+            Matrix2D result = a * b; // This should throw an exception
         }
 
         [TestMethod]
@@ -94,12 +94,12 @@ namespace NeuralNetsTests.Math
         {
             float[,] aArray = { { 5, 6 }, { 7, 8 } };
             float[,] bArray = { { 1, 2 }, { 3, 4 } };
-            Matrix a = new Matrix(aArray);
-            Matrix b = new Matrix(bArray);
-            Matrix result = a - b;
+            Matrix2D a = new Matrix2D(aArray);
+            Matrix2D b = new Matrix2D(bArray);
+            Matrix2D result = a - b;
 
             float[,] expectedArray = { { 4, 4 }, { 4, 4 } };
-            Matrix expected = new Matrix(expectedArray);
+            Matrix2D expected = new Matrix2D(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
             {
@@ -115,12 +115,12 @@ namespace NeuralNetsTests.Math
         {
             float[,] aArray = { { 1, 2 }, { 3, 4 } };
             float[,] bArray = { { 2, 0 }, { 1, 2 } };
-            Matrix a = new Matrix(aArray);
-            Matrix b = new Matrix(bArray);
-            Matrix result = a.HadamardProduct(b);
+            Matrix2D a = new Matrix2D(aArray);
+            Matrix2D b = new Matrix2D(bArray);
+            Matrix2D result = a.HadamardProduct(b);
 
             float[,] expectedArray = { { 2, 0 }, { 3, 8 } };
-            Matrix expected = new Matrix(expectedArray);
+            Matrix2D expected = new Matrix2D(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
             {
@@ -135,11 +135,11 @@ namespace NeuralNetsTests.Math
         public void Matrix_GetTransposedMatrix_ComputesCorrectly()
         {
             float[,] originalArray = { { 1, 2, 3 }, { 4, 5, 6 } };
-            Matrix original = new Matrix(originalArray);
-            Matrix transposed = original.GetTransposedMatrix();
+            Matrix2D original = new Matrix2D(originalArray);
+            Matrix2D transposed = original.GetTransposedMatrix();
 
             float[,] expectedArray = { { 1, 4 }, { 2, 5 }, { 3, 6 } };
-            Matrix expected = new Matrix(expectedArray);
+            Matrix2D expected = new Matrix2D(expectedArray);
 
             for (int i = 0; i < expected.Rows; i++)
             {

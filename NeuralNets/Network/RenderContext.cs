@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using IntrinsicMatrix;
+using System.Diagnostics;
 
 namespace NeuralNets.Network
 {
@@ -21,10 +22,8 @@ namespace NeuralNets.Network
         public ILossFunction LossFunction => Network.LossFunction;
         public List<WeightedLayer> WeightedLayers => Network.WeightedLayers;
 
-        public Matrix[] WeightGradient { get; }
+        public Matrix2D[] WeightGradient { get; }
         public ColumnVector[] BiasGradient { get; }
-
-
 
 
         public RenderContext(GeneralFeedForwardANN network, int batchSize, ITrainingSet trainingSet)
@@ -34,7 +33,7 @@ namespace NeuralNets.Network
             this.BatchSize = batchSize;
             this.TrainingSet = trainingSet;
             this.Sigma = new ColumnVector[this.LayerCount];
-            this.WeightGradient = new Matrix[this.LayerCount];
+            this.WeightGradient = new Matrix2D[this.LayerCount];
             this.BiasGradient = new ColumnVector[this.LayerCount];
             this.ActivationContext = new ColumnVector[this.LayerCount];
             this.DerivativeContext = new ColumnVector[this.LayerCount];
@@ -76,11 +75,9 @@ namespace NeuralNets.Network
         public static void BatchTrain(RenderContext parentContext, int epochNum)
         {
             // multiple feed forward, random samples from training set
-            // collect all outputs. average them
-            // get average loss (how?)
             // then run a backprop based on average O and average L
-            // q: what's the right Y (truth) for N samples?
-            // we can average the loss. but then the derivative might be wrong for softmax + crossEntropy.
+            // average all gradients then update biases/weights
+
 
             WeightedLayer outputLayer = parentContext.OutputLayer;
             List<TrainingPair> trainingPairs = parentContext.TrainingSet.BuildNewRandomizedTrainingList();
@@ -92,6 +89,12 @@ namespace NeuralNets.Network
             {
                 TrainingPair trainingPair = null;
                 ColumnVector predictedOut = null;
+
+                int loopsPerThread = 32;
+                if(parentContext.BatchSize / loopsPerThread < 16)
+                {
+                    loopsPerThread = 1;
+                }
 
                 // debug only
                 int actualBatchSize = 0;
@@ -105,16 +108,22 @@ namespace NeuralNets.Network
                 Object thisLock = new object();
                 // 
                 //for (int i = 0; i < parentContext.BatchSize; i++)
-                Parallel.For(0, parentContext.BatchSize, i =>
+                Parallel.For(0, parentContext.BatchSize / loopsPerThread, i =>
                 {
-                    RenderContext ctx = new RenderContext(parentContext.Network, 0, null); // todo: hmm, mabe need to specialize the render context??
-                    trainingPair = trainingPairs[currentTP++];
-                    predictedOut = ctx.FeedForward(trainingPair.Input);
-                    ctx.BackProp(trainingPair, predictedOut);
+                    List<RenderContext> perCoreRenderContexts = new List<RenderContext>();
+                    //Console.WriteLine($"Launched batch instance {i} with thread id {Thread.CurrentThread.ManagedThreadId}");
+                    for (int j = 0; j < loopsPerThread; j++)
+                    {
+                        RenderContext ctx = new RenderContext(parentContext.Network, 0, null); // todo: hmm, mabe need to specialize the render context??
+                        trainingPair = trainingPairs[currentTP++];
+                        predictedOut = ctx.FeedForward(trainingPair.Input);
+                        ctx.BackProp(trainingPair, predictedOut);
+                        perCoreRenderContexts.Add(ctx);
+                    }
                     // LOCK
                     lock (thisLock)
                     {
-                        renderContexts.Add(ctx);
+                        renderContexts.AddRange(perCoreRenderContexts);
                         actualBatchSize++;
                     }
                     // UNLOCK
@@ -124,10 +133,10 @@ namespace NeuralNets.Network
                 // All the RenderContexts above (in the render batch) now have their own gradients
                 // Sum and average all gradients
 
-                Matrix[] weightGradients = new Matrix[parentContext.LayerCount];
+                Matrix2D[] weightGradients = new Matrix2D[parentContext.LayerCount];
                 ColumnVector[] biasGradients = new ColumnVector[parentContext.LayerCount];
                 // accumulate all weight and bias gradients
-                // ie: For every context, for every layer: accumulate the grdietns by layer into one sum, ditto biases.
+                // ie: For every context, for every layer: accumulate the gradient by layer into one sum, ditto biases.
                 for (int rc = 0; rc < renderContexts.Count; rc++)
                 {
                     for (int L = 0; L < parentContext.LayerCount; L++)
@@ -135,6 +144,7 @@ namespace NeuralNets.Network
                         weightGradients[L] = weightGradients[L] == null ? 
                             renderContexts[rc].WeightGradient[L] : 
                             weightGradients[L] + renderContexts[rc].WeightGradient[L];
+
                         biasGradients[L] = biasGradients[L] == null ?
                             renderContexts[rc].BiasGradient[L] :
                             biasGradients[L] + renderContexts[rc].BiasGradient[L];
@@ -185,6 +195,23 @@ namespace NeuralNets.Network
             for (int i = 0; i < this.LayerCount; i++)
             {
                 WeightedLayer currentLayer = WeightedLayers[i];
+                ColumnVector z1 = currentLayer.Weights * prevActivation;
+                ColumnVector z12 = z1 + currentLayer.Biases;
+                prevActivation = currentLayer.Activate(z12);
+                this.SetLastActivation(i, prevActivation);
+            }
+            return prevActivation;
+        }
+
+        public ColumnVector FeedForward_avx(ColumnVector inputVec)
+        {
+            Debug.Assert(inputVec.Size == this.InputDim);
+            ColumnVector prevActivation = inputVec;
+            for (int i = 0; i < this.LayerCount; i++)
+            {
+                WeightedLayer currentLayer = WeightedLayers[i];
+                AvxMatrix w1 = new AvxMatrix(currentLayer.Weights.Mat);
+                AvxColumnVector pa = new AvxColumnVector(prevActivation.Column);
                 ColumnVector z1 = currentLayer.Weights * prevActivation;
                 ColumnVector z12 = z1 + currentLayer.Biases;
                 prevActivation = currentLayer.Activate(z12);
@@ -303,7 +330,7 @@ namespace NeuralNets.Network
                 outputLayerSigma = LossPartial * ActivationPartial;
             }
 
-            Matrix outputWeightGradient = BuildGradientWeightsHelper(this.ActivationContext[LayerCount - 2], outputLayerSigma);
+            Matrix2D outputWeightGradient = BuildGradientWeightsHelper(this.ActivationContext[LayerCount - 2], outputLayerSigma);
             ColumnVector outputBiasGradient = outputLayerSigma * 1;
 
             this.SetlayerSigma(outputLayerIndex, outputLayerSigma);
@@ -335,19 +362,19 @@ namespace NeuralNets.Network
                     activationToTheLeft = this.ActivationContext[L - 1];
                 }
 
-                Matrix currentLayerGradientWeights = BuildGradientWeightsHelper(activationToTheLeft, DOl_DZL);
+                Matrix2D currentLayerGradientWeights = BuildGradientWeightsHelper(activationToTheLeft, DOl_DZL);
                 ColumnVector currentLayerGradientBias = DOl_DZL;
                 this.SetLayerGradients(L, currentLayerGradientWeights, currentLayerGradientBias);
             }
         }
 
-        private void SetLayerGradients(int L, Matrix weightGradient, ColumnVector biasGradient)
+        private void SetLayerGradients(int L, Matrix2D weightGradient, ColumnVector biasGradient)
         {
             this.BiasGradient[L] = biasGradient;
             this.WeightGradient[L] = weightGradient;
         }
 
-        private Matrix BuildGradientWeightsHelper(ColumnVector lastActivation, ColumnVector sigma)
+        private Matrix2D BuildGradientWeightsHelper(ColumnVector lastActivation, ColumnVector sigma)
         {
             // Do outer product
             // we want all the sigmas (on the right) times all the Outpus (from the left) to look like the wiehgt matrix
@@ -357,7 +384,7 @@ namespace NeuralNets.Network
             // Matrix scaledGradientWeights = sigma * lastActivation.Transpose();
 
             // outer product:  o1s1 o2s1 o3s1 o4s1 ... onS1    o1s2 o2s2 o3s2 ... oNs2 
-            Matrix gradientDelta = sigma * lastActivation.Transpose();
+            Matrix2D gradientDelta = sigma * lastActivation.Transpose();
             return gradientDelta;
         }
 

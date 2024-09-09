@@ -11,10 +11,13 @@ namespace NeuralNetsTests.ANNTests
         {
             public float Increment { get; }
 
-            public SineWaveTrainingSet(int numSamples, float increment)
+            private readonly int seed;
+
+            public SineWaveTrainingSet(int numSamples, float increment, int seed)
             {
                 this.NumberOfSamples = numSamples;
                 this.Increment = increment;
+                this.seed = seed;
             }
 
             public int InputDimension => 1;
@@ -29,12 +32,13 @@ namespace NeuralNetsTests.ANNTests
 
             public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
-                Random rnd = new Random();
+                float range = 10F;
+                Random rnd = new Random(this.seed);
                 List<TrainingPair> trainingPairs = new List<TrainingPair>();
                 float x = 0;
                 for (int i = 0; i < NumberOfSamples; i++)
                 {
-                    x = (float)(rnd.NextDouble() * 2 * System.Math.PI);
+                    x = (float)(rnd.NextDouble() * 2 * System.Math.PI) * range;
                     float sinx = (float)System.Math.Sin(x);
                     trainingPairs.Add(new TrainingPair(new ColumnVector([x]), new ColumnVector([sinx])));
                 }
@@ -46,25 +50,43 @@ namespace NeuralNetsTests.ANNTests
         public void SineWaveTest()
         {
             int inputDim = 1;
-            int hiddenLayerDim = 4;
+            int hiddenLayerDim = 16;
             int outputDim = 1;
-            float trainingRate = 0.1F;
+            float trainingRate = 0.025F;
             int batchSize = 32;
             ILossFunction lossFunction = new SquaredLoss();
 
-            WeightedLayer hiddenLayer = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), inputDim);
+            WeightedLayer hiddenLayer1 = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), inputDim);
+            WeightedLayer hiddenLayer2 = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), hiddenLayerDim);
             WeightedLayer outputLayer = new WeightedLayer(outputDim, new SigmoidActivation(), hiddenLayerDim);
 
-            ITrainingSet ts = new SineWaveTrainingSet(1000, 0.05F);
+            int trainingSamples = 40000;
+            ITrainingSet ts = new SineWaveTrainingSet(trainingSamples, 0.001F, 09870987);
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
-                new List<WeightedLayer> { hiddenLayer, outputLayer },
+                new List<WeightedLayer> { hiddenLayer1, hiddenLayer2, outputLayer },
                 trainingRate,
                 inputDim,
                 outputDim,
                 lossFunction);
             RenderContext ctx = new RenderContext(ann, 1, ts);
-            ctx.EpochTrain(10);
-            Console.WriteLine($"tOTAL Loss = {ann.GetTotallLoss}\n");
+
+            int numEpochs = 100;
+            ctx.EpochTrain(numEpochs);
+
+
+            ITrainingSet ts2 = new SineWaveTrainingSet(1000, 0.05F, 1987987234);
+            float averageLoss = 0f;
+            int testSamples = 1000;
+            for (int i = 0; i < testSamples; i++)
+            {
+                RenderContext lossCtx = new RenderContext(ann, 1, ts2);
+                ColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
+                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction);
+            }
+
+            averageLoss /= testSamples;
+            Console.WriteLine($"{averageLoss} after {testSamples} test samples and {trainingSamples} and {numEpochs} epochs\n");
+            
         }
 
         public class MazurTrainingSet : ITrainingSet
@@ -95,7 +117,6 @@ namespace NeuralNetsTests.ANNTests
         [TestMethod]
         public void MattMazurExample()
         {
-
             float trainingRate = 0.5F;
             int inputDim = 2;
             int batchSize = 1;
@@ -103,12 +124,12 @@ namespace NeuralNetsTests.ANNTests
 
             TrainingPair tp = new(new ColumnVector([0.05F, 0.10F]), new ColumnVector([0.01F, 0.99F]));
 
-            Matrix w1 = new Matrix(new float[,] {
+            Matrix2D w1 = new Matrix2D(new float[,] {
                 { 0.15F, 0.2F },
                 { 0.25F, 0.30F }
             });
 
-            Matrix w2 = new Matrix(new float[,] {
+            Matrix2D w2 = new Matrix2D(new float[,] {
                 { 0.40f, 0.45f },
                 { 0.50f, 0.55f }
             });
@@ -230,12 +251,12 @@ namespace NeuralNetsTests.ANNTests
 
             TrainingPair tp = new(new ColumnVector([0.05f, 0.10f]), new ColumnVector([0.01f, 0.99f]));
 
-            Matrix w1 = new Matrix(new float[,] {
+            Matrix2D w1 = new Matrix2D(new float[,] {
                 { 0.15f, 0.2f },
                 { 0.25f, 0.30f }
             });
 
-            Matrix w2 = new Matrix(new float[,] {
+            Matrix2D w2 = new Matrix2D(new float[,] {
                 { 0.40f, 0.45f },
                 { 0.50f, 0.55f }
             });

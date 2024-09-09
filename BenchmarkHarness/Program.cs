@@ -20,8 +20,8 @@ public class IntrinsicsBenchmarks
     private AvxMatrix m2;
     private AvxMatrix m2T;
 
-    private Matrix nm1;
-    private Matrix nm2;
+    private Matrix2D nm1;
+    private Matrix2D nm2;
     [GlobalSetup]
     public void Setup()
     {
@@ -33,8 +33,8 @@ public class IntrinsicsBenchmarks
         m1.SetRandom(seed, -100, 100);
         m2.SetRandom(seed, -100, 100);
 
-        nm1 = new Matrix(matSize, matSize);
-        nm2 = new Matrix(matSize, matSize);
+        nm1 = new Matrix2D(matSize, matSize);
+        nm2 = new Matrix2D(matSize, matSize);
 
         nm1.SetRandom(seed, -1000, 1000);
         nm2.SetRandom(seed, -1000, 1000);
@@ -51,7 +51,7 @@ public class IntrinsicsBenchmarks
     [Benchmark]
     public void NaiveMultiply()
     {
-        Matrix m3 = nm1 * nm2;
+        Matrix2D m3 = nm1 * nm2;
     }
 
 /*    [Benchmark]

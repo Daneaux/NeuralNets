@@ -1,5 +1,4 @@
-﻿using System;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -21,6 +20,43 @@ namespace IntrinsicMatrix
         public AvxColumnVector(int size)
         {
             this.column = new float[size];
+        }
+
+        public static AvxColumnVector operator +(AvxColumnVector lhs, AvxColumnVector rhs) => lhs.AddVecVec(rhs);
+
+        private unsafe AvxColumnVector AddVecVec(AvxColumnVector rhs)
+        {
+            AvxColumnVector lhs = this;
+            AvxColumnVector result = new AvxColumnVector(lhs.Size);
+            const int vector512Floats = 16;
+
+            int vecSize = lhs.Size / vector512Floats;
+            int vecRemainder = lhs.Size % vector512Floats;
+
+            fixed (float* av = lhs.Column,
+                          bv = rhs.Column,
+                          rv = result.Column)
+            {
+                float* col1 = av;
+                float* col2 = bv;
+                float* destCol = rv;
+
+                for (int i = 0; i < vecSize; i++, col1 += vector512Floats, col2 += vector512Floats, destCol += vector512Floats)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Load<float>(col1);
+                    Vector512<float> v3 = Avx512F.Add(v1, v2);
+                    Vector512.Store<float>(v3, destCol);
+                }
+
+                // remainder
+                for (int i = 0; i < vecRemainder; i++, col1++, col2++, destCol++)
+                {
+                    *destCol = *col1 + *col2;
+                }
+            }
+
+            return result;
         }
     }
 
@@ -291,6 +327,9 @@ namespace IntrinsicMatrix
             int tw2 = w2 / tileSize;
             int th2 = h2 / tileSize;
 
+            int remainderW1 = w1 % tileSize;
+            int remainderH2 = h2 % tileSize;
+
             Debug.Assert(tw1 == th2);
 
             AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
@@ -305,9 +344,58 @@ namespace IntrinsicMatrix
                 }
             }
 
-            // TODO BUG: remainder!
+            // TODO: BUG: remainder!
+            AvxMatrix.SubMatrixMultiplyNaive(
+                this, rhs,
+                0, 0,
+                0, 0,
+                0, 0,
+                0, 0,
+                result);               
+
 
             return result;
+        }
+
+        private static void SubMatrixMultiplyNaive(
+            AvxMatrix lhs, AvxMatrix rhs, 
+            int lhsX, int lhsY, 
+            int rhsX, int rhsY, 
+            int subMatrixWidthLHS, int subMatrixHeightLHS,
+            int subMatrixWidthRHS, int subMatrixHeightRHS,  // terrible parameter names
+            AvxMatrix dest)
+        {
+            for(int lhsRow = lhsY; lhsRow < lhsY + subMatrixHeightLHS; lhsRow++)
+            {
+                for(int rhsCol = rhsX; rhsCol < (rhsX + subMatrixWidthRHS); rhsCol++)
+                {
+                    Debug.Assert(subMatrixWidthLHS == subMatrixHeightRHS);
+                    for(int i = 0; i < subMatrixHeightLHS; i++)
+                    {
+                        // lhs index
+                        int lx = lhsRow;
+                        int ly = lhsX + i;
+
+                        // rhs index
+                        int rx = rhsX;
+                        int ry = rhsY + i;
+
+                        dest[lhsRow, rhsCol] += lhs[ly, lx] * rhs[ry, rx];       // i think?                   
+                    }
+                }
+            }
+        }
+
+        // naive implementation for remaining rows/columns
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private float DoRowTimesColumn(int myRow, int rightMatrixCol, AvxMatrix rightMatrix)
+        {
+            float cum = 0;
+            for (int i = 0; i < Cols; i++)
+            {
+                cum += this[myRow, i] * rightMatrix[i, rightMatrixCol];
+            }
+            return cum;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -404,7 +492,7 @@ namespace IntrinsicMatrix
                     }
                 }
 
-                // copy (ugh) to Vector512. would be nice to avoid a copy
+                // copy to Vector512.
                 for (int i = 0; i < tileSize; i++)
                 {
                     vectors[i] = Vector512.Create<float>(vecs[i]);
@@ -413,9 +501,16 @@ namespace IntrinsicMatrix
             return vectors;
         }
 
-        private unsafe Vector512<float>[] Transpose(Vector512<float>[] vectors)
+
+        // TODO: finish
+        private static unsafe AvxMatrix Transpose(AvxMatrix matrix)
         {
-            return null;
+            AvxMatrix result = new AvxMatrix(matrix.Cols, matrix.Rows);
+            fixed (float* m1 = matrix.Mat)
+            {
+                
+            }
+            return result;
         }
 
     }

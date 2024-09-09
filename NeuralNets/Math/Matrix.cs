@@ -4,27 +4,73 @@ using System.Text;
 
 namespace NeuralNets
 {
-    public class Matrix
+
+    public abstract class Matrix_Base
+    {
+        public int Rows { get; protected set; }
+        public int Cols { get; protected set; }
+
+        public abstract float this[int r, int c]
+        {
+            get;
+            set;
+        }
+        public void SetRandom(int seed, float min, float max)
+        {
+            Random rnd = new Random(seed);
+            float width = max - min;
+            for (int c = 0; c < Cols; c++)
+            {
+                for (int r = 0; r < Rows; r++)
+                {
+                    this[r, c] = (float)((rnd.NextDouble() * width) + min);
+                    // for testing only:  Mat[r, c] = 0.5;
+                }
+            }
+        }
+
+        public virtual float Sum()
+        {
+            float sum = 0;
+            for (int i = 0; i < this.Rows; ++i)
+            {
+                for (int j = 0; j < this.Cols; ++j)
+                {
+                    sum += this[i, j];
+                }
+            }
+            return sum;
+        }
+    }
+
+    public class Matrix2D : Matrix_Base
     {
         public float[,] Mat { get; private set; }
-        public int Rows { get; private set; }
-        public int Cols { get; private set; }
-        public Matrix(int r, int c)
+
+        public Matrix2D(int r, int c)
         {
             Rows = r;
             Cols = c;
             Mat = new float[Rows, Cols];
         }
 
-        public Matrix(float[] inputVector) : this(inputVector.Length, 1)
+/*        protected Matrix2D(int rows, int cols, bool singleD)
         {
-            for (int r = 0; r < Rows; r++)
-            {
-                Mat[r, 0] = inputVector[r];
-            }
-        }
+            Debug.Assert(singleD == true);  // so lame
+            Rows = rows;
+            Cols = cols;
+            Mat = null;
+        }*/
 
-        public Matrix(ColumnVector[] columns, int numRows) : this(numRows, columns.Length)
+        /*        public Matrix(float[] inputVector) : this(inputVector.Length, 1)
+                {
+                    for (int r = 0; r < Rows; r++)
+                    {
+                        Mat[r, 0] = inputVector[r];
+                    }
+                }*/
+
+/*        public Matrix2D(ColumnVector[] columns, int numRows) : this(numRows, columns.Length)
         {
             int c = 0;
             foreach(ColumnVector col in columns)
@@ -35,39 +81,37 @@ namespace NeuralNets
                 }
                 c++;
             }
-        }
+        }*/
 
-        public Matrix(float[,] m)
+        public Matrix2D(float[,] m)
         {
             Rows = m.GetLength(0);
             Cols = m.GetLength(1);
             this.Mat = m; // no deep copy, better not change my matrix dude!
         }
-
-        public void SetRandom(int seed, float min, float max)
+        public virtual Matrix2D Log()
         {
-            Random rnd = new Random(seed);
-            float width = max - min;
-            for (int c = 0; c < Cols; c++)
+            Matrix2D logMat = new Matrix2D(this.Cols, this.Rows);
+            for (int i = 0; i < this.Rows; ++i)
             {
-                for (int r = 0; r < Rows; r++)
+                for (int j = 0; j < this.Cols; ++j)
                 {
-                   Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
-                   // for testing only:  Mat[r, c] = 0.5;
+                    logMat[i, j] = (float)Math.Log(this[i, j]);
                 }
             }
+            return logMat;
         }
 
-        public static Matrix operator +(Matrix a, Matrix b) => a.Add(b);
+        public static Matrix2D operator +(Matrix2D a, Matrix2D b) => a.Add(b);
 
-        private Matrix Add(Matrix b)
+        private Matrix2D Add(Matrix2D b)
         {
             if (this.Rows != b.Rows || this.Cols != b.Cols)
             {
                 throw new ArgumentException("bad dimensions in Matrix.add");
             }
 
-            Matrix res = new Matrix(Rows, Cols);
+            Matrix2D res = new Matrix2D(Rows, Cols);
             for (int r = 0; r < Rows; r++)
             {
                 for (int c = 0; c < Cols; c++)
@@ -81,11 +125,11 @@ namespace NeuralNets
 
 
         // I'm on the left of 'm'
-        public virtual Matrix Multiply(Matrix m)
+        public virtual Matrix2D Multiply(Matrix2D m)
         {
             if (this.Cols == m.Rows)
             {
-                Matrix res = new Matrix(this.Rows, m.Cols);
+                Matrix2D res = new Matrix2D(this.Rows, m.Cols);
                 for (int r = 0; r < Rows; r++)
                 {
                     // multiply my horizontal vector times m's vertical vector
@@ -105,7 +149,7 @@ namespace NeuralNets
             }
         }
 
-        public static RowVector operator *(RowVector left, Matrix right) => right.RowTimesMatrix(left);
+       public static RowVector operator *(RowVector left, Matrix2D right) => right.RowTimesMatrix(left);
 
         private RowVector RowTimesMatrix(RowVector left)
         {
@@ -124,7 +168,7 @@ namespace NeuralNets
             }
         }
 
-        public static ColumnVector operator *(Matrix left, ColumnVector right) => left.MatrixTimesColumn(right);
+        public static ColumnVector operator *(Matrix2D left, ColumnVector right) => left.MatrixTimesColumn(right);
 
         public ColumnVector MatrixTimesColumn(ColumnVector colVec)
         {
@@ -144,18 +188,18 @@ namespace NeuralNets
             }
         }
 
-        public static Matrix operator *(Matrix a, Matrix b) => a.Multiply(b);
-        public float this[int r, int c]
+        public static Matrix2D operator *(Matrix2D a, Matrix2D b) => a.Multiply(b);
+        public override float this[int r, int c]
         {
             get { return this.Mat[r, c]; }
             set { this.Mat[r, c] = value; }
         }
 
-        public static Matrix operator *(float scalar, Matrix b) => b.Multiply(scalar);
-        public static Matrix operator *(Matrix b, float scalar) => b.Multiply(scalar);
-        public Matrix Multiply(float scalar)
+        public static Matrix2D operator *(float scalar, Matrix2D b) => b.Multiply(scalar);
+        public static Matrix2D operator *(Matrix2D b, float scalar) => b.Multiply(scalar);
+        public Matrix2D Multiply(float scalar)
         {
-            Matrix res = new Matrix(Rows, Cols);
+            Matrix2D res = new Matrix2D(Rows, Cols);
             for (int r = 0; r < Rows; r++)
             {
                 for (int c = 0; c < Cols; c++)
@@ -166,16 +210,16 @@ namespace NeuralNets
             return res;
         }
 
-        public static Matrix operator -(Matrix a, Matrix b) => a.Subtract(b);
+        public static Matrix2D operator -(Matrix2D a, Matrix2D b) => a.Subtract(b);
 
-        private Matrix Subtract(Matrix b)
+        private Matrix2D Subtract(Matrix2D b)
         {
             Debug.Assert(HasSameDimensions(b));
 
             // this minus b
             if (this.Cols == b.Cols && this.Rows == b.Rows)
             {
-                Matrix res = new Matrix(this.Rows, b.Cols);
+                Matrix2D res = new Matrix2D(this.Rows, b.Cols);
                 for (int r = 0; r < Rows; r++)
                 {
                     for (int c = 0; c < this.Cols; c++)
@@ -191,11 +235,11 @@ namespace NeuralNets
             }
         }
 
-        public Matrix HadamardProduct(Matrix b)
+        public Matrix2D HadamardProduct(Matrix2D b)
         {
             if (this.HasSameDimensions(b))
             {
-                Matrix res = new Matrix(Rows, Cols);
+                Matrix2D res = new Matrix2D(Rows, Cols);
                 for (int r = 0; r < Rows; r++)
                 {
                     for (int c = 0; c < Cols; c++)
@@ -208,10 +252,10 @@ namespace NeuralNets
             return null;
         }
 
-        private bool HasSameDimensions(Matrix b) => (Rows == b.Rows) && (Cols == b.Cols);
+        private bool HasSameDimensions(Matrix2D b) => (Rows == b.Rows) && (Cols == b.Cols);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix rightMatrix)
+        private float DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix2D rightMatrix)
         {
             float cum = 0;
             for (int i = 0; i < Cols; i++)
@@ -243,9 +287,9 @@ namespace NeuralNets
             return cum;
         }
 
-        public Matrix GetTransposedMatrix()
+        public Matrix2D GetTransposedMatrix()
         {
-            Matrix mt = new Matrix(this.Cols, this.Rows);
+            Matrix2D mt = new Matrix2D(this.Cols, this.Rows);
             for (int c = 0; c < this.Cols; c++)
             {
                 for (int r = 0; r < this.Rows; r++)
@@ -270,54 +314,40 @@ namespace NeuralNets
             }
             Console.Write(str);
         }
-
-        public virtual Matrix Log()
-        {
-            Matrix logMat = new Matrix(this.Cols, this.Rows);
-            for (int i = 0; i < this.Rows; ++i)
-            {
-                for (int j = 0; j < this.Cols; ++j)
-                {
-                    logMat[i, j] = (float)Math.Log(this.Mat[i, j]);
-                }
-            }
-            return logMat;
-        }
-
-        public virtual float Sum()
-        {
-            float sum = 0;
-            for (int i = 0; i < this.Rows; ++i)
-            {
-                for (int j = 0; j < this.Cols; ++j)
-                {
-                    sum += this.Mat[i, j];
-                }
-            }
-            return sum;
-        }
     }
 
     /*
      * [ a, c, d, e, f, ... z ]
      */
-    public class RowVector : Matrix
+    public class RowVector : Matrix_Base
     {
+        public float[] Row { get; private set; }
         public int Size { get { return this.Cols; } }
-        public RowVector(float[] inputVector) : base(1, inputVector.Length)
+
+        public override float this[int r, int c]
         {
-            for (int c = 0; c < Size; c++)
-            {
-                Mat[0, c] = inputVector[c];
-            }
+            get => Row[r];
+            set => Row[r] = value;
         }
 
-        public RowVector(int size) :  base(1, size) { }
+        public RowVector(float[] inputVector) 
+        {
+            this.Row = inputVector;
+            this.Cols = inputVector.Length;
+            this.Rows = 1;
+        }
+
+        public RowVector(int size) 
+        {
+            this.Row = new float[size];
+            this.Cols = size;
+            this.Rows = 1;
+        }
 
         public float this[int i]
         {
-            get { return this.Mat[0, i]; }
-            set { this.Mat[0, i] = value; }
+            get { return this.Row[i]; }
+            set { this.Row[i] = value; }
         }
     }
     
@@ -333,34 +363,50 @@ namespace NeuralNets
      * --
      *
      */
-    public class ColumnVector : Matrix
-    {
+    public class ColumnVector : Matrix_Base
+    {        
         public int Size { get { return this.Rows; } }
-        public ColumnVector(float[] inputVector) : base(inputVector.Length, 1)
-        {
-            for (int r = 0; r < Rows; r++)
-            {
-                Mat[r, 0] = inputVector[r];
-            }
-        }
 
-        public ColumnVector(int size) : base(size, 1) { }
+        public float[] Column { get; private set ; }
+
+        public ColumnVector(float[] inputVector)
+        {
+            this.Cols = 1;
+            this.Rows = inputVector.Length;
+            this.Column = inputVector;
+        }
+        public ColumnVector(int size)
+        { 
+            this.Column = new float[size];
+            this.Cols = 1;
+            this.Rows = this.Column.Length;
+        }
+        public float this[int i]
+        {
+            get { return this.Column[i]; }
+            set { this.Column[i] = value; }
+        }
+        public override float this[int r, int c]
+        {
+            get => Column[c];
+            set => Column[c] = value;
+        }
 
         public override float Sum()
         {
             float accum = 0;
             for(int r = 0; r < Rows; r++)
             {
-                accum += Mat[r, 0];
+                accum += this.Column[r];
             }
             return accum;
         }
 
-        public static Matrix operator *(ColumnVector left, RowVector right) => left.OuterProduct(right);
+        public static Matrix2D operator *(ColumnVector left, RowVector right) => left.OuterProduct(right);
 
-        private Matrix OuterProduct(RowVector right)
+        private Matrix2D OuterProduct(RowVector right)
         {
-            Matrix result = new Matrix(this.Size, right.Size);
+            Matrix2D result = new Matrix2D(this.Size, right.Size);
             for(int r = 0; r < this.Size; r++)
             {
                 for (int c = 0; c < right.Size; c++)
@@ -501,7 +547,7 @@ namespace NeuralNets
             return softMaxVector;
         }
 
-        public override ColumnVector Log()
+        public ColumnVector Log()
         {
             ColumnVector vector = new ColumnVector(this.Size);
             for(int i = 0;i < this.Size;i++)
@@ -509,40 +555,6 @@ namespace NeuralNets
                 vector[i] = (float)Math.Log(this[i]);
             }
             return vector;
-        }
-
-        public float this[int i]
-        {
-            get { return this.Mat[i, 0]; }
-            set { this.Mat[i, 0] = value; }
-        }
-    }
-
-    public class SquareMatrix : Matrix
-    {
-        public SquareMatrix(int d) : base(d, d)
-        {
-        }
-
-        public Matrix GetInvertedMatrix()
-        {
-            return null;
-        }
-
-        public float Determinant()
-        {
-            return 0;
-        }
-    }
-
-    public class IdendityMatrix : SquareMatrix
-    {
-        public IdendityMatrix(int d) : base(d)
-        {
-            for (int i = 0; i < d; i++)
-            {
-                this.Mat[i, i] = 1;
-            }
         }
     }
 

@@ -42,7 +42,7 @@ namespace NeuralNets
         protected IActivationFunction ActivationFunction {  get; private set; }
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed=12341324) : base(nodeCount)
         {
-            this.Initialize(activationFunction, incomingDataPoints, new Matrix(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
+            this.Initialize(activationFunction, incomingDataPoints, new Matrix2D(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
         }
@@ -51,13 +51,13 @@ namespace NeuralNets
             int nodeCount, 
             IActivationFunction activationFunction, 
             int incomingDataPoints,
-            Matrix initialWeights,
+            Matrix2D initialWeights,
             ColumnVector initialBiases) : base(nodeCount)
         {
             Initialize(activationFunction, incomingDataPoints, initialWeights, initialBiases);
         }
 
-        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, Matrix initialWeights, ColumnVector initialBiases)
+        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, Matrix2D initialWeights, ColumnVector initialBiases)
         {
             this.Weights = initialWeights;
             this.Biases = initialBiases;
@@ -87,29 +87,16 @@ namespace NeuralNets
 
         // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.
         // And the number of columns is the number of data points in a samples, for examle 768 b&w pixel values for the MNIST number set
-        public Matrix Weights { get; set; }
+        public Matrix2D Weights { get; set; }
         public ColumnVector Biases { get; set; }
-        //public Matrix WeightGradient { get; private set; } 
-       // public ColumnVector BiasGradient { get; private set; }
 
 
-/*        public void ScaleWeightAndBiasesGradient(float scaleFactor)
-        {
-            this.BiasGradient *= scaleFactor;
-            this.WeightGradient *= scaleFactor;
-        }*/
-
-        public void UpdateWeightsAndBiasesWithScaledGradients(Matrix weightGradient, ColumnVector biasGradient)
+        public void UpdateWeightsAndBiasesWithScaledGradients(Matrix2D weightGradient, ColumnVector biasGradient)
         {
             Weights = Weights - weightGradient;
             Biases = Biases - biasGradient;
         }
 
-/*        public void AccumulateGradients(Matrix weightGradient, ColumnVector biasGradient)
-        {
-            this.WeightGradient += weightGradient;
-            this.BiasGradient += biasGradient;
-        }*/
     }
 
     public class InputLayer : Layer 
