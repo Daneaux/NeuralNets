@@ -454,7 +454,8 @@ namespace NeuralNets
             // Matrix scaledGradientWeights = sigma * lastActivation.Transpose();
 
             // outer product:  o1s1 o2s1 o3s1 o4s1 ... onS1    o1s2 o2s2 o3s2 ... oNs2 
-            Matrix2D gradientDelta = sigma * lastActivation.Transpose();
+//            Matrix2D gradientDelta = sigma * lastActivation.Transpose();
+            Matrix2D gradientDelta = sigma.OuterProduct(lastActivation);
             return gradientDelta;
         }
 

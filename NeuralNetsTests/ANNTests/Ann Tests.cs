@@ -1,5 +1,6 @@
 ﻿using MatrixLibrary;
 using NeuralNets;
+using SharpTorch;
 
 namespace NeuralNetsTests.ANNTests
 {
@@ -117,6 +118,9 @@ namespace NeuralNetsTests.ANNTests
         [TestMethod]
         public void MattMazurExample()
         {
+            //SimpleNN snn = new SimpleNN(;)
+            SimpleNN.DoTrainOnePass();
+
             float trainingRate = 0.5F;
             int inputDim = 2;
             int batchSize = 1;
@@ -347,5 +351,113 @@ namespace NeuralNetsTests.ANNTests
             Console.WriteLine("done error is " + totLoss);
             Assert.AreEqual(totLoss, 2.4483375576262793E-06, 0.00000001);
         }
+
+        [TestMethod]
+        public void MattMazurExample_Softmax_comparePyTorch()
+        {
+            float trainingRate = 0.5f;
+            int inputDim = 2;
+            int batchSize = 1;
+            int outputDim = 2;
+
+            TrainingPair tp = new(new ColumnVector([0.05f, 0.10f]), new ColumnVector([0.01f, 0.99f]));
+
+            Matrix2D w1 = new Matrix2D(new float[,] {
+                { 0.15f, 0.2f },
+                { 0.25f, 0.30f }
+            });
+
+            Matrix2D w2 = new Matrix2D(new float[,] {
+                { 0.40f, 0.45f },
+                { 0.50f, 0.55f }
+            });
+
+            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
+            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
+
+
+            WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
+            WeightedLayer outputLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w2, b2);
+
+            MazurTrainingSet ts = new MazurTrainingSet(tp);
+
+            GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
+                new List<WeightedLayer> { hiddenLayer, outputLayer },
+                trainingRate,
+                inputDim,
+                outputDim,
+                new SquaredLoss());
+
+            RenderContext ctx = new RenderContext(ann, batchSize, ts);
+
+            float totLoss = 0;
+
+            ColumnVector finalOutput = ctx.FeedForward(tp.Input);
+
+            ColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
+            ColumnVector outputLayerActivation = ctx.ActivationContext[1];
+
+            Assert.AreEqual(0.593269992, hiddenLayerActivation[0], 0.000001);
+            Assert.AreEqual(0.596884378, hiddenLayerActivation[1], 0.000001);
+
+            Assert.AreEqual(0.75136507, outputLayerActivation[0], 0.000001);
+            Assert.AreEqual(0.772928465, outputLayerActivation[1], 0.000001);
+
+
+            totLoss = ann.GetTotallLoss(tp, finalOutput);
+            Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
+            Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
+
+            ColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
+            Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
+            Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
+
+            Assert.AreEqual(0.298371109, totLoss, 0.00001);
+
+            //
+            // Do backprop
+            //
+
+            RenderContext parentContext = new RenderContext(ann, 1, ts);
+            RenderContext.BatchTrain(parentContext, 1);
+
+            Assert.AreEqual(outputLayer.Weights[0, 0], 0.35891648, 0.00001);
+            Assert.AreEqual(outputLayer.Weights[0, 1], 0.408666186, 0.00001);
+            Assert.AreEqual(outputLayer.Weights[1, 0], 0.51130270, 0.00001);
+            Assert.AreEqual(outputLayer.Weights[1, 1], 0.561370121, 0.00001);
+
+            Assert.AreEqual(hiddenLayer.Weights[0, 0], 0.149780716, 0.00001);
+            Assert.AreEqual(hiddenLayer.Weights[0, 1], 0.19956143, 0.00001);
+            Assert.AreEqual(hiddenLayer.Weights[1, 0], 0.24975114, 0.00001);
+            Assert.AreEqual(hiddenLayer.Weights[1, 1], 0.29950229, 0.00001);
+
+
+            //
+            // feed forward and test total loss
+            //
+            RenderContext ctx3 = new RenderContext(ann, 1, ts);
+            finalOutput = ctx3.FeedForward(tp.Input);
+            totLoss = ann.GetTotallLoss(tp, finalOutput);
+            Assert.AreEqual(0.28047, totLoss, 0.001);
+
+            Console.WriteLine("done error is " + totLoss);
+
+            totLoss = 0;
+            for (int i = 0; i < 10000; i++)
+            {
+                RenderContext ctx4 = new RenderContext(ann, 1, ts);
+                RenderContext.BatchTrain(ctx4, 1);
+            }
+
+            {
+                RenderContext ctx4 = new RenderContext(ann, 1, ts);
+                ColumnVector pout = ctx4.FeedForward(tp.Input);
+                totLoss = ctx4.Network.GetTotallLoss(tp, pout);
+            }
+
+            Console.WriteLine("done error is " + totLoss);
+            Assert.AreEqual(totLoss, 2.4483375576262793E-06, 0.00000001);
+        }
+
     }
 }

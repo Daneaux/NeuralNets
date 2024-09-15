@@ -18,12 +18,16 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
     <PackageReference Include="MSTest.TestAdapter" Version="3.5.2" />
     <PackageReference Include="MSTest.TestFramework" Version="3.5.2" />
+    <PackageReference Include="TorchSharp" Version="0.103.0" />
+    <PackageReference Include="TorchSharp-cpu" Version="0.103.0" />
+    <PackageReference Include="TorchVision" Version="0.103.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\IntrinsicMatrix\MatrixLibrary.csproj" />
     <ProjectReference Include="..\MnistReader_ANN\MnistReader_ANN.csproj" />
     <ProjectReference Include="..\NeuralNets\NeuralNets.csproj" />
+    <ProjectReference Include="..\SharpTorch\SharpTorch.csproj" />
   </ItemGroup>
 
   <ItemGroup>
