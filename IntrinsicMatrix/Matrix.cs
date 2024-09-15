@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Runtime.Intrinsics;
 using System.Text;
 
 namespace MatrixLibrary
@@ -76,41 +77,49 @@ namespace MatrixLibrary
             Mat = new float[Rows, Cols];
         }
 
-/*        protected Matrix2D(int rows, int cols, bool singleD)
-        {
-            Debug.Assert(singleD == true);  // so lame
-            Rows = rows;
-            Cols = cols;
-            Mat = null;
-        }*/
-
-        /*        public Matrix(float[] inputVector) : this(inputVector.Length, 1)
-                {
-                    for (int r = 0; r < Rows; r++)
-                    {
-                        Mat[r, 0] = inputVector[r];
-                    }
-                }*/
-
-/*        public Matrix2D(ColumnVector[] columns, int numRows) : this(numRows, columns.Length)
-        {
-            int c = 0;
-            foreach(ColumnVector col in columns)
-            {
-                for(int r= 0; r<col.Size; r++)
-                {
-                    this[r, c] = col[r];
-                }
-                c++;
-            }
-        }*/
-
         public Matrix2D(float[,] m)
         {
             Rows = m.GetLength(0);
             Cols = m.GetLength(1);
             this.Mat = m; // no deep copy, better not change my matrix dude!
         }
+
+        public unsafe Matrix2D Convolution(Matrix2D filter)
+        {
+            // slide a 4x4 filter across this matrix.
+            // resulting matrix dimensions are: lhx - filter.x + 1 
+
+            Debug.Assert(filter != null);
+            Debug.Assert(filter.Rows < this.Rows);
+            Debug.Assert(filter.Cols < this.Cols);
+
+            int destWidth = this.Cols - filter.Cols + 1;
+            int destHeight = this.Rows - filter.Rows + 1;
+            Matrix2D result = new Matrix2D(destHeight, destWidth);
+
+            int stride = this.Cols;
+
+            for (int t = 0; t < destHeight; t++)
+            {
+                for (int l = 0; l < destWidth; l++)
+                {
+                    int srcx = l;
+                    int srcy = t;
+
+                    for (int r = 0; r < filter.Rows; r++, srcy++)
+                    {
+                        srcx = l;
+                        for (int c = 0; c < filter.Cols; c++, srcx++)
+                        {
+                            result[t, l] += filter[r, c] * this[srcy, srcx];
+                        }
+                    }
+                }
+            }
+
+            return result;
+        }
+
         public virtual Matrix2D Log()
         {
             Matrix2D logMat = new Matrix2D(this.Cols, this.Rows);
@@ -123,6 +132,8 @@ namespace MatrixLibrary
             }
             return logMat;
         }
+
+
 
         public static Matrix2D operator +(Matrix2D a, Matrix2D b) => a.Add(b);
 
@@ -338,4 +349,5 @@ namespace MatrixLibrary
         }
     }
 }
+
 

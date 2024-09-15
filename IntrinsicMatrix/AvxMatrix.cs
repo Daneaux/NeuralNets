@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using SkiaSharp;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -285,6 +286,63 @@ namespace MatrixLibrary
                         v1DotCol += (*mat1) * (*col1);
                     }
                     *destCol = v1DotCol;
+                }
+            }
+
+            return result;
+        }
+
+        public unsafe AvxMatrix Convolution(AvxMatrix filter)
+        {
+            // slide a 4x4 filter across this matrix.
+            // resulting matrix dimensions are: lhx - filter.x + 1 
+
+            Debug.Assert(filter != null);
+            Debug.Assert(filter.Rows == 4);
+            Debug.Assert(filter.Cols == 4);
+            Debug.Assert(filter.Rows > this.Rows);
+            Debug.Assert(filter.Cols > this.Cols);
+
+            int width = this.Cols - filter.Cols + 1;
+            int height = this.Rows - filter.Rows + 1;
+            AvxMatrix result = new AvxMatrix(height, width);
+
+            int stride = this.Cols;
+
+            fixed (float* filterM = filter.Mat,
+                          r1 = result.Mat,
+                          src = this.Mat)
+            {
+                float* resultPtr = r1;
+                float* srcPtr = src;
+
+                // load filter
+                Vector128<float> fv1 = Vector128.Load<float>(filterM);
+                Vector128<float> fv2 = Vector128.Load<float>(filterM + 4);
+                Vector128<float> fv3 = Vector128.Load<float>(filterM + 8);
+                Vector128<float> fv4 = Vector128.Load<float>(filterM + 12);
+                for (int t = 0; t < height; t++)
+                {
+                    for (int l = 0; l < width; l++, resultPtr++)
+                    {
+                        // load convolution target tile
+                        // top left 1d float pointer
+                        float* topLeft = srcPtr + (t * stride + l);
+                        Vector128<float> v1 = Vector128.Load<float>(topLeft);
+                        topLeft += stride;
+                        Vector128<float> v2 = Vector128.Load<float>(topLeft);
+                        topLeft += stride;
+                        Vector128<float> v3 = Vector128.Load<float>(topLeft);
+                        topLeft += stride;
+                        Vector128<float> v4 = Vector128.Load<float>(topLeft);
+
+                        float s1 = Vector128.Dot<float>(v1, fv1);
+                        float s2 = Vector128.Dot<float>(v2, fv2);
+                        float s3 = Vector128.Dot<float>(v3, fv3);
+                        float s4 = Vector128.Dot<float>(v4, fv4);
+
+                        *resultPtr = s1 + s2 + s3 + s4;
+                    }
                 }
             }
 

@@ -16,9 +16,11 @@ public class IntrinsicsBenchmarks
     private AvxMatrix m1;
     private AvxMatrix m2;
     private AvxMatrix m2T;
+    private AvxMatrix filterAvx;
 
     private Matrix2D nm1;
     private Matrix2D nm2;
+    private Matrix2D filterMat2d;
     [GlobalSetup]
     public void Setup()
     {
@@ -39,11 +41,32 @@ public class IntrinsicsBenchmarks
 
         var T = nm2.GetTransposedMatrix();
         m2T = new AvxMatrix(T.Mat);
+
+        float[,] filter = new float[4, 4]{
+            { 1, 1.5f, -1, 0 },
+            { 0, 1, 1.5f, -1 },
+            { -1, 0, 1.4f, 0 },
+            { 0, -1.1f, 2f, 1 }};
+
+        filterAvx = new AvxMatrix(filter);
+        filterMat2d = new Matrix2D(filter);
     }
 
     [GlobalCleanup]
     public void GlobalCleanup()
     {
+    }
+
+    [Benchmark]
+    public void NaiveConvolution()
+    {
+        Matrix2D m3 = nm1.Convolution(filterMat2d);
+    }
+
+    [Benchmark]
+    public void AvxConvolution()
+    {
+        AvxMatrix m3 = m1.Convolution(filterAvx);
     }
 
     [Benchmark]

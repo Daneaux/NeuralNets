@@ -428,5 +428,78 @@ namespace NeuralNetsTests.Math
                 }
             }
         }
+
+        [TestMethod]
+        public void Convolution()
+        {
+            // todo test row and column vectors
+
+            // Create a 10x12 source matrix
+            float[,] source = new float[10, 12];
+            for (int i = 0; i < 10; i++)
+            {
+                for (int j = 0; j < 12; j++)
+                {
+                    source[i, j] = i * 12 + j + 1;
+                }
+            }
+
+            // Create a 4x4 filter
+            float[,] filter = new float[4, 4]
+            {
+            { 1, 0, -1, 0 },
+            { 0, 1, 0, -1 },
+            { -1, 0, 1, 0 },
+            { 0, -1, 0, 1 }
+            };
+
+            // Calculate expected output dimensions
+            int outputRows = source.GetLength(0) - filter.GetLength(0) + 1;
+            int outputCols = source.GetLength(1) - filter.GetLength(1) + 1;
+
+            // Create expected output matrix
+            float[,] expectedOutput = new float[outputRows, outputCols];
+
+            // Calculate expected output
+            for (int i = 0; i < outputRows; i++)
+            {
+                for (int j = 0; j < outputCols; j++)
+                {
+                    float sum = 0;
+                    for (int m = 0; m < 4; m++)
+                    {
+                        for (int n = 0; n < 4; n++)
+                        {
+                            sum += source[i + m, j + n] * filter[m, n];
+                        }
+                    }
+                    expectedOutput[i, j] = sum;
+                }
+            }
+
+            // TODO: Replace this line with a call to your convolution operator
+            AvxMatrix lhs = new AvxMatrix(source);
+            AvxMatrix rhs = new AvxMatrix(filter);
+            AvxMatrix result = lhs.Convolution(rhs);
+
+            // Verify the output
+            VerifyOutput(expectedOutput, result.Mat);
+        }
+
+        static void VerifyOutput(float[,] expected, float[,] actual)
+        {
+            Assert.AreEqual(expected.GetLength(0), actual.GetLength(0));
+            Assert.AreEqual(expected.GetLength(1), actual.GetLength(1));
+
+            for (int i = 0; i < expected.GetLength(0); i++)
+            {
+                for (int j = 0; j < expected.GetLength(1); j++)
+                {
+                    Assert.AreEqual(expected[i, j], actual[i, j], 0.00001);
+                }
+            }
+        }
+
+
     }
 }
