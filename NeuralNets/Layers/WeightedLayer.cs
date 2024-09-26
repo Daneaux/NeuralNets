@@ -1,29 +1,13 @@
 ﻿using MatrixLibrary;
-using NeuralNets.Network;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace NeuralNets
 {
-    public abstract class Layer
-    {
-        public int IncomingDataPoints { get; }
-        public int NumNodes { get; private set; }
-        public IActivationFunction ActivationFunction { get; private set; }
-
-        public abstract Tensor FeedFoward(Tensor input);
-
-        protected Layer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324)
-        {
-            this.NumNodes = nodeCount;
-            ActivationFunction = activationFunction;
-            IncomingDataPoints = incomingDataPoints;
-        }
-
-        public abstract void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient);
-    }
-
-
     /// <summary>
     /// Weighter Layer contains:
     /// - The weights of all the incoming edges (weight matrix)
@@ -38,7 +22,6 @@ namespace NeuralNets
     {
         public AvxMatrix Weights { get; set; }
         public AvxColumnVector Biases { get; set; }
-
         public bool IsSoftMaxActivation
         {
             get
@@ -46,14 +29,12 @@ namespace NeuralNets
                 return this.ActivationFunction is SoftMax;
             }
         }
-
         public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324) : base(nodeCount, activationFunction, incomingDataPoints, randomSeed)
         {
             this.Initialize(activationFunction, incomingDataPoints, new AvxMatrix(nodeCount, incomingDataPoints), new AvxColumnVector(nodeCount));
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
         }
-
         public WeightedLayer(
             int nodeCount,
             IActivationFunction activationFunction,
@@ -63,7 +44,6 @@ namespace NeuralNets
         {
             Initialize(activationFunction, incomingDataPoints, initialWeights, initialBiases);
         }
-
         private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, AvxMatrix initialWeights, AvxColumnVector initialBiases)
         {
             this.Weights = initialWeights;
@@ -73,22 +53,19 @@ namespace NeuralNets
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == incomingDataPoints);
         }
-
         public AvxColumnVector Activate(AvxColumnVector input)
         {
             return ActivationFunction.Activate(input);
         }
-
         public AvxColumnVector Derivative(AvxColumnVector lastActivation)
         {
             AvxColumnVector derivative = ActivationFunction.Derivative(lastActivation);
             return derivative;
         }
-
         public override Tensor FeedFoward(Tensor input)
         {
             AnnTensor annTensor = input as AnnTensor;
-            if(annTensor == null)
+            if (annTensor == null)
             {
                 throw new ArgumentException("expected AnnTensor as input");
             }
@@ -97,7 +74,6 @@ namespace NeuralNets
             AvxColumnVector O = this.ActivationFunction.Activate(Z);
             return new AnnTensor(null, O);
         }
-
         public override void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient)
         {
             AnnTensor ctBiases = biasGradient as AnnTensor;
@@ -109,7 +85,6 @@ namespace NeuralNets
 
             this.UpdateWeightsAndBiasesWithScaledGradients(ctWeights.Matrix, ctBiases.ColumnVector);
         }
-
         private void UpdateWeightsAndBiasesWithScaledGradients(AvxMatrix weightGradient, AvxColumnVector biasGradient)
         {
             Weights = Weights - weightGradient;

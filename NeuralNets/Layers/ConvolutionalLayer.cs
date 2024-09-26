@@ -1,7 +1,7 @@
 ﻿using MatrixLibrary;
 using System.Diagnostics;
 
-namespace NeuralNets.Network
+namespace NeuralNets
 {
     // Note: here we use "weights" but that's really filters, the little NxN matrices we use to convole the incoming stacked matrices
     // note bug bug: Inputs can be lists of matrices of depth N, which means a list of a stack of matrices.

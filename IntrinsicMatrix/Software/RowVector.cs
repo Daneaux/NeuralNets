@@ -5,7 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace MatrixLibrary
-{    public class RowVector : Matrix_Base
+{
+    public class RowVector : Matrix_Base
     {
         public float[] Row { get; private set; }
         public int Size { get { return this.Cols; } }
