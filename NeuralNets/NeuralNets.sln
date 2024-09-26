@@ -15,7 +15,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MatrixLibrary", "..\Intrins
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BenchmarkHarness", "..\BenchmarkHarness\BenchmarkHarness.csproj", "{3266962C-5CBD-4CEF-84EC-92573B800144}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpTorch", "..\SharpTorch\SharpTorch.csproj", "{39F4F47F-969F-4E92-A400-4B269F681480}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpTorch", "..\SharpTorch\SharpTorch.csproj", "{39F4F47F-969F-4E92-A400-4B269F681480}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TypeExperiments", "..\TypeExperiments\TypeExperiments.csproj", "{59EEF7DC-5125-4FD0-ADEC-F6F23B64BFE3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +53,10 @@ Global
 		{39F4F47F-969F-4E92-A400-4B269F681480}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{39F4F47F-969F-4E92-A400-4B269F681480}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{39F4F47F-969F-4E92-A400-4B269F681480}.Release|Any CPU.Build.0 = Release|Any CPU
+		{59EEF7DC-5125-4FD0-ADEC-F6F23B64BFE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{59EEF7DC-5125-4FD0-ADEC-F6F23B64BFE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{59EEF7DC-5125-4FD0-ADEC-F6F23B64BFE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{59EEF7DC-5125-4FD0-ADEC-F6F23B64BFE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -41,7 +41,7 @@ namespace NeuralNetsTests.ANNTests
                 {
                     x = (float)(rnd.NextDouble() * 2 * System.Math.PI) * range;
                     float sinx = (float)System.Math.Sin(x);
-                    trainingPairs.Add(new TrainingPair(new ColumnVector([x]), new ColumnVector([sinx])));
+                    trainingPairs.Add(new TrainingPair(new AvxColumnVector([x]), new AvxColumnVector([sinx])));
                 }
                 this.TrainingList = trainingPairs;
                 return trainingPairs;
@@ -64,7 +64,7 @@ namespace NeuralNetsTests.ANNTests
             int trainingSamples = 40000;
             ITrainingSet ts = new SineWaveTrainingSet(trainingSamples, 0.001F, 09870987);
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
-                new List<WeightedLayer> { hiddenLayer1, hiddenLayer2, outputLayer },
+                new List<Layer> { hiddenLayer1, hiddenLayer2, outputLayer },
                 trainingRate,
                 inputDim,
                 outputDim,
@@ -81,8 +81,8 @@ namespace NeuralNetsTests.ANNTests
             for (int i = 0; i < testSamples; i++)
             {
                 RenderContext lossCtx = new RenderContext(ann, 1, ts2);
-                ColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
-                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction);
+                AvxColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
+                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction.ToColumnVector());
             }
 
             averageLoss /= testSamples;
@@ -111,7 +111,7 @@ namespace NeuralNetsTests.ANNTests
 
             public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
-                return new List<TrainingPair> { new(new ColumnVector([0.05F, 0.10F]), new ColumnVector([0.01F, 0.99F])) };
+                return new List<TrainingPair> { new(new AvxColumnVector([0.05F, 0.10F]), new AvxColumnVector([0.01F, 0.99F])) };
             }
         }
 
@@ -126,20 +126,20 @@ namespace NeuralNetsTests.ANNTests
             int batchSize = 1;
             int outputDim = 2;
 
-            TrainingPair tp = new(new ColumnVector([0.05F, 0.10F]), new ColumnVector([0.01F, 0.99F]));
+            TrainingPair tp = new(new AvxColumnVector([0.05F, 0.10F]), new AvxColumnVector([0.01F, 0.99F]));
 
-            Matrix2D w1 = new Matrix2D(new float[,] {
+            AvxMatrix w1 = new AvxMatrix(new float[,] {
                 { 0.15F, 0.2F },
                 { 0.25F, 0.30F }
             });
 
-            Matrix2D w2 = new Matrix2D(new float[,] {
+            AvxMatrix w2 = new AvxMatrix(new float[,] {
                 { 0.40f, 0.45f },
                 { 0.50f, 0.55f }
             });
 
-            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
-            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
+            AvxColumnVector b1 = new AvxColumnVector(new float[] { 0.35f, 0.35f });
+            AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
 
             WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
@@ -148,7 +148,7 @@ namespace NeuralNetsTests.ANNTests
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
-                new List<WeightedLayer> { hiddenLayer, outputLayer },
+                new List<Layer> { hiddenLayer, outputLayer },
                 trainingRate,
                 inputDim,
                 outputDim,
@@ -158,10 +158,10 @@ namespace NeuralNetsTests.ANNTests
 
             float totLoss = 0;
 
-            ColumnVector finalOutput = ctx.FeedForward(tp.Input);
+            AvxColumnVector finalOutput = ctx.FeedForward(tp.Input);
 
-            ColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
-            ColumnVector outputLayerActivation = ctx.ActivationContext[1];
+            AvxColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
+            AvxColumnVector outputLayerActivation = ctx.ActivationContext[1];
 
             Assert.AreEqual(0.593269992, hiddenLayerActivation[0], 0.000001);
             Assert.AreEqual(0.596884378, hiddenLayerActivation[1], 0.000001);
@@ -170,11 +170,11 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.772928465, outputLayerActivation[1], 0.000001);
 
 
-            totLoss = ann.GetTotallLoss(tp, finalOutput);
+            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            ColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
+            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput.ToColumnVector()).ToAvxVector();
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -205,12 +205,12 @@ namespace NeuralNetsTests.ANNTests
             float z1 = hiddenLayer.Weights[0, 0] * tp.Input[0] + hiddenLayer.Weights[0, 1] * tp.Input[1] + hiddenLayer.Biases[0];
             float z2 = hiddenLayer.Weights[1, 0] * tp.Input[0] + hiddenLayer.Weights[1, 1] * tp.Input[1] + hiddenLayer.Biases[1];
 
-            ColumnVector a = hiddenLayer.Activate(new ColumnVector([z1, z2]));
+            AvxColumnVector a = hiddenLayer.Activate(new AvxColumnVector([z1, z2]));
 
             float oz1 = outputLayer.Weights[0, 0] * a[0] + outputLayer.Weights[0, 1] * a[1] + outputLayer.Biases[0];
             float oz2 = outputLayer.Weights[1, 0] * a[0] + outputLayer.Weights[1, 1] * a[1] + outputLayer.Biases[1];
 
-            ColumnVector oa = outputLayer.Activate(new ColumnVector([oz1, oz2]));
+            AvxColumnVector oa = outputLayer.Activate(new AvxColumnVector([oz1, oz2]));
 
             // truth - predicted
             float error1 = 0.5f * (tp.Output[0] - oa[0]) * (tp.Output[0] - oa[0]);
@@ -224,7 +224,7 @@ namespace NeuralNetsTests.ANNTests
             //
             RenderContext ctx3 = new RenderContext(ann, 1, ts);
             finalOutput = ctx3.FeedForward(tp.Input);
-            totLoss = ann.GetTotallLoss(tp, finalOutput);
+            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
             Assert.AreEqual(0.28047, totLoss, 0.001);
             Console.WriteLine("done error is " + totLoss);
 
@@ -236,8 +236,8 @@ namespace NeuralNetsTests.ANNTests
 
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                ColumnVector pout = ctx4.FeedForward(tp.Input);
-                totLoss = ctx4.Network.GetTotallLoss(tp, pout);
+                AvxColumnVector pout = ctx4.FeedForward(tp.Input);
+                totLoss = ctx4.Network.GetTotallLoss(tp, pout.ToColumnVector());
             }
 
             Console.WriteLine("done error is " + totLoss);
@@ -253,20 +253,20 @@ namespace NeuralNetsTests.ANNTests
             int batchSize = 1;
             int outputDim = 2;
 
-            TrainingPair tp = new(new ColumnVector([0.05f, 0.10f]), new ColumnVector([0.01f, 0.99f]));
+            TrainingPair tp = new(new AvxColumnVector([0.05f, 0.10f]), new AvxColumnVector([0.01f, 0.99f]));
 
-            Matrix2D w1 = new Matrix2D(new float[,] {
+            AvxMatrix w1 = new AvxMatrix(new float[,] {
                 { 0.15f, 0.2f },
                 { 0.25f, 0.30f }
             });
 
-            Matrix2D w2 = new Matrix2D(new float[,] {
+            AvxMatrix w2 = new AvxMatrix(new float[,] {
                 { 0.40f, 0.45f },
                 { 0.50f, 0.55f }
             });
 
-            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
-            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
+            AvxColumnVector b1 = new AvxColumnVector(new float[] { 0.35f, 0.35f });
+            AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
 
             WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
@@ -275,7 +275,7 @@ namespace NeuralNetsTests.ANNTests
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
-                new List<WeightedLayer> { hiddenLayer, outputLayer },
+                new List<Layer> { hiddenLayer, outputLayer },
                 trainingRate,
                 inputDim,
                 outputDim,
@@ -285,10 +285,10 @@ namespace NeuralNetsTests.ANNTests
 
             float totLoss = 0;
 
-            ColumnVector finalOutput = ctx.FeedForward(tp.Input);
+            AvxColumnVector finalOutput = ctx.FeedForward(tp.Input);
 
-            ColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
-            ColumnVector outputLayerActivation = ctx.ActivationContext[1];
+            AvxColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
+            AvxColumnVector outputLayerActivation = ctx.ActivationContext[1];
 
             Assert.AreEqual(0.593269992, hiddenLayerActivation[0], 0.000001);
             Assert.AreEqual(0.596884378, hiddenLayerActivation[1], 0.000001);
@@ -301,7 +301,7 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            ColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
+            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput.ToColumnVector()).ToAvxVector();
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -330,7 +330,7 @@ namespace NeuralNetsTests.ANNTests
             //
             RenderContext ctx3 = new RenderContext(ann, 1, ts);
             finalOutput = ctx3.FeedForward(tp.Input);
-            totLoss = ann.GetTotallLoss(tp, finalOutput);
+            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
             Assert.AreEqual(0.28047, totLoss, 0.001);
 
             Console.WriteLine("done error is " + totLoss);
@@ -344,7 +344,7 @@ namespace NeuralNetsTests.ANNTests
 
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                ColumnVector pout = ctx4.FeedForward(tp.Input);
+                AvxColumnVector pout = ctx4.FeedForward(tp.Input);
                 totLoss = ctx4.Network.GetTotallLoss(tp, pout);
             }
 
@@ -360,20 +360,20 @@ namespace NeuralNetsTests.ANNTests
             int batchSize = 1;
             int outputDim = 2;
 
-            TrainingPair tp = new(new ColumnVector([0.05f, 0.10f]), new ColumnVector([0.01f, 0.99f]));
+            TrainingPair tp = new(new AvxColumnVector([0.05f, 0.10f]), new AvxColumnVector([0.01f, 0.99f]));
 
-            Matrix2D w1 = new Matrix2D(new float[,] {
+            AvxMatrix w1 = new AvxMatrix(new float[,] {
                 { 0.15f, 0.2f },
                 { 0.25f, 0.30f }
             });
 
-            Matrix2D w2 = new Matrix2D(new float[,] {
+            AvxMatrix w2 = new AvxMatrix(new float[,] {
                 { 0.40f, 0.45f },
                 { 0.50f, 0.55f }
             });
 
-            ColumnVector b1 = new ColumnVector(new float[] { 0.35f, 0.35f });
-            ColumnVector b2 = new ColumnVector(new float[] { 0.60f, 0.60f });
+            AvxColumnVector b1 = new AvxColumnVector(new float[] { 0.35f, 0.35f });
+            AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
 
             WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
@@ -382,7 +382,7 @@ namespace NeuralNetsTests.ANNTests
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 
             GeneralFeedForwardANN ann = new GeneralFeedForwardANN(
-                new List<WeightedLayer> { hiddenLayer, outputLayer },
+                new List<Layer> { hiddenLayer, outputLayer },
                 trainingRate,
                 inputDim,
                 outputDim,
@@ -392,10 +392,10 @@ namespace NeuralNetsTests.ANNTests
 
             float totLoss = 0;
 
-            ColumnVector finalOutput = ctx.FeedForward(tp.Input);
+            AvxColumnVector finalOutput = ctx.FeedForward(tp.Input);
 
-            ColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
-            ColumnVector outputLayerActivation = ctx.ActivationContext[1];
+            AvxColumnVector hiddenLayerActivation = ctx.ActivationContext[0];
+            AvxColumnVector outputLayerActivation = ctx.ActivationContext[1];
 
             Assert.AreEqual(0.593269992, hiddenLayerActivation[0], 0.000001);
             Assert.AreEqual(0.596884378, hiddenLayerActivation[1], 0.000001);
@@ -408,7 +408,7 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            ColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
+            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -451,7 +451,7 @@ namespace NeuralNetsTests.ANNTests
 
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                ColumnVector pout = ctx4.FeedForward(tp.Input);
+                AvxColumnVector pout = ctx4.FeedForward(tp.Input);
                 totLoss = ctx4.Network.GetTotallLoss(tp, pout);
             }
 

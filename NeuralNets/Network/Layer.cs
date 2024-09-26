@@ -1,18 +1,29 @@
 ﻿using MatrixLibrary;
+using NeuralNets.Network;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace NeuralNets
 {
-    public class Layer
+    public abstract class Layer
     {
+        public int IncomingDataPoints { get; }
         public int NumNodes { get; private set; }
+        public IActivationFunction ActivationFunction { get; private set; }
 
-        protected Layer(int nodeCount)
+        public abstract Tensor FeedFoward(Tensor input);
+
+        protected Layer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324)
         {
             this.NumNodes = nodeCount;
+            ActivationFunction = activationFunction;
+            IncomingDataPoints = incomingDataPoints;
         }
+
+        public abstract void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient);
     }
-    
+
+
     /// <summary>
     /// Weighter Layer contains:
     /// - The weights of all the incoming edges (weight matrix)
@@ -25,6 +36,9 @@ namespace NeuralNets
     /// </summary>
     public class WeightedLayer : Layer
     {
+        public AvxMatrix Weights { get; set; }
+        public AvxColumnVector Biases { get; set; }
+
         public bool IsSoftMaxActivation
         {
             get
@@ -33,78 +47,73 @@ namespace NeuralNets
             }
         }
 
-        protected IActivationFunction ActivationFunction {  get; private set; }
-        public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed=12341324) : base(nodeCount)
+        public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324) : base(nodeCount, activationFunction, incomingDataPoints, randomSeed)
         {
-            this.Initialize(activationFunction, incomingDataPoints, new Matrix2D(nodeCount, incomingDataPoints), new ColumnVector(nodeCount));
+            this.Initialize(activationFunction, incomingDataPoints, new AvxMatrix(nodeCount, incomingDataPoints), new AvxColumnVector(nodeCount));
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
         }
 
         public WeightedLayer(
-            int nodeCount, 
-            IActivationFunction activationFunction, 
+            int nodeCount,
+            IActivationFunction activationFunction,
             int incomingDataPoints,
-            Matrix2D initialWeights,
-            ColumnVector initialBiases) : base(nodeCount)
+            AvxMatrix initialWeights,
+            AvxColumnVector initialBiases) : base(nodeCount, activationFunction, incomingDataPoints)
         {
             Initialize(activationFunction, incomingDataPoints, initialWeights, initialBiases);
         }
 
-        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, Matrix2D initialWeights, ColumnVector initialBiases)
+        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, AvxMatrix initialWeights, AvxColumnVector initialBiases)
         {
             this.Weights = initialWeights;
             this.Biases = initialBiases;
 
             Debug.Assert(activationFunction != null);
-            this.ActivationFunction = activationFunction;
-
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == incomingDataPoints);
-
-           // this.LastSigma = null;
-           // this.BiasGradient = new ColumnVector(this.NumNodes);
-           // this.WeightGradient = new Matrix(this.Weights.Rows, this.Weights.Cols);
         }
 
-        public ColumnVector Activate(ColumnVector input)
+        public AvxColumnVector Activate(AvxColumnVector input)
         {
             return ActivationFunction.Activate(input);
         }
 
-        public ColumnVector Derivative(ColumnVector lastActivation)
+        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
         {
-            ColumnVector derivative = ActivationFunction.Derivative(lastActivation);
-
+            AvxColumnVector derivative = ActivationFunction.Derivative(lastActivation);
             return derivative;
         }
 
-        // Weight matrix is for one sample, and the number of rows corresponds to the number of hidden layer nodes, for example 16.
-        // And the number of columns is the number of data points in a samples, for examle 768 b&w pixel values for the MNIST number set
-        public Matrix2D Weights { get; set; }
-        public ColumnVector Biases { get; set; }
+        public override Tensor FeedFoward(Tensor input)
+        {
+            AnnTensor annTensor = input as AnnTensor;
+            if(annTensor == null)
+            {
+                throw new ArgumentException("expected AnnTensor as input");
+            }
+            AvxColumnVector vectorInput = annTensor.ColumnVector;
+            AvxColumnVector Z = Weights * vectorInput + Biases;
+            AvxColumnVector O = this.ActivationFunction.Activate(Z);
+            return new AnnTensor(null, O);
+        }
 
+        public override void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient)
+        {
+            AnnTensor ctBiases = biasGradient as AnnTensor;
+            AnnTensor ctWeights = weightGradient as AnnTensor;
+            if (ctWeights == null || ctBiases == null)
+            {
+                throw new ArgumentException("Expectd ConvolutionTensor");
+            }
 
-        public void UpdateWeightsAndBiasesWithScaledGradients(Matrix2D weightGradient, ColumnVector biasGradient)
+            this.UpdateWeightsAndBiasesWithScaledGradients(ctWeights.Matrix, ctBiases.ColumnVector);
+        }
+
+        private void UpdateWeightsAndBiasesWithScaledGradients(AvxMatrix weightGradient, AvxColumnVector biasGradient)
         {
             Weights = Weights - weightGradient;
             Biases = Biases - biasGradient;
         }
-
     }
-
-    public class InputLayer : Layer 
-    { 
-        public InputLayer(int nodeCount) : base(nodeCount)
-        {
-        }
-
-        public InputLayer(ColumnVector valueVector) : base(valueVector.Size)
-        {
-            ValueVector = valueVector;
-        }
-
-        public ColumnVector ValueVector { get; internal set; }
-    }
-
 }

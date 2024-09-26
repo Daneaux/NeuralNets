@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MatrixLibrary
 {
-    public static class Extension
+    public static class MatrixExtensions
     {
         public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)
         {
@@ -93,15 +93,14 @@ namespace MatrixLibrary
             Debug.Assert(filter.Rows < this.Rows);
             Debug.Assert(filter.Cols < this.Cols);
 
-            int destWidth = this.Cols - filter.Cols + 1;
-            int destHeight = this.Rows - filter.Rows + 1;
-            Matrix2D result = new Matrix2D(destHeight, destWidth);
+            (int rows, int cols) = Matrix2D.ConvolutionSizeHelper(this, filter);
+            Matrix2D result = new Matrix2D(rows, cols);
 
             int stride = this.Cols;
 
-            for (int t = 0; t < destHeight; t++)
+            for (int t = 0; t < rows; t++)
             {
-                for (int l = 0; l < destWidth; l++)
+                for (int l = 0; l < cols; l++)
                 {
                     int srcx = l;
                     int srcy = t;
@@ -118,6 +117,12 @@ namespace MatrixLibrary
             }
 
             return result;
+        }
+        public static (int r, int c) ConvolutionSizeHelper(Matrix2D matrix, Matrix2D filter)
+        {
+            int cols = matrix.Cols - filter.Cols + 1;
+            int rows = matrix.Rows - filter.Rows + 1;
+            return (rows, cols);
         }
 
         public virtual Matrix2D Log()

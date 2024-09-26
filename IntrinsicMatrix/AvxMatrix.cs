@@ -1,5 +1,6 @@
 ﻿using SkiaSharp;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -22,6 +23,78 @@ namespace MatrixLibrary
         {
             this.column = new float[size];
         }
+
+        public static AvxColumnVector operator +(AvxColumnVector vec, float scalar) => vec.ScalarAddition(scalar);
+        public static AvxColumnVector operator +(float scalar, AvxColumnVector vec) => vec.ScalarAddition(scalar);
+        public static AvxColumnVector operator -(AvxColumnVector vec, float scalar) => vec.ScalarAddition(-scalar);
+
+        private unsafe AvxColumnVector ScalarAddition(float scalar)
+        {
+            AvxColumnVector lhs = this;
+            AvxColumnVector result = new AvxColumnVector(lhs.Size);
+            const int vector512Floats = 16;
+
+            int vecSize = lhs.Size / vector512Floats;
+            int vecRemainder = lhs.Size % vector512Floats;
+
+            fixed (float* av = lhs.Column,
+                          rv = result.Column)
+            {
+                float* col1 = av;
+                float* destCol = rv;
+
+                for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Create<float>(scalar);
+                    Vector512<float> v3 = Avx512F.Add(v1, v2);
+                    Vector512.Store<float>(v3, destCol);
+                }
+
+                // remainder
+                for (int i = 0; i < vecRemainder; i++, col1++, destCol++)
+                {
+                    *destCol = *col1 + scalar;
+                }
+            }
+
+            return result;
+        }
+
+        public static AvxColumnVector operator -(float scalar, AvxColumnVector vec) => vec.ScalarSubtract(scalar);
+        private unsafe AvxColumnVector ScalarSubtract(float scalar)
+        {
+            AvxColumnVector lhs = this;
+            AvxColumnVector result = new AvxColumnVector(lhs.Size);
+            const int vector512Floats = 16;
+
+            int vecSize = lhs.Size / vector512Floats;
+            int vecRemainder = lhs.Size % vector512Floats;
+
+            fixed (float* av = lhs.Column,
+                          rv = result.Column)
+            {
+                float* col1 = av;
+                float* destCol = rv;
+
+                for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Create<float>(scalar);
+                    Vector512<float> v3 = Avx512F.Subtract(v2, v1);
+                    Vector512.Store<float>(v3, destCol);
+                }
+
+                // remainder
+                for (int i = 0; i < vecRemainder; i++, col1++, destCol++)
+                {
+                    *destCol = scalar - *col1;
+                }
+            }
+
+            return result;
+        }
+
 
         public static AvxColumnVector operator *(AvxColumnVector lhs, AvxColumnVector rhs) => lhs.MultiplyVecVec(rhs);
 
@@ -174,7 +247,13 @@ namespace MatrixLibrary
 
             return result;
         }
+
+        public void SetRandom(int randomSeed, int v1, int v2)
+        {
+            throw new NotImplementedException();
+        }
     }
+
 
     public class AvxMatrix
     {
@@ -251,6 +330,42 @@ namespace MatrixLibrary
 
             return result;
         }
+        public static AvxMatrix operator -(AvxMatrix lhs, AvxMatrix rhs) => lhs.SubtractMatrix(rhs);
+
+        public unsafe AvxMatrix SubtractMatrix(AvxMatrix b)
+        {
+            const int floatsPerVector = 16;
+            int size = Rows * Cols;
+            int numVectors = size / floatsPerVector;
+            int remainingElements = size % floatsPerVector;
+
+            AvxMatrix result = new AvxMatrix(Rows, Cols);
+
+            fixed (float* m1 = this.Mat,
+                          m2 = b.Mat,
+                          d1 = result.Mat)
+            {
+                float* lhsMat = m1;
+                float* rhsMat = m2;
+                float* dest = d1;
+
+                for (int i = 0; i < numVectors; i++, lhsMat += 16, rhsMat += 16, dest += 16)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(lhsMat);
+                    Vector512<float> v2 = Vector512.Load<float>(rhsMat);
+                    Vector512<float> diff = Avx512F.Subtract(v1, v2);
+                    Vector512.Store<float>(diff, dest);
+                }
+
+                // do remainder
+                for (int i = 0; i < remainingElements; i++, dest++, lhsMat++, rhsMat++)
+                {
+                    *dest = *lhsMat - *rhsMat;
+                }
+            }
+
+            return result;
+        }
 
         public static AvxColumnVector operator *(AvxMatrix lhs, AvxColumnVector rhs) => lhs.MatrixTimesColumn(rhs);
         public unsafe AvxColumnVector MatrixTimesColumn(AvxColumnVector rhs)
@@ -292,6 +407,13 @@ namespace MatrixLibrary
             return result;
         }
 
+        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, AvxMatrix filter)
+        {
+            int cols = matrix.Cols - filter.Cols + 1;
+            int rows = matrix.Rows - filter.Rows + 1;
+            return (rows, cols);
+        }
+
         public unsafe AvxMatrix Convolution(AvxMatrix filter)
         {
             // slide a 4x4 filter across this matrix.
@@ -300,12 +422,12 @@ namespace MatrixLibrary
             Debug.Assert(filter != null);
             Debug.Assert(filter.Rows == 4);
             Debug.Assert(filter.Cols == 4);
-            Debug.Assert(filter.Rows > this.Rows);
-            Debug.Assert(filter.Cols > this.Cols);
+            Debug.Assert(filter.Rows < this.Rows);
+            Debug.Assert(filter.Cols < this.Cols);
 
-            int width = this.Cols - filter.Cols + 1;
-            int height = this.Rows - filter.Rows + 1;
-            AvxMatrix result = new AvxMatrix(height, width);
+
+            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter);
+            AvxMatrix result = new AvxMatrix(rows, cols);
 
             int stride = this.Cols;
 
@@ -321,9 +443,9 @@ namespace MatrixLibrary
                 Vector128<float> fv2 = Vector128.Load<float>(filterM + 4);
                 Vector128<float> fv3 = Vector128.Load<float>(filterM + 8);
                 Vector128<float> fv4 = Vector128.Load<float>(filterM + 12);
-                for (int t = 0; t < height; t++)
+                for (int t = 0; t < rows; t++)
                 {
-                    for (int l = 0; l < width; l++, resultPtr++)
+                    for (int l = 0; l < cols; l++, resultPtr++)
                     {
                         // load convolution target tile
                         // top left 1d float pointer
@@ -377,7 +499,7 @@ namespace MatrixLibrary
                 for (int r = 0; r < this.Rows; r++)
                 {
                     //
-                    // doing ONE row (left to right) on the LHS times ONE column on the RHS
+                    // doing ONE row (left to right) on the LHS dot ONE column on the RHS
                     //
 
                     // holding this ONE row steady, do every column
@@ -675,34 +797,8 @@ namespace MatrixLibrary
             return vectors;
         }
 
-
-        /*                    __m128 row1 = _mm_load_ps(&A[0 * lda]);
-
-        __m128 row2 = _mm_load_ps(&A[1 * lda]);
-        __m128 row3 = _mm_load_ps(&A[2 * lda]);
-        __m128 row4 = _mm_load_ps(&A[3 * lda]);
-        _MM_TRANSPOSE4_PS(row1, row2, row3, row4);
-        _mm_store_ps(&B[0 * ldb], row1);
-        _mm_store_ps(&B[1 * ldb], row2);
-        _mm_store_ps(&B[2 * ldb], row3);
-        _mm_store_ps(&B[3 * ldb], row4);*/
-
-        /*
-         *  __m128 tmp3, tmp2, tmp1, tmp0;                          \
-                                                                    \
-            tmp0   = _mm_shuffle_ps((row0), (row1), 0x44);          \
-            tmp2   = _mm_shuffle_ps((row0), (row1), 0xEE);          \
-            tmp1   = _mm_shuffle_ps((row2), (row3), 0x44);          \
-            tmp3   = _mm_shuffle_ps((row2), (row3), 0xEE);          \
-                                                                    \
-            (row0) = _mm_shuffle_ps(tmp0, tmp1, 0x88);              \
-            (row1) = _mm_shuffle_ps(tmp0, tmp1, 0xDD);              \
-            (row2) = _mm_shuffle_ps(tmp2, tmp3, 0x88);              \
-            (row3) = _mm_shuffle_ps(tmp2, tmp3, 0xDD);              \
-        }*/
-        private static unsafe void transpose4x4_SSE(float* A, float* B, int lda, int ldb)
+        private static unsafe void Transpose4x4_SSE(float* A, float* B, int lda, int ldb)
         {
-
             Vector128<float> row0 = Vector128.Load<float>(A + (0 * lda));
             Vector128<float> row1 = Vector128.Load<float>(A + (1 * lda));
             Vector128<float> row2 = Vector128.Load<float>(A + (2 * lda));
@@ -731,14 +827,12 @@ namespace MatrixLibrary
             AvxMatrix result = new AvxMatrix(matrix.Cols, matrix.Rows);
             int n = matrix.Rows;
             int m = matrix.Cols;
-            int lda = matrix.Cols;// * sizeof(float);  // width , ie: stride
-            int ldb = matrix.Rows;// * sizeof(float);  // widge for dest
+            int lda = matrix.Cols;
+            int ldb = matrix.Rows;
 
             fixed (float* A = matrix.Mat,
                           B = result.Mat)
             {
-                //transpose_block_SSE4x4(float* A, float* B, const int n, const int m, const int lda, const int ldb,const int block_size) 
-
                 for (int i = 0; i < n; i += block_size)
                 {
                     for (int j = 0; j < m; j += block_size)
@@ -749,14 +843,18 @@ namespace MatrixLibrary
                         {
                             for (int j2 = j; j2 < max_j2; j2 += 4)
                             {
-                                //transpose4x4_SSE(&A[i2 * lda + j2], &B[j2 * ldb + i2], lda, ldb);
-                                transpose4x4_SSE(A + (i2 * lda + j2), B + (j2 * ldb + i2), lda, ldb);
+                                Transpose4x4_SSE(A + (i2 * lda + j2), B + (j2 * ldb + i2), lda, ldb);
                             }
                         }
                     }
                 }
             }
             return result;
+        }
+
+        public AvxMatrix GetTransposedMatrix()
+        {
+            return AvxMatrix.Transpose(this);
         }
     }
 }

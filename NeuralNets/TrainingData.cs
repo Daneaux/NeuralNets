@@ -4,10 +4,10 @@ namespace NeuralNets
 {
     public class TrainingPair
     {
-        public ColumnVector Input { get; }
-        public ColumnVector Output { get; }
+        public AvxColumnVector Input { get; }
+        public AvxColumnVector Output { get; }
 
-        public TrainingPair(ColumnVector input, ColumnVector output)
+        public TrainingPair(AvxColumnVector input, AvxColumnVector output)
         {
             this.Input = input;
             this.Output = output;

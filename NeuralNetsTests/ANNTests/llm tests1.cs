@@ -24,8 +24,8 @@ namespace NeuralNetsTests.ANNTests
         public List<TrainingPair> BuildNewRandomizedTrainingList()
         {
             TrainingPair tp = new TrainingPair(
-                    new ColumnVector(new float[] { 0.4f, 0.9f }),
-                    new ColumnVector(new float[] { 0.8357f })
+                    new AvxColumnVector(new float[] { 0.4f, 0.9f }),
+                    new AvxColumnVector(new float[] { 0.8357f })
                     );
             this.TrainingList = new List<TrainingPair>() { tp };
             return this.TrainingList;

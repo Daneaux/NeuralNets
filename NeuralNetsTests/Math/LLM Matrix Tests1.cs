@@ -145,8 +145,8 @@ namespace NeuralNetsTests.Math
 
             Assert.AreEqual(1, result.Rows);
             Assert.AreEqual(2, result.Cols);
-            Assert.AreEqual(13, result[0, 0]);  // 1*3 + 2*5
-            Assert.AreEqual(16, result[0, 1]);  // 1*4 + 2*6
+            Assert.AreEqual(13, result[0]);  // 1*3 + 2*5
+            Assert.AreEqual(16, result[1]);  // 1*4 + 2*6
         }
     }
 }

@@ -49,21 +49,21 @@ namespace MnistReader_ANN
 
         private TrainingPair TrainingPairFromImage(Image image)
         {
-            ColumnVector inputVector = ImageDataToColumnVector(image);
-            ColumnVector outputVector = OneHotEncodeLabelData(image);
+            AvxColumnVector inputVector = ImageDataToColumnVector(image);
+            AvxColumnVector outputVector = OneHotEncodeLabelData(image);
             TrainingPair trainingPair = new TrainingPair(inputVector, outputVector);
             return trainingPair;
         }
 
-        private ColumnVector OneHotEncodeLabelData(Image image)
+        private AvxColumnVector OneHotEncodeLabelData(Image image)
         {
             // convert the label data (0,1,2, ...) into a columnvector. if the label is 7 (ie: byte == 7), then set the 7th float to 1.0
             float[] labelData = new float[this.OutputDimension];
             labelData[(int)image.Label] = 1;
-            return new ColumnVector(labelData);
+            return new AvxColumnVector(labelData);
         }
 
-        private static ColumnVector ImageDataToColumnVector(Image image)
+        private static AvxColumnVector ImageDataToColumnVector(Image image)
         {
             // convert the image data into a columnvector
             float[] imageData = new float[image.Size];
@@ -73,7 +73,7 @@ namespace MnistReader_ANN
                 imageData[i++] = (float)b;
             }
 
-            return new ColumnVector(imageData);
+            return new AvxColumnVector(imageData);
         }
     }
 }
