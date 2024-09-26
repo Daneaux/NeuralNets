@@ -184,7 +184,7 @@ namespace NeuralNets
 
         public void ScaleAndUpdateWeightsBiasesHelper(int L)
         {
-            dynamic scaleFactor = this.LearningRate / (float)this.BatchSize;
+            float scaleFactor = this.LearningRate / (float)this.BatchSize;
             this.BiasGradient[L] *= scaleFactor;
             this.WeightGradient[L] *= scaleFactor;
             this.Layers[L].UpdateWeightsAndBiasesWithScaledGradients(

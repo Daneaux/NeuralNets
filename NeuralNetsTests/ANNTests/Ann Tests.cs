@@ -86,8 +86,7 @@ namespace NeuralNetsTests.ANNTests
             }
 
             averageLoss /= testSamples;
-            Console.WriteLine($"{averageLoss} after {testSamples} test samples and {trainingSamples} and {numEpochs} epochs\n");
-            
+            Console.WriteLine($"{averageLoss} after {testSamples} test samples and {trainingSamples} and {numEpochs} epochs\n");            
         }
 
         public class MazurTrainingSet : ITrainingSet

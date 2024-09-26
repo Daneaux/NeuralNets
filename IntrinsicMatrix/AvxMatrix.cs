@@ -23,6 +23,41 @@ namespace MatrixLibrary
         {
             this.column = new float[size];
         }
+        public static AvxColumnVector operator *(AvxColumnVector vec, float scalar) => vec.ScalarMultiply(scalar);
+        public static AvxColumnVector operator *(float scalar, AvxColumnVector vec) => vec.ScalarMultiply(scalar);
+
+        public unsafe AvxColumnVector ScalarMultiply(float scalar)
+        {
+            AvxColumnVector lhs = this;
+            AvxColumnVector result = new AvxColumnVector(lhs.Size);
+            const int vector512Floats = 16;
+
+            int vecSize = lhs.Size / vector512Floats;
+            int vecRemainder = lhs.Size % vector512Floats;
+
+            fixed (float* av = lhs.Column,
+                          rv = result.Column)
+            {
+                float* col1 = av;
+                float* destCol = rv;
+                Vector512<float> v2 = Vector512.Create<float>(scalar);
+
+                for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(col1);
+                    Vector512<float> v3 = Avx512F.Multiply(v1, v2);
+                    Vector512.Store<float>(v3, destCol);
+                }
+
+                // remainder
+                for (int i = 0; i < vecRemainder; i++, col1++, destCol++)
+                {
+                    *destCol = *col1 * scalar;
+                }
+            }
+
+            return result;
+        }
 
         public static AvxColumnVector operator +(AvxColumnVector vec, float scalar) => vec.ScalarAddition(scalar);
         public static AvxColumnVector operator +(float scalar, AvxColumnVector vec) => vec.ScalarAddition(scalar);
@@ -42,11 +77,11 @@ namespace MatrixLibrary
             {
                 float* col1 = av;
                 float* destCol = rv;
+                Vector512<float> v2 = Vector512.Create<float>(scalar);
 
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v2 = Vector512.Create<float>(scalar);
                     Vector512<float> v3 = Avx512F.Add(v1, v2);
                     Vector512.Store<float>(v3, destCol);
                 }
@@ -76,11 +111,11 @@ namespace MatrixLibrary
             {
                 float* col1 = av;
                 float* destCol = rv;
+                Vector512<float> v2 = Vector512.Create<float>(scalar);
 
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v2 = Vector512.Create<float>(scalar);
                     Vector512<float> v3 = Avx512F.Subtract(v2, v1);
                     Vector512.Store<float>(v3, destCol);
                 }
@@ -248,9 +283,14 @@ namespace MatrixLibrary
             return result;
         }
 
-        public void SetRandom(int randomSeed, int v1, int v2)
+        public void SetRandom(int seed, int min, int max)
         {
-            throw new NotImplementedException();
+            Random rnd = new Random(seed);
+            float width = max - min;
+            for (int r = 0; r < Size; r++)
+            {
+                column[r] = (float)((rnd.NextDouble() * width) + min);
+            }
         }
     }
 
@@ -330,6 +370,81 @@ namespace MatrixLibrary
 
             return result;
         }
+
+        public static AvxMatrix operator +(AvxMatrix lhs, float scalar) => lhs.AddScalar(scalar);
+
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe AvxMatrix AddScalar(float scalar)
+        {
+            const int floatsPerVector = 16;
+            int size = Rows * Cols;
+            int numVectors = size / floatsPerVector;
+            int remainingElements = size % floatsPerVector;
+
+            AvxMatrix result = new AvxMatrix(Rows, Cols);
+
+            fixed (float* m1 = this.Mat,
+                          d1 = result.Mat)
+            {
+                float* mat1 = m1;
+                float* dest = d1;
+                Vector512<float> v2 = Vector512.Create<float>(scalar);
+
+                for (int i = 0; i < numVectors; i++, mat1 += 16, dest += 16)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(mat1);
+                    Vector512<float> sum = Avx512F.Add(v1, v2);
+                    Vector512.Store<float>(sum, dest);
+                }
+
+                // do remainder
+                for (int i = 0; i < remainingElements; i++, dest++, mat1++)
+                {
+                    *dest = *mat1 + scalar;
+                }
+            }
+
+            return result;
+        }
+
+        public static AvxMatrix operator *(AvxMatrix lhs, float scalar) => lhs.MultiplyScalar(scalar);
+        public static AvxMatrix operator *(float scalar, AvxMatrix lhs) => lhs.MultiplyScalar(scalar);
+
+        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public unsafe AvxMatrix MultiplyScalar(float scalar)
+        {
+            const int floatsPerVector = 16;
+            int size = Rows * Cols;
+            int numVectors = size / floatsPerVector;
+            int remainingElements = size % floatsPerVector;
+
+            AvxMatrix result = new AvxMatrix(Rows, Cols);
+
+            fixed (float* m1 = this.Mat,
+                          d1 = result.Mat)
+            {
+                float* mat1 = m1;
+                float* dest = d1;
+                Vector512<float> v2 = Vector512.Create<float>(scalar);
+
+                for (int i = 0; i < numVectors; i++, mat1 += 16, dest += 16)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(mat1);
+                    Vector512<float> sum = Avx512F.Multiply(v1, v2);
+                    Vector512.Store<float>(sum, dest);
+                }
+
+                // do remainder
+                for (int i = 0; i < remainingElements; i++, dest++, mat1++)
+                {
+                    *dest = *mat1 * scalar;
+                }
+            }
+
+            return result;
+        }
+
+
         public static AvxMatrix operator -(AvxMatrix lhs, AvxMatrix rhs) => lhs.SubtractMatrix(rhs);
 
         public unsafe AvxMatrix SubtractMatrix(AvxMatrix b)
@@ -854,7 +969,14 @@ namespace MatrixLibrary
 
         public AvxMatrix GetTransposedMatrix()
         {
-            return AvxMatrix.Transpose(this);
+            if (Rows < 16 || Cols < 16)
+            {
+                return new Matrix2D(this.Mat).GetTransposedMatrix().ToAvxMatrix();
+            }
+            else
+            {
+                return AvxMatrix.Transpose(this);
+            }
         }
     }
 }
