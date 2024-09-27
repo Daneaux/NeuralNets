@@ -16,7 +16,7 @@ namespace NeuralNets
         public override int InputDim { get; protected set; }
         public override int OutputDim { get; protected set; }
         public override int LayerCount => Layers.Count;
-        public override List<Layer> Layers { get; protected set; }
+        public override List<Layer> Layers { get; protected set; } = new List<Layer>();
 
         public Layer OutputLayer => Layers[LayerCount - 1];
 

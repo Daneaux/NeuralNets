@@ -7,8 +7,8 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-//        DoMyMNIST();
-        DoTorchMNIST();
+        DoMyMNIST();
+        //DoTorchMNIST();
 
         return 0;
 
