@@ -1,13 +1,10 @@
-﻿using SkiaSharp;
-using System.Diagnostics;
-using System.Numerics;
+﻿using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
 namespace MatrixLibrary
 {
-
     public class AvxMatrix
     {
         public readonly float[,] Mat;
@@ -45,6 +42,7 @@ namespace MatrixLibrary
 
         public int Rows { get; private set; }
         public int Cols { get; private set; }
+
 
         public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
@@ -118,6 +116,32 @@ namespace MatrixLibrary
             }
 
             return result;
+        }
+
+        public unsafe float Sum()
+        {
+            float sum = 0f;
+            const int floatsPerVector = 16;
+            int size = Rows * Cols;
+            int numVectors = size / floatsPerVector;
+            int remainingElements = size % floatsPerVector;
+
+            fixed (float* m1 = this.Mat)
+            {
+                float* mat1 = m1;
+                for (int i = 0; i < numVectors; i++, mat1 += 16)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(mat1);
+                    sum += Vector512.Sum<float>(v1);
+                }
+
+                // do remainder
+                for (int i = 0; i < remainingElements; i++, mat1++)
+                {
+                    sum += *mat1;
+                }
+            }
+            return sum;
         }
 
         public static AvxMatrix operator *(AvxMatrix lhs, float scalar) => lhs.MultiplyScalar(scalar);
@@ -690,6 +714,12 @@ namespace MatrixLibrary
             {
                 return AvxMatrix.Transpose(this);
             }
+        }
+
+        // todo: can't find an AVX512 (or any other intrinsic) to do simd logarithm
+        public AvxMatrix Log()
+        {
+            return new Matrix2D(this.Mat).Log().ToAvxMatrix();
         }
     }
 }

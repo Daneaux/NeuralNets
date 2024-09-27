@@ -172,7 +172,7 @@ namespace NeuralNets
                 {
                     RenderContext ctx = new RenderContext(parentContext.Network, 0, null);
                     predictedOut = ctx.FeedForward(trainingPair.Input);
-                    float totalLoss = ctx.Network.GetTotallLoss(trainingPair, predictedOut.ToColumnVector());
+                    float totalLoss = ctx.Network.GetTotallLoss(trainingPair, predictedOut);
                     Console.WriteLine($"Epoch {epochNum}, batch size:{parentContext.BatchSize}. Finished Batch {batchCount} with total loss = {totalLoss}");
                 }
                 batchCount++;
@@ -328,7 +328,7 @@ namespace NeuralNets
             else
             {
                 // partial product, before we start the per-w differentials.
-                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut.ToColumnVector()).ToAvxVector();
+                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
                 AvxColumnVector ActivationPartial = outputLayer.Derivative(this.ActivationContext[outputLayerIndex]);    // outputLayer.ActivationFunction.Derivative();
                 this.SetLastDerivative(outputLayerIndex, ActivationPartial);
                 outputLayerSigma = LossPartial * ActivationPartial;
@@ -398,7 +398,7 @@ namespace NeuralNets
             else
             {
                 // partial product, before we start the per-w differentials.
-                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut.ToColumnVector()).ToAvxVector();
+                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
                 AvxColumnVector ActivationPartial = outputLayer.Derivative(this.ActivationContext[outputLayerIndex]);
                 this.SetLastDerivative(outputLayerIndex, ActivationPartial);
                 outputLayerSigma = new AvxColumnVector(LossPartial.Column) * new AvxColumnVector(ActivationPartial.Column);

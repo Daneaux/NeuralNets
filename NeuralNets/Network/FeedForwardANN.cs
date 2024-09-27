@@ -41,31 +41,20 @@ namespace NeuralNets
             this.Layers = layers;
         }
 
-        public override float GetTotallLoss(TrainingPair tp, ColumnVector predicted)
-        {
-            ColumnVector lossVec = this.LossFunction.Error(tp.Output.ToColumnVector(), predicted);
-            return lossVec.Sum();
-        }
         public override float GetTotallLoss(TrainingPair tp, AvxColumnVector predicted)
         {
-            ColumnVector lossVec = this.LossFunction.Error(tp.Output.ToColumnVector(), predicted.ToColumnVector());
+            AvxColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted);
             return lossVec.Sum();
-        }
-
-        public override ColumnVector GetLossVector(TrainingPair tp, ColumnVector predicted)
-        {
-            return this.LossFunction.Error(tp.Output.ToColumnVector(), predicted);
-        }
-
-        public override float GetAveragelLoss(TrainingPair tp, ColumnVector predicted)
-        {
-            return this.GetTotallLoss(tp, predicted) / (float)predicted.Size;
         }
 
         public override AvxColumnVector GetLossVector(TrainingPair tp, AvxColumnVector predicted)
         {
-            return this.LossFunction.Error(tp.Output.ToColumnVector(), predicted.ToColumnVector()).ToAvxVector();
+            return this.LossFunction.Error(tp.Output, predicted);
+        }
 
+        public override float GetAveragelLoss(TrainingPair tp, AvxColumnVector predicted)
+        {
+            return this.GetTotallLoss(tp, predicted) / (float)predicted.Size;
         }
     }
 }

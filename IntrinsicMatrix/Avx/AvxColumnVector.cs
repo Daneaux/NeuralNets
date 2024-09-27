@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Intrinsics.X86;
+﻿using System.Runtime.Intrinsics.X86;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace MatrixLibrary
 {
@@ -24,6 +19,42 @@ namespace MatrixLibrary
         {
             this.column = new float[size];
         }
+        public unsafe float Sum()
+        {
+            float sum = 0.0f;
+            const int floatsPerVector = 16;
+            int size = this.Size;
+            int numVectors = size / floatsPerVector;
+            int remainingElements = size % floatsPerVector;
+
+            fixed (float* c1 = this.column)
+            {
+                float* col = c1;
+
+                for (int i = 0; i < numVectors; i++, col += 16)
+                {
+                    Vector512<float> v1 = Vector512.Load<float>(col);
+                    sum += Vector512.Sum<float>(v1);
+                }
+
+                // do remainder
+                for (int i = 0; i < remainingElements; i++, col++)
+                {
+                    sum += *col;
+                }
+            }
+
+            return sum;
+        }
+
+
+        // todo: can't find an AVX512 (or any other intrinsic) to do simd logarithm
+        public AvxColumnVector Log()
+        {
+            return new ColumnVector(this.column).Log().ToAvxVector();
+        }
+
+
         public static AvxColumnVector operator *(AvxColumnVector vec, float scalar) => vec.ScalarMultiply(scalar);
         public static AvxColumnVector operator *(float scalar, AvxColumnVector vec) => vec.ScalarMultiply(scalar);
 
@@ -292,6 +323,13 @@ namespace MatrixLibrary
             {
                 column[r] = (float)((rnd.NextDouble() * width) + min);
             }
+        }
+
+        public AvxColumnVector SoftmaxHelper()
+        {
+            // todo: cheat for now, not sure avx acceleration would help here
+            // and even if it did, what percent of our time is spent here?
+            return new ColumnVector(this.Column).SoftmaxHelper().ToAvxVector();
         }
     }
 }

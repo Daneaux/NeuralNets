@@ -82,7 +82,7 @@ namespace NeuralNetsTests.ANNTests
             {
                 RenderContext lossCtx = new RenderContext(ann, 1, ts2);
                 AvxColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
-                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction.ToColumnVector());
+                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction);
             }
 
             averageLoss /= testSamples;
@@ -169,11 +169,11 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.772928465, outputLayerActivation[1], 0.000001);
 
 
-            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
+            totLoss = ann.GetTotallLoss(tp, finalOutput);
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput.ToColumnVector()).ToAvxVector();
+            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -223,7 +223,7 @@ namespace NeuralNetsTests.ANNTests
             //
             RenderContext ctx3 = new RenderContext(ann, 1, ts);
             finalOutput = ctx3.FeedForward(tp.Input);
-            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
+            totLoss = ann.GetTotallLoss(tp, finalOutput);
             Assert.AreEqual(0.28047, totLoss, 0.001);
             Console.WriteLine("done error is " + totLoss);
 
@@ -236,7 +236,7 @@ namespace NeuralNetsTests.ANNTests
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
                 AvxColumnVector pout = ctx4.FeedForward(tp.Input);
-                totLoss = ctx4.Network.GetTotallLoss(tp, pout.ToColumnVector());
+                totLoss = ctx4.Network.GetTotallLoss(tp, pout);
             }
 
             Console.WriteLine("done error is " + totLoss);
@@ -300,7 +300,7 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput.ToColumnVector()).ToAvxVector();
+            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -329,7 +329,7 @@ namespace NeuralNetsTests.ANNTests
             //
             RenderContext ctx3 = new RenderContext(ann, 1, ts);
             finalOutput = ctx3.FeedForward(tp.Input);
-            totLoss = ann.GetTotallLoss(tp, finalOutput.ToColumnVector());
+            totLoss = ann.GetTotallLoss(tp, finalOutput);
             Assert.AreEqual(0.28047, totLoss, 0.001);
 
             Console.WriteLine("done error is " + totLoss);

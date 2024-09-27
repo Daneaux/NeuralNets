@@ -47,9 +47,6 @@ namespace NeuralNets.Network
             // if next layer is convolution, then everyone gets the same stack
             // if next layer is fully connected, then stack becomes a long array
 
-            //Debug.Assert(inputVec.Size == this.InputDim);
-            //ColumnVector prevActivation = inputVec;
-
             var lastActivation = input;
             for (int i = 0; i < this.LayerCount; i++)
             {
