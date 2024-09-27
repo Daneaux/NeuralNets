@@ -1,6 +1,4 @@
-using BenchmarkDotNet.Attributes;
 using MatrixLibrary;
-using NeuralNets;
 
 namespace NeuralNetsTests.Math
 {
@@ -97,7 +95,7 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void TestMatrixMultiplySquare()
+        public void TestMatrixMultiplySquare57()
         {
             // Define and initialize a 17x3 matrix with some test values
             int rows = 57;
@@ -240,16 +238,15 @@ namespace NeuralNetsTests.Math
                     Assert.AreEqual(truth[r, c], m3[r, c]);
                 }
             }
-
         }
 
 
         [TestMethod]
-        public void TestMatrixMultiply_Transpose_Large()
+        public void TestMatrixMultiply_Larger()
         {
             // Define and initialize a 17x3 matrix with some test values
-            int rows = 3;
-            int cols = 3;
+            int rows = 33;
+            int cols = 37;
             float[,] matrixA = new float[rows, cols];
 
             // Fill the matrix with some test values
@@ -261,8 +258,8 @@ namespace NeuralNetsTests.Math
                 }
             }
 
-            rows = 3;
-            cols = 3;
+            rows = 37;
+            cols = 43;
 
             float[,] matrixB = new float[rows, cols];
             for (int r = 0; r < rows; r++)
@@ -273,12 +270,9 @@ namespace NeuralNetsTests.Math
                 }
             }
 
-            Matrix2D B = new Matrix2D(matrixB);
-            B = B.GetTransposedMatrix();
-
             AvxMatrix m1 = new AvxMatrix(matrixA);
-            AvxMatrix m2 = new AvxMatrix(B.Mat);  // transposed version of B
-            AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2);
+            AvxMatrix m2 = new AvxMatrix(matrixB);
+            AvxMatrix m3 = m1.MatrixTimesMatrix(m2);
 
             Matrix2D mm1 = new Matrix2D(matrixA);
             Matrix2D mm2 = new Matrix2D(matrixB);
@@ -297,37 +291,40 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void TestMatrixMultiply_Tiled_Square16()
+        [DataRow(6)]
+        [DataRow(15)]
+        [DataRow(16)]
+        [DataRow(17)]
+        [DataRow(32)]
+        [DataRow(33)]
+        public void TestMatrixMultiply_Square16(int size)
         {
-            // Define and initialize a 17x3 matrix with some test values
-            int rows = 16;
-            int cols = 16;
+            int rows = size;
+            int cols = size;
             float[,] matrixA = new float[rows, cols];
+            Random rnd = new Random(4134134);
 
             // Fill the matrix with some test values
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    matrixA[r, c] = r + c * 2;
+                    matrixA[r, c] = (float)(100.0 * rnd.NextDouble());
                 }
             }
-
-            rows = 16;
-            cols = 16;
 
             float[,] matrixB = new float[rows, cols];
             for (int r = 0; r < rows; r++)
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    matrixB[r, c] = r + c * 3;
+                    matrixB[r, c] = (float)(100.0 * rnd.NextDouble());
                 }
             }
 
             AvxMatrix m1 = new AvxMatrix(matrixA);
             AvxMatrix m2 = new AvxMatrix(matrixB); 
-            AvxMatrix m3 = m1.MatrixMultiply_Tiled(m2);
+            AvxMatrix m3 = m1.MatrixTimesMatrix(m2);
 
             Matrix2D mm1 = new Matrix2D(matrixA);
             Matrix2D mm2 = new Matrix2D(matrixB);
@@ -339,7 +336,7 @@ namespace NeuralNetsTests.Math
             {
                 for (int c = 0; c < m3.Cols; c++)
                 {
-                    Assert.AreEqual(truth[r, c], m3[r, c]);
+                    Assert.AreEqual(truth[r, c], m3[r, c], 0.1);
                 }
             }
         }
@@ -380,7 +377,7 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void TestTranspose()
+        public void TestTranspose4x4()
         {
             float[,] floats4x4 = new float[,]
                 { {1, 2, 3, 4},
@@ -390,7 +387,7 @@ namespace NeuralNetsTests.Math
                 };
 
             AvxMatrix Mat4x4 = new AvxMatrix(floats4x4);
-            AvxMatrix MT = AvxMatrix.Transpose(Mat4x4);
+            AvxMatrix MT = Mat4x4.GetTransposedMatrix();
 
             for (int i = 0; i < Mat4x4.Rows; i++)
             {
@@ -399,32 +396,38 @@ namespace NeuralNetsTests.Math
                     Assert.AreEqual(Mat4x4[i, j], MT[j, i]);
                 }
             }
-
-
-
         }
 
         [TestMethod]
-        public void TestTransposeLarge()
+        [DataRow(15, 15)]
+        [DataRow(3, 3)]
+        [DataRow(16, 16)]
+        [DataRow(21, 5)]
+        [DataRow(32, 16)]
+        [DataRow(32, 64)]
+        [DataRow(17, 77)]
+        public void TestTransposeLarge(int r, int c)
         {
-            int sz = 4 * 16;
-            float[,] floatsMat = new float[sz, sz];
-            for(int i= 0; i < sz; i++)
+            Random rnd = new Random(4134134);
+            float[,] floatsMat = new float[r, c];
+            for(int i= 0; i < r; i++)
             {
-                for(int j= 0; j < sz; j++)
+                for(int j= 0; j < c; j++)
                 {
-                    floatsMat[i, j] = (float)i + (float)j + (float)i;
+                    floatsMat[i, j] = (float)(100.0 * rnd.NextDouble()); //(float)i + (float)j + (float)i;
                 }
             }
 
             AvxMatrix Mat = new AvxMatrix(floatsMat);
-            AvxMatrix MT = AvxMatrix.Transpose(Mat);
+            AvxMatrix MT = Mat.GetTransposedMatrix();
 
             for (int i = 0; i < Mat.Rows; i++)
             {
                 for (int j = 0; j < Mat.Cols; j++)
                 {
-                    Assert.AreEqual(Mat[i, j], MT[j, i]);
+                    float m1 = Mat[i, j];
+                    float m2 = MT[j, i];
+                    Assert.AreEqual(m1, m2);
                 }
             }
         }

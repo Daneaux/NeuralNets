@@ -15,7 +15,6 @@ public class IntrinsicsBenchmarks
 {
     private AvxMatrix m1;
     private AvxMatrix m2;
-    private AvxMatrix m2T;
     private AvxMatrix filterAvx;
 
     private Matrix2D nm1;
@@ -39,8 +38,6 @@ public class IntrinsicsBenchmarks
         nm1.SetRandom(seed, -range, range);
         nm2.SetRandom(seed, -range, range);
 
-        var T = nm2.GetTransposedMatrix();
-        m2T = new AvxMatrix(T.Mat);
 
         float[,] filter = new float[4, 4]{
             { 1, 1.5f, -1, 0 },
@@ -70,51 +67,46 @@ public class IntrinsicsBenchmarks
     }
 
     [Benchmark]
-    public void NaiveMultiply()
+    public void NaiveMatrixMultiply()
     {
         Matrix2D m3 = nm1 * nm2;
     }
 
-    /*    [Benchmark]
-        public void IntrinsicAdd()
-        {
-            AvxMatrix m3 = m1 + m2;
-        }*/
-
-    /*    [Benchmark]
-        public void NaiveAdd()
-        {
-            Matrix nm3 = nm1 + nm2;
-        }*/
-
     [Benchmark]
-    public void IntrinsicMult()
+    public void IntrinsicMatrixMultiply()
     {
         AvxMatrix m3 = m1 * m2;
     }
 
     [Benchmark]
-    public void TransposeNaive()
+    public void IntrinsicMatrixMult_Tiled()
+    {
+        AvxMatrix m3 = m1.MatrixMultiply_Tiled(m2);
+    }
+
+    [Benchmark]
+    public void NaiveAdd()
+    {
+        Matrix2D nm3 = nm1 + nm2;
+    }
+
+    [Benchmark]
+    public void IntrinsicAdd()
+    {
+        AvxMatrix m3 = m1 + m2;
+    }
+
+    [Benchmark]
+    public void NaiveTranspose()
     {
         Matrix2D mT = nm1.GetTransposedMatrix();
     }
 
     [Benchmark]
-    public void TransposeAvx()
+    public void AvxTranspose()
     {
-        AvxMatrix MT = AvxMatrix.Transpose(m1);
+        AvxMatrix MT = m1.GetTransposedMatrix();
     }
 
-    [Benchmark]
-    public void IntrinsicMult_TransposeFirst()
-    {
-        AvxMatrix m3 = m1.MatrixTimesMatrix_TransposedRHS(m2T);
-    }
-
-    [Benchmark]
-    public void IntrinsicMult_Tiled()
-    {
-        AvxMatrix m3 = m1.MatrixMultiply_Tiled(m2);
-    }
 
 }

@@ -326,7 +326,7 @@ namespace MatrixLibrary
         public static AvxMatrix operator *(AvxMatrix lhs, AvxMatrix rhs) => lhs.MatrixTimesMatrix(rhs);
 
         // no transpose, no tile
-        private unsafe AvxMatrix MatrixTimesMatrix(AvxMatrix rhs)
+        private unsafe AvxMatrix MatrixTimesMatrix_slow(AvxMatrix rhs)
         {
             Debug.Assert(this.Cols == rhs.Rows);
             const int floatsPerVector = 16;
@@ -404,15 +404,15 @@ namespace MatrixLibrary
         }
 
         // try transpose, no tile
-        public unsafe AvxMatrix MatrixTimesMatrix_TransposedRHS(AvxMatrix rhs)
+        public unsafe AvxMatrix MatrixTimesMatrix(AvxMatrix rhs)
         {
-            // 
-            // assumes transposed rhs
-            // 
-            Debug.Assert(this.Cols == rhs.Cols);
+            // First transpose the rhs matrix
+            AvxMatrix rhsT = rhs.GetTransposedMatrix();
+
+            Debug.Assert(this.Cols == rhsT.Cols);
             const int floatsPerVector = 16;
-            int numVectorsPerColumnRHS = rhs.Rows / floatsPerVector;
-            int remainingVectorsPerColumnRHS = rhs.Rows % floatsPerVector;
+            int numVectorsPerColumnRHS = rhsT.Rows / floatsPerVector;
+            int remainingVectorsPerColumnRHS = rhsT.Rows % floatsPerVector;
 
             int numVecPerRowLHS = this.Cols / floatsPerVector;
             int remainingVecPerRowLHS = this.Cols % floatsPerVector;
@@ -421,7 +421,7 @@ namespace MatrixLibrary
             AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
 
             fixed (float* m1 = this.Mat,
-                          m2 = rhs.Mat,
+                          m2 = rhsT.Mat,
                           d1 = result.Mat)
             {
                 float* mat1 = m1;
@@ -430,7 +430,7 @@ namespace MatrixLibrary
 
                 for (int r = 0; r < Rows; r++)
                 {
-                    for (int rhsRowIndex = 0; rhsRowIndex < this.Rows; rhsRowIndex++)
+                    for (int rhsRowIndex = 0; rhsRowIndex < rhsT.Rows; rhsRowIndex++)
                     {
                         // note: we're re-reading the same row many times. is there a way to cache it? next version: use r1 partial against all the corresponding c1's
                         mat1 = m1 + r * this.Cols; // point to the beginning of the same lhs row (until we increment r)
@@ -673,7 +673,8 @@ namespace MatrixLibrary
             Vector128.Store<float>(row3, B + (3 * ldb));
         }
 
-        public static unsafe AvxMatrix Transpose(AvxMatrix matrix)
+        // BUG: only works on matrices that are multiples of 16!
+        private static unsafe AvxMatrix Transpose(AvxMatrix matrix)
         {
             int block_size = 16;
             AvxMatrix result = new AvxMatrix(matrix.Cols, matrix.Rows);
@@ -706,7 +707,7 @@ namespace MatrixLibrary
 
         public AvxMatrix GetTransposedMatrix()
         {
-            if (Rows < 16 || Cols < 16)
+            if (Rows < 16 || Cols < 16 || Cols % 16 != 0 || Rows % 16 != 0)
             {
                 return new Matrix2D(this.Mat).GetTransposedMatrix().ToAvxMatrix();
             }
