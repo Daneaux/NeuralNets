@@ -1,4 +1,5 @@
 using MatrixLibrary;
+using MatrixLibrary.Avx;
 
 namespace NeuralNetsTests.Math
 {
@@ -433,32 +434,34 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void Convolution()
+        [DataRow(10, 12, 4)]
+        [DataRow(10, 12, 5)]
+        [DataRow(10, 12, 8)]
+        [DataRow(23, 19, 7)]
+        [DataRow(43, 67, 13)]
+        public void Convolution(int rows, int cols, int kernelSize, bool argumentException = false)
         {
-            // todo test row and column vectors
+            Random rnd = new Random();
 
             // Create a 10x12 source matrix
-            float[,] source = new float[10, 12];
-            for (int i = 0; i < 10; i++)
+            float[,] source = new float[rows, cols];
+            for (int i = 0; i < rows; i++)
             {
-                for (int j = 0; j < 12; j++)
+                for (int j = 0; j < cols; j++)
                 {
                     source[i, j] = i * 12 + j + 1;
                 }
             }
 
             // Create a 4x4 filter
-            float[,] filter = new float[4, 4]
-            {
-            { 1, 0, -1, 0 },
-            { 0, 1, 0, -1 },
-            { -1, 0, 1, 0 },
-            { 0, -1, 0, 1 }
-            };
+            float[,] kernel = new float[kernelSize, kernelSize];
+            for (int i = 0; i < kernelSize; i++)
+                for (int j = 0; j < kernelSize; j++)
+                    kernel[j, i] = (float)rnd.Next(-10, 10);
 
             // Calculate expected output dimensions
-            int outputRows = source.GetLength(0) - filter.GetLength(0) + 1;
-            int outputCols = source.GetLength(1) - filter.GetLength(1) + 1;
+            int outputRows = source.GetLength(0) - kernel.GetLength(0) + 1;
+            int outputCols = source.GetLength(1) - kernel.GetLength(1) + 1;
 
             // Create expected output matrix
             float[,] expectedOutput = new float[outputRows, outputCols];
@@ -469,23 +472,20 @@ namespace NeuralNetsTests.Math
                 for (int j = 0; j < outputCols; j++)
                 {
                     float sum = 0;
-                    for (int m = 0; m < 4; m++)
+                    for (int m = 0; m < kernelSize; m++)
                     {
-                        for (int n = 0; n < 4; n++)
+                        for (int n = 0; n < kernelSize; n++)
                         {
-                            sum += source[i + m, j + n] * filter[m, n];
+                            sum += source[i + m, j + n] * kernel[m, n];
                         }
                     }
                     expectedOutput[i, j] = sum;
                 }
             }
 
-            // TODO: Replace this line with a call to your convolution operator
             AvxMatrix lhs = new AvxMatrix(source);
-            AvxMatrix rhs = new AvxMatrix(filter);
+            SquareKernel rhs = new SquareKernel(kernel);
             AvxMatrix result = lhs.Convolution(rhs);
-
-            // Verify the output
             VerifyOutput(expectedOutput, result.Mat);
         }
 
@@ -502,7 +502,5 @@ namespace NeuralNetsTests.Math
                 }
             }
         }
-
-
     }
 }

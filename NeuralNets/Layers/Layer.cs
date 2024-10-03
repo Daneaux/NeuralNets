@@ -1,7 +1,4 @@
 ﻿using MatrixLibrary;
-using NeuralNets.Network;
-using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace NeuralNets
 {
@@ -13,7 +10,11 @@ namespace NeuralNets
 
         public abstract Tensor FeedFoward(Tensor input);
 
-        protected Layer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324)
+        protected Layer(
+            int nodeCount, 
+            IActivationFunction activationFunction, 
+            int incomingDataPoints, 
+            int randomSeed = 12341324)
         {
             this.NumNodes = nodeCount;
             ActivationFunction = activationFunction;

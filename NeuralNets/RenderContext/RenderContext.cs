@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 
 namespace NeuralNets
@@ -97,7 +98,7 @@ namespace NeuralNets
                 }
 
                 // debug only
-                int actualBatchSize = 0;
+                //int actualBatchSize = 0;
 
                 // single entry on this guy
                 List<RenderContext> renderContexts = new List<RenderContext>();
@@ -106,6 +107,7 @@ namespace NeuralNets
                 int a = Thread.CurrentThread.ManagedThreadId;
 
                 Object thisLock = new object();
+                ConcurrentBag<RenderContext> renderContexts1 = new ConcurrentBag<RenderContext>();
                 // 
                 //for (int i = 0; i < parentContext.BatchSize; i++)
                 Parallel.For(0, parentContext.BatchSize / loopsPerThread, i =>
@@ -118,17 +120,18 @@ namespace NeuralNets
                         trainingPair = trainingPairs[currentTP++];
                         predictedOut = ctx.FeedForward(trainingPair.Input);
                         ctx.BackProp(trainingPair, predictedOut);
-                        perCoreRenderContexts.Add(ctx);
+                        //perCoreRenderContexts.Add(ctx);
+                        renderContexts1.Add(ctx);
                     }
                     // LOCK
-                    lock (thisLock)
+/*                    lock (thisLock)
                     {
                         renderContexts.AddRange(perCoreRenderContexts);
                         actualBatchSize++;
-                    }
+                    }*/
                     // UNLOCK
                 });
-                Debug.Assert(actualBatchSize == parentContext.BatchSize);
+                //Debug.Assert(actualBatchSize == parentContext.BatchSize);
 
                 // All the RenderContexts above (in the render batch) now have their own gradients
                 // Sum and average all gradients
@@ -137,19 +140,21 @@ namespace NeuralNets
                 AvxColumnVector[] biasGradients = new AvxColumnVector[parentContext.LayerCount];
                 // accumulate all weight and bias gradients
                 // ie: For every context, for every layer: accumulate the gradient by layer into one sum, ditto biases.
-                for (int rc = 0; rc < renderContexts.Count; rc++)
+
+                foreach (RenderContext ctx in renderContexts1)
                 {
                     for (int L = 0; L < parentContext.LayerCount; L++)
                     {
-                        weightGradients[L] = weightGradients[L] == null ? 
-                            renderContexts[rc].WeightGradient[L] : 
-                            weightGradients[L] + renderContexts[rc].WeightGradient[L];
+                        weightGradients[L] = weightGradients[L] == null ?
+                            ctx.WeightGradient[L] :
+                            weightGradients[L] + ctx.WeightGradient[L];
 
                         biasGradients[L] = biasGradients[L] == null ?
-                            renderContexts[rc].BiasGradient[L] :
-                            biasGradients[L] + renderContexts[rc].BiasGradient[L];
+                            ctx.BiasGradient[L] :
+                            biasGradients[L] + ctx.BiasGradient[L];
                     }
                 }
+
 
                 Debug.Assert(a == Thread.CurrentThread.ManagedThreadId);
 

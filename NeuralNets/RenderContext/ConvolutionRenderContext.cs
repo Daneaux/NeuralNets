@@ -1,21 +1,16 @@
 ﻿using MatrixLibrary;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NeuralNets.Network
 {
     public class ConvolutionRenderContext
     {
-        public GeneralFeedForwardANN Network { get; }
+        public ConvolutionNN Network { get; }
         public int BatchSize { get; }
         public int CurrentThreadID { get; private set; }
         public AvxColumnVector[] Sigma { get; private set; }
         public Tensor[] ActivationContext { get; }
-        public AvxColumnVector[] DerivativeContext { get; }
+        public Tensor[] DerivativeContext { get; }
         public bool DoRandomSamples { get; private set; }
         public virtual ITrainingSet TrainingSet { get; }
 
@@ -30,9 +25,16 @@ namespace NeuralNets.Network
         public Tensor[] WeightGradient { get; }
         public Tensor[] BiasGradient { get; }
 
-        public ConvolutionRenderContext( GeneralFeedForwardANN network )
+        public ConvolutionRenderContext (ConvolutionNN network, int batchSize, ITrainingSet trainingSet)
         {
             Network = network;
+            this.BatchSize = batchSize;
+            this.TrainingSet = trainingSet;
+            //this.Sigma = new AvxColumnVector[this.LayerCount];
+            //this.WeightGradient = new AvxMatrix[this.LayerCount];
+            //this.BiasGradient = new AvxColumnVector[this.LayerCount];
+            this.ActivationContext = new Tensor[this.LayerCount];
+            this.DerivativeContext = new Tensor[this.LayerCount];
         }
 
         public static void BatchTrain(ConvolutionRenderContext parentContext, int epochNum)

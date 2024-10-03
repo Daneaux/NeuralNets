@@ -28,17 +28,17 @@ namespace MnistReader_ANN
         public int NumberOfLabels { get; private set; }
 
         public List<TrainingPair> TrainingList { get; private set; }
-        private List<Image> ImageList { get; set; } = null;
+        private List<NormalizedImage> ImageList { get; set; } = null;
         public List<TrainingPair> BuildNewRandomizedTrainingList()
         {
             Random rnd = new Random();
             if (this.ImageList == null)
             {
-                this.ImageList = MnistReader.ReadTrainingData().ToList();
+                this.ImageList = MnistReader.ReadNormTrainingData().ToList();
                 Debug.Assert(ImageList.Count == 60000);
             }
             List<TrainingPair> trainingPairs = new List<TrainingPair>((int)ImageList.Count);
-            foreach (Image image in ImageList)
+            foreach (NormalizedImage image in ImageList)
             {
                 trainingPairs.Add(TrainingPairFromImage(image));
             }            
@@ -47,7 +47,7 @@ namespace MnistReader_ANN
             return this.TrainingList;
         }
 
-        private TrainingPair TrainingPairFromImage(Image image)
+        private TrainingPair TrainingPairFromImage(NormalizedImage image)
         {
             AvxColumnVector inputVector = ImageDataToColumnVector(image);
             AvxColumnVector outputVector = OneHotEncodeLabelData(image);
@@ -55,7 +55,7 @@ namespace MnistReader_ANN
             return trainingPair;
         }
 
-        private AvxColumnVector OneHotEncodeLabelData(Image image)
+        private AvxColumnVector OneHotEncodeLabelData(NormalizedImage image)
         {
             // convert the label data (0,1,2, ...) into a columnvector. if the label is 7 (ie: byte == 7), then set the 7th float to 1.0
             float[] labelData = new float[this.OutputDimension];
@@ -63,8 +63,10 @@ namespace MnistReader_ANN
             return new AvxColumnVector(labelData);
         }
 
-        private static AvxColumnVector ImageDataToColumnVector(Image image)
+        private static AvxColumnVector ImageDataToColumnVector(NormalizedImage image)
         {
+            return new AvxColumnVector(image.Data);
+            /*
             // convert the image data into a columnvector
             float[] imageData = new float[image.Size];
             int i = 0;
@@ -73,7 +75,7 @@ namespace MnistReader_ANN
                 imageData[i++] = (float)b;
             }
 
-            return new AvxColumnVector(imageData);
+            return new AvxColumnVector(imageData);*/
         }
     }
 }

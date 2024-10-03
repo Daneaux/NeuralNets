@@ -24,6 +24,12 @@ namespace MnistReader_ANN
         public required byte[] Data { get; set; }
         public int Size { get { return Data.Length; } }
     }
+    public class NormalizedImage
+    {
+        public byte Label { get; set; }
+        public required float[] Data { get; set; }
+        public int Size { get { return Data.Length; } }
+    }
 
     public static class Extensions
     {
@@ -64,6 +70,21 @@ namespace MnistReader_ANN
         public static IEnumerable<Image> ReadTestData()
         {
             foreach (var item in Read(TestImages, TestLabels))
+            {
+                yield return item;
+            }
+        }
+        public static IEnumerable<NormalizedImage> ReadNormTrainingData()
+        {
+            foreach (var item in ReadNorm(TrainImages, TrainLabels))
+            {
+                yield return item;
+            }
+        }
+
+        public static IEnumerable<NormalizedImage> ReadNormTestData()
+        {
+            foreach (var item in ReadNorm(TestImages, TestLabels))
             {
                 yield return item;
             }
@@ -127,5 +148,47 @@ namespace MnistReader_ANN
             labels = null;
             images = null;
         }
+
+        private static IEnumerable<NormalizedImage> ReadNorm(string imagesPath, string labelsPath)
+        {
+            imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
+            labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
+            BinaryReader labels = new BinaryReader(new FileStream(labelsPath, FileMode.Open));
+            BinaryReader images = new BinaryReader(new FileStream(imagesPath, FileMode.Open));
+
+            int magicNumber = images.ReadBigInt32();
+            int numberOfImages = images.ReadBigInt32();
+            int width = images.ReadBigInt32();
+            int height = images.ReadBigInt32();
+
+            int magicLabel = labels.ReadBigInt32();
+            int numberOfLabels = labels.ReadBigInt32();
+
+            for (int i = 0; i < numberOfImages; i++)
+            {
+                var bytes = images.ReadBytes(width * height);
+                float[] floats = new float[bytes.Length];
+                for(int j=0; j< bytes.Length; j++)
+                {
+                    floats[j] = (float)bytes[j] / 255.0f;
+                }
+
+                yield return new NormalizedImage()
+                {
+                    Data = floats,
+                    Label = labels.ReadByte()
+                };
+            }
+            labels.Close();
+            images.Close();
+            labels.Dispose();
+            images.Dispose();
+            labels = null;
+            images = null;
+        }
+
+
+
+
     }
 }

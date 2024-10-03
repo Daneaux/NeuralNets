@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using MatrixLibrary.Avx;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
@@ -259,14 +260,59 @@ namespace MatrixLibrary
             return result;
         }
 
-        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, AvxMatrix filter)
+        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, int filterSize, int stride = 1)
         {
-            int cols = matrix.Cols - filter.Cols + 1;
-            int rows = matrix.Rows - filter.Rows + 1;
+            // W = input volume
+            // K = kernel size
+            // P = padding (not used here yet)
+            // S = stride
+            // result size = 1 + (W - K + 2P) / S
+            //  filter is square
+            int cols = 1 + ((matrix.Cols - filterSize) / stride);
+            int rows = 1 + ((matrix.Rows - filterSize) / stride);
             return (rows, cols);
         }
 
-        public unsafe AvxMatrix Convolution(AvxMatrix filter)
+        public AvxMatrix Convolution(SquareKernel kernel)
+        {
+            if (Rows < kernel.Rows || Cols < kernel.Cols)
+                throw new ArgumentException("matrix smaller than kernel");
+
+            if (kernel.FilterSize == 4)
+                return Convolution4x4(kernel);
+            else if(kernel.FilterSize == 8)
+                return Convolution8x8(kernel);
+
+            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, kernel.Rows);
+            AvxMatrix result = new AvxMatrix(rows, cols);
+
+            for(int r = 0; r < rows; r++)
+            {
+                
+                for(int c = 0, destC = 0; c < cols; c++, destC++)
+                {
+                    // run the kernel
+                    result[r,c] = OneKernel(r, c, kernel);
+                }
+            }
+
+            return result;
+        }
+
+        private float OneKernel(int startR, int startC, SquareKernel kernel)
+        {
+            float res = 0f;
+            for(int r = startR, kr =0; kr < kernel.FilterSize; r++, kr++)
+            {
+                for (int c = startC, kc = 0; kc < kernel.FilterSize; c++, kc++)
+                {
+                    res += this[r, c] * kernel[kr, kc];
+                }
+            }
+            return res;
+        }
+
+        private unsafe AvxMatrix Convolution4x4(SquareKernel filter)
         {
             // slide a 4x4 filter across this matrix.
             // resulting matrix dimensions are: lhx - filter.x + 1 
@@ -276,9 +322,9 @@ namespace MatrixLibrary
             Debug.Assert(filter.Cols == 4);
             Debug.Assert(filter.Rows < this.Rows);
             Debug.Assert(filter.Cols < this.Cols);
+            Debug.Assert(filter.Rows == filter.FilterSize);
 
-
-            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter);
+            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter.Rows);
             AvxMatrix result = new AvxMatrix(rows, cols);
 
             int stride = this.Cols;
@@ -316,6 +362,70 @@ namespace MatrixLibrary
                         float s4 = Vector128.Dot<float>(v4, fv4);
 
                         *resultPtr = s1 + s2 + s3 + s4;
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        private unsafe AvxMatrix Convolution8x8(SquareKernel filter)
+        {
+            Debug.Assert(filter != null);
+            Debug.Assert(filter.Rows == 8);
+            Debug.Assert(filter.Cols == 8);
+            Debug.Assert(filter.Rows < this.Rows);
+            Debug.Assert(filter.Cols < this.Cols);
+            Debug.Assert(filter.Rows == filter.FilterSize);
+
+            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter.Rows);
+            AvxMatrix result = new AvxMatrix(rows, cols);
+
+            int stride = this.Cols;
+
+            fixed (float* filterM = filter.Mat,
+                          r1 = result.Mat,
+                          src = this.Mat)
+            {
+                float* resultPtr = r1;
+                float* srcPtr = src;
+
+                // load filter
+                int inc = 0;
+                Vector256<float> fv1 = Vector256.Load<float>(filterM); inc += 8;
+                Vector256<float> fv2 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv3 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv4 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv5 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv6 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv7 = Vector256.Load<float>(filterM + inc); inc += 8;
+                Vector256<float> fv8 = Vector256.Load<float>(filterM + inc);
+                for (int t = 0; t < rows; t++)
+                {
+                    for (int l = 0; l < cols; l++, resultPtr++)
+                    {
+                        // load convolution target tile
+                        // top left 1d float pointer
+                        float* topLeft = srcPtr + (t * stride + l);
+                        Vector256<float> v1 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v2 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v3 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v4 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v5 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v6 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v7 = Vector256.Load<float>(topLeft); topLeft += stride;
+                        Vector256<float> v8 = Vector256.Load<float>(topLeft);
+
+                        float s1 = Vector256.Dot<float>(v1, fv1);
+                        float s2 = Vector256.Dot<float>(v2, fv2);
+                        float s3 = Vector256.Dot<float>(v3, fv3);
+                        float s4 = Vector256.Dot<float>(v4, fv4);
+                        float s5 = Vector256.Dot<float>(v5, fv5);
+                        float s6 = Vector256.Dot<float>(v6, fv6);
+                        float s7 = Vector256.Dot<float>(v7, fv7);
+                        float s8 = Vector256.Dot<float>(v8, fv8);
+
+                        *resultPtr = s1 + s2 + s3 + s4 + s5 + s6 + s7 + s8;
                     }
                 }
             }

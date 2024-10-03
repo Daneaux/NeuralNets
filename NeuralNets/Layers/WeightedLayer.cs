@@ -29,7 +29,11 @@ namespace NeuralNets
                 return this.ActivationFunction is SoftMax;
             }
         }
-        public WeightedLayer(int nodeCount, IActivationFunction activationFunction, int incomingDataPoints, int randomSeed = 12341324) : base(nodeCount, activationFunction, incomingDataPoints, randomSeed)
+        public WeightedLayer(
+            int nodeCount, 
+            IActivationFunction activationFunction, 
+            int incomingDataPoints, 
+            int randomSeed = 12341324) : base(nodeCount, activationFunction, incomingDataPoints, randomSeed)
         {
             this.Initialize(activationFunction, incomingDataPoints, new AvxMatrix(nodeCount, incomingDataPoints), new AvxColumnVector(nodeCount));
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization

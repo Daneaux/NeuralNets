@@ -1,6 +1,7 @@
 ﻿using BenchmarkDotNet.Attributes;
 using MatrixLibrary;
 using BenchmarkDotNet.Running;
+using MatrixLibrary.Avx;
 
 public class Program
 {
@@ -15,11 +16,16 @@ public class IntrinsicsBenchmarks
 {
     private AvxMatrix m1;
     private AvxMatrix m2;
-    private AvxMatrix filterAvx;
 
     private Matrix2D nm1;
     private Matrix2D nm2;
     private Matrix2D filterMat2d;
+
+    private SquareKernel SquareKernel4;
+    private SquareKernel SquareKernel8;
+    private SquareKernel SquareKernel7;
+    private SquareKernel SquareKernel14;
+
     [GlobalSetup]
     public void Setup()
     {
@@ -38,15 +44,18 @@ public class IntrinsicsBenchmarks
         nm1.SetRandom(seed, -range, range);
         nm2.SetRandom(seed, -range, range);
 
+        SquareKernel4 = new SquareKernel(4);
+        SquareKernel8 = new SquareKernel(8);
+        SquareKernel7 = new SquareKernel(7);
+        SquareKernel14 = new SquareKernel(14);
 
-        float[,] filter = new float[4, 4]{
-            { 1, 1.5f, -1, 0 },
-            { 0, 1, 1.5f, -1 },
-            { -1, 0, 1.4f, 0 },
-            { 0, -1.1f, 2f, 1 }};
+        SquareKernel4.SetRandom(seed, -range, range);
+        SquareKernel8.SetRandom(seed, -range, range);
+        SquareKernel7.SetRandom(seed, -range, range);
+        SquareKernel14.SetRandom(seed, -range, range);
 
-        filterAvx = new AvxMatrix(filter);
-        filterMat2d = new Matrix2D(filter);
+        filterMat2d = new Matrix2D(4, 4);
+        filterMat2d.SetRandom(seed, -range, range);
     }
 
     [GlobalCleanup]
@@ -61,9 +70,27 @@ public class IntrinsicsBenchmarks
     }
 
     [Benchmark]
-    public void AvxConvolution()
+    public void AvxConvolution4x4()
     {
-        AvxMatrix m3 = m1.Convolution(filterAvx);
+        AvxMatrix m3 = m1.Convolution(SquareKernel4);
+    }
+
+    [Benchmark]
+    public void AvxConvolution8x8()
+    {
+        AvxMatrix m3 = m1.Convolution(SquareKernel8);
+    }
+
+    [Benchmark]
+    public void AvxConvolution7x7()
+    {
+        AvxMatrix m3 = m1.Convolution(SquareKernel7);
+    }
+
+    [Benchmark]
+    public void AvxConvolution14x14()
+    {
+        AvxMatrix m3 = m1.Convolution(SquareKernel14);
     }
 
     [Benchmark]
