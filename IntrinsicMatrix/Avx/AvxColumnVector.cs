@@ -6,7 +6,7 @@ namespace MatrixLibrary
     public class AvxColumnVector
     {
         private readonly float[] column;
-        public int Size { get { return column.Length; } }
+        public virtual int Size { get { return column.Length; } }
 
         public float this[int a] => column[a];
         public float[] Column { get { return column; } }
@@ -19,6 +19,8 @@ namespace MatrixLibrary
         {
             this.column = new float[size];
         }
+
+        protected AvxColumnVector() { }
         public unsafe float Sum()
         {
             float sum = 0.0f;
@@ -54,6 +56,45 @@ namespace MatrixLibrary
             return new ColumnVector(this.column).Log().ToAvxVector();
         }
 
+        public static AvxColumnVector operator *(AvxMatrix lhs, AvxColumnVector rhs) => rhs.MatrixTimesColumn(lhs);
+
+        public unsafe virtual AvxColumnVector MatrixTimesColumn(AvxMatrix lhs)
+        {
+            const int floatsPerVector = 16;
+            int numVectorsPerRow = lhs.Cols / floatsPerVector;
+            int remainingColumns = lhs.Cols % floatsPerVector;
+
+            AvxColumnVector result = new AvxColumnVector(lhs.Rows);
+
+            fixed (float* m1 = lhs.Mat,
+                          col = this.Column,
+                          resCol = result.Column)
+            {
+                float* mat1 = m1;
+                float* col1 = col;
+                float* destCol = resCol;
+
+                for (int r = 0; r < lhs.Rows; r++, destCol++)
+                {
+                    col1 = col;             // restart at the top of the column vector
+                    float v1DotCol = 0;
+                    for (int c = 0; c < numVectorsPerRow; c++, mat1 += 16, col1 += 16)
+                    {
+                        Vector512<float> rhsVec = Vector512.Load<float>(col1);
+                        Vector512<float> lhsVec = Vector512.Load<float>(mat1);
+                        v1DotCol += Vector512.Dot(lhsVec, rhsVec);
+                    }
+
+                    // do remainder
+                    for (int i = 0; i < remainingColumns; i++, mat1++, col1++)
+                    {
+                        v1DotCol += (*mat1) * (*col1);
+                    }
+                    *destCol = v1DotCol;
+                }
+            }
+            return result;
+        }
 
         public static AvxColumnVector operator *(AvxColumnVector vec, float scalar) => vec.ScalarMultiply(scalar);
         public static AvxColumnVector operator *(float scalar, AvxColumnVector vec) => vec.ScalarMultiply(scalar);

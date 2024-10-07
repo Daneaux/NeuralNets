@@ -8,10 +8,10 @@ namespace MnistReader_ANN
         {
             //this.LossFunction = new CategoricalCrossEntropy();
             this.LossFunction = new SquaredLoss();
-            Layers.Add(new WeightedLayer(128, new ReLUActivaction(), InputDim));
-            Layers.Add(new WeightedLayer(64, new SigmoidActivation(), 128));
-            Layers.Add(new WeightedLayer(32, new SigmoidActivation(), 64));
-            Layers.Add(new WeightedLayer(OutputDim, new SigmoidActivation(), 32));
+            Layers.Add(new WeightedLayer(new MatrixLibrary.InputOutputShape(1, InputDim, 1, 1), 128, new ReLUActivaction()));
+            Layers.Add(new WeightedLayer(new MatrixLibrary.InputOutputShape(1, 128, 1, 1), 64, new SigmoidActivation()));
+            Layers.Add(new WeightedLayer(new MatrixLibrary.InputOutputShape(1, 64, 1, 1), 32, new SigmoidActivation()));
+            Layers.Add(new WeightedLayer(new MatrixLibrary.InputOutputShape(1, 32, 1, 1), OutputDim, new SigmoidActivation()));
 //            Layers.Add(new WeightedLayer(OutputDim, new SoftMax(), 32));
         }
     }

@@ -32,6 +32,7 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
     public interface ILossFunction
     {
         AvxColumnVector Error(AvxColumnVector truth, AvxColumnVector predicted);
+        AvxColumnVector Error(Tensor truth, Tensor predicted);
         AvxColumnVector Derivative(AvxColumnVector truth, AvxColumnVector predicted);
     }
 
@@ -43,6 +44,11 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         }
 
         public AvxColumnVector Error(AvxColumnVector truth, AvxColumnVector predicted) => predicted - truth;
+
+        public AvxColumnVector Error(Tensor truth, Tensor predicted)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     // 1/2 * (precited - actual)^2
@@ -51,6 +57,13 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         public AvxColumnVector Error(AvxColumnVector truth, AvxColumnVector predicted) => 0.5F * (predicted - truth) * (predicted - truth);
 
         public AvxColumnVector Derivative(AvxColumnVector truth, AvxColumnVector predicted) => (predicted - truth);
+
+        public AvxColumnVector Error(Tensor truth, Tensor predicted)
+        {
+            var t = truth as AnnTensor;
+            var p = predicted as AnnTensor;
+            return Error(t.ColumnVector, p.ColumnVector);
+        }
     }
 
     public class CategoricalCrossEntropy : ILossFunction
@@ -104,6 +117,11 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         {
             return -1 * truth * predicted.Log();
         }
+
+        public AvxColumnVector Error(Tensor truth, Tensor predicted)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     // Cross Entropy ==  -Sum [ truth * log(predicted) ]
@@ -119,12 +137,22 @@ Loss Function: Cross-Entropy, also referred to as Logarithmic loss.
         {
             throw new NotImplementedException();
         }
+
+        public AvxColumnVector Error(Tensor truth, Tensor predicted)
+        {
+            throw new NotImplementedException();
+        }
     }
 
 
     public class SparseCategoricalCrossEntropy : ILossFunction
     {
         public AvxColumnVector Derivative(AvxColumnVector truth, AvxColumnVector predicted)
+        {
+            throw new NotImplementedException();
+        }
+
+        public AvxColumnVector Error(Tensor truth, Tensor predicted)
         {
             throw new NotImplementedException();
         }

@@ -53,11 +53,12 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        public void TestTimesColumn()
+        [DataRow(4, 4)]
+        [DataRow(16, 17)]
+        [DataRow(23, 41)]
+        public void TestTimesColumn(int rows, int cols)
         {
             // Define and initialize a 17x3 matrix with some test values
-            int rows = 3;
-            int cols = 18;
             float[,] matrixA = new float[rows, cols];
             float[] columnA = new float[cols];
 
@@ -66,34 +67,98 @@ namespace NeuralNetsTests.Math
             {
                 for (int c = 0; c < cols; c++)
                 {
-                    matrixA[r, c] = (float)r * (float)c + (float)(c+r);
+                    matrixA[r, c] = (float)r * (float)c + (float)(c + r);
                 }
             }
 
             for (int c = 0; c < cols; c++)
             {
                 columnA[c] = (float)12 * (float)c + (float)c;
-            }            
+            }
 
             AvxMatrix m1 = new AvxMatrix(matrixA);
-            AvxColumnVector m2 = new AvxColumnVector(columnA);
+            AvxColumnVector v2 = new AvxColumnVector(columnA);
 
-            AvxColumnVector m3 = m1.MatrixTimesColumn(m2);
+            AvxColumnVector m3 = m1 * v2;
 
-            Assert.AreEqual(m1.Cols, m2.Size);
+            Assert.AreEqual(m1.Cols, v2.Size);
             Assert.AreEqual(m1.Rows, m3.Size);
 
             for (int r = 0; r < rows; r++)
             {
                 // do the dot product row 'r' dot the column vector
                 float dot = 0;
-                for(int c=0; c < cols; c++)
+                for (int c = 0; c < cols; c++)
                 {
                     dot += matrixA[r, c] * columnA[c];
                 }
                 Assert.AreEqual(dot, m3[r]);
-            }            
+            }
         }
+
+        [TestMethod]
+        [DataRow(4, 4, 2, 1)]
+        [DataRow(4, 4, 2, 2)]
+        [DataRow(16, 17, 2, 4)]
+        [DataRow(23, 41, 2, 5)]
+        [DataRow(4, 4, 5, 17)]
+        [DataRow(4, 4, 13, 17)]
+        [DataRow(16, 17, 5, 17)]
+        [DataRow(23, 41, 5, 17)]
+        public void TestTimesFlattenedMatrices(int rows, int cols, int lhsRows, int rhsMatCount)
+        {
+            Random rnd = new Random();
+
+            // 1. create an array of matrices. total size == columns on the lhs matrix.
+            // 2. multiply lhs times "array of matrices" using the flattened multiply method
+            int lhsCols = rhsMatCount * rows * cols;
+            float[,] rhsMatrix = new float[rows, cols];
+            float[] rhsLinear = new float[lhsCols];
+            float[,] lhs = new float[lhsRows, lhsCols];
+            // Fill the rhs matrix with some test values, this 2d float array gets reused in every avxMatrix in the list
+            int linear = 0;
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    rhsLinear[linear++] = rhsMatrix[r, c] = rnd.Next(1, 100);
+
+            // copy the value over and over into the flattened array for ease of testing
+            for (int i = 1; i < rhsMatCount; i++)
+                for (int j = 0; j < rhsMatrix.Length; j++)
+                    rhsLinear[linear++] = rhsLinear[j];
+
+            for (int r = 0; r < lhsRows; r++)
+                for (int c = 0; c < lhsCols; c++)
+                    lhs[r, c] = rnd.Next(1, 100);
+
+            AvxMatrix lhsMatrix = new AvxMatrix(lhs);
+            List<AvxMatrix> matricesToFlatten = new List<AvxMatrix>();
+            for (int i = 0; i < rhsMatCount; i++)
+                matricesToFlatten.Add(new AvxMatrix(rhsMatrix));
+
+            FlattenedMatricesAsVector rhsVector = new FlattenedMatricesAsVector(matricesToFlatten);
+
+            var vecResult = rhsVector.MatrixTimesColumn(lhsMatrix);
+
+            Assert.AreEqual(vecResult.Size, lhsRows);
+            Assert.AreEqual(lhsMatrix.Cols, rhsLinear.Length);
+            Assert.AreEqual(lhsCols, lhsMatrix.Cols);
+            Assert.AreEqual(lhsCols, rhsMatrix.Length * rhsMatCount);
+            for (int r = 0; r < lhsRows; r++)
+            {
+                float myDot = DotHelper(lhsMatrix, r, rhsLinear);
+                Assert.AreEqual(myDot, vecResult[r], 100);  // turns out that avxmult != software mult for the same numbers
+            }
+        }
+
+        private float DotHelper(AvxMatrix lhsMatrix, int lhsRow, float[] rhs)
+        {
+            float dot = 0;
+            for (int i = 0; i < rhs.Length; i++)
+                dot += lhsMatrix[lhsRow, i] * rhs[i];
+
+            return dot;
+        }
+
 
         [TestMethod]
         public void TestMatrixMultiplySquare57()

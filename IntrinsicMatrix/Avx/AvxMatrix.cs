@@ -43,7 +43,7 @@ namespace MatrixLibrary
 
         public int Rows { get; private set; }
         public int Cols { get; private set; }
-
+        public int TotalSize { get { return Cols * Rows; } }
 
         public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
@@ -220,46 +220,6 @@ namespace MatrixLibrary
             return result;
         }
 
-        public static AvxColumnVector operator *(AvxMatrix lhs, AvxColumnVector rhs) => lhs.MatrixTimesColumn(rhs);
-        public unsafe AvxColumnVector MatrixTimesColumn(AvxColumnVector rhs)
-        {
-            const int floatsPerVector = 16;
-            int numVectorsPerRow = Cols / floatsPerVector;
-            int remainingColumns = Cols % floatsPerVector;
-
-            AvxColumnVector result = new AvxColumnVector(Rows);
-
-            fixed (float* m1 = this.Mat,
-                          col = rhs.Column,
-                          resCol = result.Column)
-            {
-                float* mat1 = m1;
-                float* col1 = col;
-                float* destCol = resCol;
-
-                Vector512<float> colVector = Vector512.Load<float>(col1);
-                for (int r = 0; r < Rows; r++, destCol++)
-                {
-                    col1 = col;             // restart at the top of the column vector
-                    float v1DotCol = 0;
-                    for (int c = 0; c < numVectorsPerRow; c++, mat1 += 16, col1 += 16)
-                    {
-                        Vector512<float> v1 = Vector512.Load<float>(mat1);
-                        v1DotCol += Vector512.Dot(v1, colVector);
-                    }
-
-                    // do remainder
-                    for (int i = 0; i < remainingColumns; i++, mat1++, col1++)
-                    {
-                        v1DotCol += (*mat1) * (*col1);
-                    }
-                    *destCol = v1DotCol;
-                }
-            }
-
-            return result;
-        }
-
         public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, int filterSize, int stride = 1)
         {
             // W = input volume
@@ -270,6 +230,18 @@ namespace MatrixLibrary
             //  filter is square
             int cols = 1 + ((matrix.Cols - filterSize) / stride);
             int rows = 1 + ((matrix.Rows - filterSize) / stride);
+            return (rows, cols);
+        }
+        public static (int r, int c) ConvolutionSizeHelper(InputOutputShape inputShape, int kernelSize, int stride = 1)
+        {
+            // W = input volume
+            // K = kernel size
+            // P = padding (not used here yet)
+            // S = stride
+            // result size = 1 + (W - K + 2P) / S
+            //  filter is square
+            int cols = 1 + ((inputShape.Width - kernelSize) / stride);
+            int rows = 1 + ((inputShape.Height - kernelSize) / stride);
             return (rows, cols);
         }
 
@@ -831,6 +803,21 @@ namespace MatrixLibrary
         public AvxMatrix Log()
         {
             return new Matrix2D(this.Mat).Log().ToAvxMatrix();
+        }
+
+        public unsafe AvxColumnVector UnrollToAvxColumnVector()
+        {
+            // there has to be a faster way to do this. Span? unsafe pointer to float?
+            int totSize = this.Cols * this.Rows;
+            int totalBytes = totSize * sizeof(float);
+            float[] floats = new float[totSize];
+            fixed (float* m = Mat,
+                         f = floats)
+            {
+                System.Buffer.MemoryCopy(m, &floats, totalBytes, totalBytes);
+                AvxColumnVector unrolled = new AvxColumnVector(floats);
+                return unrolled;
+            }
         }
     }
 }

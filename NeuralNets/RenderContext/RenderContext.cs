@@ -212,8 +212,9 @@ namespace NeuralNets
             return prevActivation;
         }
 
-        public AvxColumnVector FeedForward(AvxColumnVector inputVec)
+        public AvxColumnVector FeedForward(Tensor inputVecTensor)
         {
+            AvxColumnVector inputVec = (inputVecTensor as AnnTensor).ColumnVector;
             Debug.Assert(inputVec.Size == this.InputDim);
             AvxColumnVector prevActivation = inputVec;
             for (int i = 0; i < this.LayerCount; i++)
@@ -328,12 +329,12 @@ namespace NeuralNets
 
                 // after all the crazy derivatives of softmax * crossentrotpy, we just end up with: a - y
                 // which is 'activtion' of softmax minus the truth vector.  must be onehot encoded
-                outputLayerSigma = ActivationContext[outputLayerIndex] - trainingPair.Output;
+                outputLayerSigma = ActivationContext[outputLayerIndex] - trainingPair.Output.ToAvxColumnVector();
             }
             else
             {
                 // partial product, before we start the per-w differentials.
-                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
+                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output.ToAvxColumnVector(), predictedOut);
                 AvxColumnVector ActivationPartial = outputLayer.Derivative(this.ActivationContext[outputLayerIndex]);    // outputLayer.ActivationFunction.Derivative();
                 this.SetLastDerivative(outputLayerIndex, ActivationPartial);
                 outputLayerSigma = LossPartial * ActivationPartial;
@@ -364,7 +365,7 @@ namespace NeuralNets
                 if (L == 0)
                 {
                     // no one to the left, use input from training
-                    activationToTheLeft = trainingPair.Input;
+                    activationToTheLeft = trainingPair.Input.ToAvxColumnVector();
                 }
                 else
                 {
@@ -398,12 +399,12 @@ namespace NeuralNets
 
                 // after all the crazy derivatives of softmax * crossentrotpy, we just end up with: a - y
                 // which is 'activtion' of softmax minus the truth vector.  must be onehot encoded
-                outputLayerSigma = new AvxColumnVector(ActivationContext[outputLayerIndex].Column) - new AvxColumnVector(trainingPair.Output.Column);
+                outputLayerSigma = ActivationContext[outputLayerIndex] - trainingPair.Output.ToAvxColumnVector();
             }
             else
             {
                 // partial product, before we start the per-w differentials.
-                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
+                AvxColumnVector LossPartial = this.LossFunction.Derivative(trainingPair.Output.ToAvxColumnVector(), predictedOut);
                 AvxColumnVector ActivationPartial = outputLayer.Derivative(this.ActivationContext[outputLayerIndex]);
                 this.SetLastDerivative(outputLayerIndex, ActivationPartial);
                 outputLayerSigma = new AvxColumnVector(LossPartial.Column) * new AvxColumnVector(ActivationPartial.Column);
@@ -434,7 +435,7 @@ namespace NeuralNets
                 if (L == 0)
                 {
                     // no one to the left, use input from training
-                    activationToTheLeft = trainingPair.Input;
+                    activationToTheLeft = trainingPair.Input.ToAvxColumnVector();
                 }
                 else
                 {

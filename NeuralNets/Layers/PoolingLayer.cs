@@ -7,34 +7,37 @@ namespace NeuralNets
     public class PoolingLayer : Layer
     {
         public PoolingLayer(
+            InputOutputShape inputShape,
             int stride,
             int kernelCount,
             int kernelSquareDimension,
             int kernelDepth
-            ) : base(kernelCount, null, kernelDepth, 0)
+            ) : base(inputShape, kernelCount, null)
         {
             Stride = stride;
             KernelCount = kernelCount;
             KernelDepth = kernelDepth;
-            FilterSize = kernelSquareDimension;
+            KernelSize = kernelSquareDimension;
+            FlatOutputSize = kernelDepth * KernelSize * KernelSize * KernelCount;
+            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(inputShape, KernelSize, Stride);
+
+            OutputShape = new InputOutputShape(destColumns, destRows, KernelDepth, KernelCount);
         }
 
         public int Stride { get; }
         public int KernelCount { get; }
         public int KernelDepth { get; }
-        public int FilterSize { get; }
+        public int KernelSize { get; }
+        public int FlatOutputSize { get; }
+        public override InputOutputShape OutputShape { get; }
 
         public override Tensor FeedFoward(Tensor input)
         {
             List<AvxMatrix> pooledMatrices = new List<AvxMatrix>();
 
-            ConvolutionTensor inT = input as ConvolutionTensor;
-            if(inT != null) 
-                throw new ArgumentException("Expected a convolutionTensor");
-
-            foreach(AvxMatrix mat in inT.Matrices)
+            foreach(AvxMatrix mat in input.Matrices)
             {
-                AvxMatrix pooledMat = DoMaxPool(mat, Stride, FilterSize);
+                AvxMatrix pooledMat = DoMaxPool(mat, Stride, KernelSize);
                 pooledMatrices.Add(pooledMat);
             }
 
@@ -54,7 +57,7 @@ namespace NeuralNets
                 for(int c = 0, dc = 0; dc < destColumns; c += stride, dc++)
                 {
                     float maxSample = DoMaxSample(mat, r, c, filterSize);
-                    result[r,c] = maxSample;
+                    result[dr, dc] = maxSample;
                 }
             }
 

@@ -29,34 +29,40 @@ namespace NeuralNets
                 return this.ActivationFunction is SoftMax;
             }
         }
+
+        public override InputOutputShape OutputShape => new InputOutputShape(1, NumNodes, 1, 1);
+
         public WeightedLayer(
+            InputOutputShape inputShape,
             int nodeCount, 
             IActivationFunction activationFunction, 
-            int incomingDataPoints, 
-            int randomSeed = 12341324) : base(nodeCount, activationFunction, incomingDataPoints, randomSeed)
+            int randomSeed = 12341324) : base(inputShape, nodeCount, activationFunction, randomSeed)
         {
-            this.Initialize(activationFunction, incomingDataPoints, new AvxMatrix(nodeCount, incomingDataPoints), new AvxColumnVector(nodeCount));
+            Biases = new AvxColumnVector(nodeCount);
+            Weights = new AvxMatrix(nodeCount, inputShape.TotalFlattenedSize);
+            
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
-        }
-        public WeightedLayer(
-            int nodeCount,
-            IActivationFunction activationFunction,
-            int incomingDataPoints,
-            AvxMatrix initialWeights,
-            AvxColumnVector initialBiases) : base(nodeCount, activationFunction, incomingDataPoints)
-        {
-            Initialize(activationFunction, incomingDataPoints, initialWeights, initialBiases);
-        }
-        private void Initialize(IActivationFunction activationFunction, int incomingDataPoints, AvxMatrix initialWeights, AvxColumnVector initialBiases)
-        {
-            this.Weights = initialWeights;
-            this.Biases = initialBiases;
 
             Debug.Assert(activationFunction != null);
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
-            Debug.Assert(this.Weights.Cols == incomingDataPoints);
+            Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);
         }
+
+        public WeightedLayer(
+            InputOutputShape inputShape,
+            int nodeCount,
+            IActivationFunction activationFunction,
+            AvxMatrix initialWeights,
+            AvxColumnVector initialBiases) : base(inputShape, nodeCount, activationFunction)
+        {
+            this.Biases = initialBiases;
+            this.Weights = initialWeights;
+            Debug.Assert(activationFunction != null);
+            Debug.Assert(this.Weights.Rows == this.Biases.Size);
+            Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);
+        }
+
         public AvxColumnVector Activate(AvxColumnVector input)
         {
             return ActivationFunction.Activate(input);
@@ -69,11 +75,17 @@ namespace NeuralNets
         public override Tensor FeedFoward(Tensor input)
         {
             AnnTensor annTensor = input as AnnTensor;
-            if (annTensor == null)
+            AvxColumnVector ?vectorInput = null;
+            if (annTensor != null)
             {
-                throw new ArgumentException("expected AnnTensor as input");
+                vectorInput = annTensor.ColumnVector;
+                Debug.Assert(annTensor.Matrix == null);
             }
-            AvxColumnVector vectorInput = annTensor.ColumnVector;
+            else 
+            {
+                vectorInput = input.ToFlattenedMatrices();
+            }
+
             AvxColumnVector Z = Weights * vectorInput + Biases;
             AvxColumnVector O = this.ActivationFunction.Activate(Z);
             return new AnnTensor(null, O);

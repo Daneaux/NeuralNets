@@ -8,7 +8,7 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
-        DoMyMNIST();
+        //DoMyMNIST();
         //DoTorchMNIST();
         DoCNN();
 
@@ -34,11 +34,17 @@ class AnnHarness
 
     private static void DoCNN()
     {
-        ConvolutionLayer layer1 = new ConvolutionLayer(4, 4, new ReLUActivaction(), 1);
-        PoolingLayer p1 = new PoolingLayer(2, 5, 2, 1);
-        WeightedLayer w1 = new WeightedLayer(10, new SigmoidActivation(), 5);
-        ConvolutionNN nn = new ConvolutionNN(new List<Layer> { layer1, p1 }, 0.05f, 1, 1, new SquaredLoss());
-        ConvolutionRenderContext crn = new ConvolutionRenderContext(nn, 256, new MNISTTrainingSet());
+        MNISTTrainingSet trainingSet = new MNISTTrainingSet();
+        ConvolutionLayer conv1 = new ConvolutionLayer(trainingSet.OutputShape, 4, 4, new ReLUActivaction(), 1);
+        PoolingLayer p1 = new PoolingLayer(conv1.OutputShape, 2, 5, 2, 1);
+        WeightedLayer w1 = new WeightedLayer(p1.OutputShape, 10, new SigmoidActivation(), p1.FlatOutputSize);
+        ConvolutionNN nn = new ConvolutionNN(new List<Layer> { conv1, p1, w1 }, 0.05f, 1, 1, new SquaredLoss());
+        ConvolutionRenderContext crn = new ConvolutionRenderContext(nn, 256, trainingSet);
+
+        List<TrainingPair> tps = trainingSet.BuildNewRandomizedTrainingList();
+
+        Tensor t = crn.FeedForward(tps[0].Input);
+
         
     }
 }

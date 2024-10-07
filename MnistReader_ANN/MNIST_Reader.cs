@@ -24,10 +24,10 @@ namespace MnistReader_ANN
         public required byte[] Data { get; set; }
         public int Size { get { return Data.Length; } }
     }
-    public class NormalizedImage
+    public class Normalized2DImage
     {
         public byte Label { get; set; }
-        public required float[] Data { get; set; }
+        public required float[,] Data { get; set; }
         public int Size { get { return Data.Length; } }
     }
 
@@ -74,7 +74,7 @@ namespace MnistReader_ANN
                 yield return item;
             }
         }
-        public static IEnumerable<NormalizedImage> ReadNormTrainingData()
+        public static IEnumerable<Normalized2DImage> ReadNormTrainingData()
         {
             foreach (var item in ReadNorm(TrainImages, TrainLabels))
             {
@@ -82,7 +82,7 @@ namespace MnistReader_ANN
             }
         }
 
-        public static IEnumerable<NormalizedImage> ReadNormTestData()
+        public static IEnumerable<Normalized2DImage> ReadNormTestData()
         {
             foreach (var item in ReadNorm(TestImages, TestLabels))
             {
@@ -149,7 +149,7 @@ namespace MnistReader_ANN
             images = null;
         }
 
-        private static IEnumerable<NormalizedImage> ReadNorm(string imagesPath, string labelsPath)
+        private static IEnumerable<Normalized2DImage> ReadNorm(string imagesPath, string labelsPath)
         {
             imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
             labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
@@ -167,13 +167,16 @@ namespace MnistReader_ANN
             for (int i = 0; i < numberOfImages; i++)
             {
                 var bytes = images.ReadBytes(width * height);
-                float[] floats = new float[bytes.Length];
-                for(int j=0; j< bytes.Length; j++)
+                float[,] floats = new float[height, width];
+                for(int j=0, tot=0; j< height; j++)
                 {
-                    floats[j] = (float)bytes[j] / 255.0f;
+                    for (int k = 0; k < width; k++)
+                    {
+                        floats[j,k] = (float)bytes[tot++] / 255.0f;
+                    }
                 }
 
-                yield return new NormalizedImage()
+                yield return new Normalized2DImage()
                 {
                     Data = floats,
                     Label = labels.ReadByte()

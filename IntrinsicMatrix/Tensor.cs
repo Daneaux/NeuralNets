@@ -28,12 +28,29 @@ namespace MatrixLibrary
         {
             return new AnnTensor(null, columnVector);
         }
+
+        public static AvxColumnVector? ToAvxColumnVector(this Tensor tensor)
+        {
+            return (tensor as AnnTensor)?.ColumnVector;
+        }
+        public static AvxMatrix? ToAvxMatrix(this Tensor tensor)
+        {
+            return (tensor as AnnTensor)?.Matrix;
+        }
+
+        public static FlattenedMatricesAsVector? ToFlattenedMatrices(this Tensor tensor)
+        {
+            List<AvxMatrix> mats = tensor.Matrices;
+            return new FlattenedMatricesAsVector(mats);
+        }
     }
 
     public abstract class Tensor
     {
         public static Tensor operator +(Tensor lhs, Tensor rhs) => lhs.Add(rhs);
         public abstract Tensor Add(Tensor rhs);
+
+        public abstract List<AvxMatrix> Matrices { get; }
     }
 
     public class ConvolutionTensor : Tensor
@@ -42,7 +59,7 @@ namespace MatrixLibrary
         {
             Matrices = matrices;
         }
-        public List<AvxMatrix> Matrices { get; private set; }
+        public override List<AvxMatrix> Matrices { get; }
 
         public override Tensor Add(Tensor rhs)
         {
@@ -58,6 +75,7 @@ namespace MatrixLibrary
             ColumnVector = columnVector;
         }
         public AvxMatrix Matrix { get; }
+        public override List<AvxMatrix> Matrices { get { return new List<AvxMatrix>() { Matrix }; } }
         public AvxColumnVector ColumnVector { get; }
 
         public override Tensor Add(Tensor rhs)

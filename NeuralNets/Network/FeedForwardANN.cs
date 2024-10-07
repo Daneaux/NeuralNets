@@ -36,13 +36,13 @@ namespace NeuralNets
 
         public override float GetTotallLoss(TrainingPair tp, AvxColumnVector predicted)
         {
-            AvxColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted);
+            AvxColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted.ToTensor());
             return lossVec.Sum();
         }
 
         public override AvxColumnVector GetLossVector(TrainingPair tp, AvxColumnVector predicted)
         {
-            return this.LossFunction.Error(tp.Output, predicted);
+            return this.LossFunction.Error(tp.Output, predicted.ToTensor());
         }
 
         public override float GetAveragelLoss(TrainingPair tp, AvxColumnVector predicted)

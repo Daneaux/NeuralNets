@@ -1,6 +1,7 @@
 ﻿using MatrixLibrary;
 using NeuralNets;
 using SharpTorch;
+using System.Diagnostics;
 
 namespace NeuralNetsTests.ANNTests
 {
@@ -23,13 +24,21 @@ namespace NeuralNetsTests.ANNTests
 
             public int InputDimension => 1;
 
-            public int OutputDimension => 1;
+            public int NumClasses => 1;
 
             public int NumberOfSamples { get; }
 
             public int NumberOfLabels => 0;
 
             public List<TrainingPair> TrainingList { get; private set; }
+
+            public int Width => 1;
+
+            public int Height => 1;
+
+            public int Depth => 1;
+
+            public InputOutputShape OutputShape => new InputOutputShape(1, 1, 1, 1);
 
             public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
@@ -57,9 +66,9 @@ namespace NeuralNetsTests.ANNTests
             int batchSize = 32;
             ILossFunction lossFunction = new SquaredLoss();
 
-            WeightedLayer hiddenLayer1 = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), inputDim);
-            WeightedLayer hiddenLayer2 = new WeightedLayer(hiddenLayerDim, new SigmoidActivation(), hiddenLayerDim);
-            WeightedLayer outputLayer = new WeightedLayer(outputDim, new SigmoidActivation(), hiddenLayerDim);
+            WeightedLayer hiddenLayer1 = new WeightedLayer(new InputOutputShape(1, 1, 1, 1), hiddenLayerDim, new SigmoidActivation());
+            WeightedLayer hiddenLayer2 = new WeightedLayer(hiddenLayer1.OutputShape, hiddenLayerDim, new SigmoidActivation());
+            WeightedLayer outputLayer = new WeightedLayer(hiddenLayer2.OutputShape, outputDim, new SigmoidActivation());
 
             int trainingSamples = 40000;
             ITrainingSet ts = new SineWaveTrainingSet(trainingSamples, 0.001F, 09870987);
@@ -82,11 +91,11 @@ namespace NeuralNetsTests.ANNTests
             {
                 RenderContext lossCtx = new RenderContext(ann, 1, ts2);
                 AvxColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
-                averageLoss += ann.GetTotallLoss(ts.TrainingList[i], prediction);
+                averageLoss += ann.GetAveragelLoss(ts.TrainingList[i], prediction);
             }
 
             averageLoss /= testSamples;
-            Console.WriteLine($"{averageLoss} after {testSamples} test samples and {trainingSamples} and {numEpochs} epochs\n");            
+            Debug.WriteLine($"{averageLoss} after {testSamples} test samples and {trainingSamples} and {numEpochs} epochs\n");            
         }
 
         public class MazurTrainingSet : ITrainingSet
@@ -98,7 +107,7 @@ namespace NeuralNetsTests.ANNTests
 
             public int InputDimension => 2;
 
-            public int OutputDimension => 2;
+            public int NumClasses => 2;
 
             public int NumberOfSamples => 1;
 
@@ -107,6 +116,14 @@ namespace NeuralNetsTests.ANNTests
             public TrainingPair TrainingPair { get; }
 
             public List<TrainingPair> TrainingList { get; private set; }
+
+            public int Width => 1;
+
+            public int Height => 2;
+
+            public int Depth => 1;
+
+            public InputOutputShape OutputShape => new InputOutputShape(1, 2, 1, 1);
 
             public List<TrainingPair> BuildNewRandomizedTrainingList()
             {
@@ -140,9 +157,9 @@ namespace NeuralNetsTests.ANNTests
             AvxColumnVector b1 = new AvxColumnVector(new float[] { 0.35f, 0.35f });
             AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
-
-            WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
-            WeightedLayer outputLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w2, b2);
+            InputOutputShape shape = new InputOutputShape(1, 2, 1, 1);
+            WeightedLayer hiddenLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w1, b1);
+            WeightedLayer outputLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w2, b2);
 
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 
@@ -201,8 +218,8 @@ namespace NeuralNetsTests.ANNTests
             // 
             // hand rolled feed forward and test!
             //
-            float z1 = hiddenLayer.Weights[0, 0] * tp.Input[0] + hiddenLayer.Weights[0, 1] * tp.Input[1] + hiddenLayer.Biases[0];
-            float z2 = hiddenLayer.Weights[1, 0] * tp.Input[0] + hiddenLayer.Weights[1, 1] * tp.Input[1] + hiddenLayer.Biases[1];
+            float z1 = hiddenLayer.Weights[0, 0] * tp.Input.ToAvxColumnVector()[0] + hiddenLayer.Weights[0, 1] * tp.Input.ToAvxColumnVector()[1] + hiddenLayer.Biases[0];
+            float z2 = hiddenLayer.Weights[1, 0] * tp.Input.ToAvxColumnVector()[0] + hiddenLayer.Weights[1, 1] * tp.Input.ToAvxColumnVector()[1] + hiddenLayer.Biases[1];
 
             AvxColumnVector a = hiddenLayer.Activate(new AvxColumnVector([z1, z2]));
 
@@ -212,8 +229,8 @@ namespace NeuralNetsTests.ANNTests
             AvxColumnVector oa = outputLayer.Activate(new AvxColumnVector([oz1, oz2]));
 
             // truth - predicted
-            float error1 = 0.5f * (tp.Output[0] - oa[0]) * (tp.Output[0] - oa[0]);
-            float error2 = 0.5f * (tp.Output[1] - oa[1]) * (tp.Output[1] - oa[1]);
+            float error1 = 0.5f * (tp.Output.ToAvxColumnVector()[0] - oa[0]) * (tp.Output.ToAvxColumnVector()[0] - oa[0]);
+            float error2 = 0.5f * (tp.Output.ToAvxColumnVector()[1] - oa[1]) * (tp.Output.ToAvxColumnVector()[1] - oa[1]);
             float totalErrorPass2 = error1 + error2;
             Assert.AreEqual(0.28047, totalErrorPass2, 0.001);
 
@@ -268,8 +285,9 @@ namespace NeuralNetsTests.ANNTests
             AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
 
-            WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
-            WeightedLayer outputLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w2, b2);
+            InputOutputShape shape = new InputOutputShape(1, 2, 1, 1);
+            WeightedLayer hiddenLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w1, b1);
+            WeightedLayer outputLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w2, b2);
 
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 
@@ -374,9 +392,9 @@ namespace NeuralNetsTests.ANNTests
             AvxColumnVector b1 = new AvxColumnVector(new float[] { 0.35f, 0.35f });
             AvxColumnVector b2 = new AvxColumnVector(new float[] { 0.60f, 0.60f });
 
-
-            WeightedLayer hiddenLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w1, b1);
-            WeightedLayer outputLayer = new WeightedLayer(2, new SigmoidActivation(), 2, w2, b2);
+            InputOutputShape shape = new InputOutputShape(1, 2, 1, 1);
+            WeightedLayer hiddenLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w1, b1);
+            WeightedLayer outputLayer = new WeightedLayer(shape, 2, new SigmoidActivation(), w2, b2);
 
             MazurTrainingSet ts = new MazurTrainingSet(tp);
 

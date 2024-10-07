@@ -1,6 +1,7 @@
 ﻿using MatrixLibrary;
 using MatrixLibrary.Avx;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace NeuralNets
 {
@@ -12,28 +13,34 @@ namespace NeuralNets
         private readonly int KernelCount;
 
         public int FilterSize { get; }
-
+        public int Stride { get; }
         public List<AvxMatrix> Biases { get; } = new List<AvxMatrix>();
+        public override InputOutputShape OutputShape { get; }
         public List<List<SquareKernel>> Kernels { get; private set; }
 
         public ConvolutionLayer(
+            InputOutputShape inputShape,
             int kernelCount,
             int kernelSquareDimension,
             IActivationFunction activationFunction,
-            int kernelDepth,
+            int stride = 1,
             int randomSeed = 12341324) :
-            base(kernelCount, activationFunction, kernelDepth, randomSeed)
+            base(inputShape, kernelCount, activationFunction, randomSeed)
         {
+            Debug.Assert(inputShape.Count == 1);
             // I'm keeping my own copies of these properties even though they already exist on the base class
             // simply because my naming is specialized.
             KernelCount = kernelCount;
-            KernelDepth = kernelDepth;
+            KernelDepth = inputShape.Depth;
             FilterSize = kernelSquareDimension;
+            Stride = stride;
+            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputShape, FilterSize, stride);
+            OutputShape = new InputOutputShape(c, r, KernelDepth, kernelCount);
             Kernels = new List<List<SquareKernel>>(kernelCount);
             for (int i = 0; i < kernelCount; i++)
             {
-                List<SquareKernel> kernelStack = new List<SquareKernel>(kernelDepth);
-                for (int z = 0; z < kernelDepth; z++)
+                List<SquareKernel> kernelStack = new List<SquareKernel>(KernelDepth);
+                for (int z = 0; z < KernelDepth; z++)
                 {
                     SquareKernel filter = new SquareKernel(kernelSquareDimension);
                     filter.SetRandom(randomSeed, (float)-Math.Sqrt(kernelCount), (float)Math.Sqrt(kernelCount)); // Xavier initilization
@@ -47,15 +54,11 @@ namespace NeuralNets
         }
         public override Tensor FeedFoward(Tensor input)
         {
-            ConvolutionTensor convTensor = input as ConvolutionTensor;
-            if (convTensor == null)
-            {
-                throw new ArgumentException("Expected a ConvolutionTensor");
-            }
+            List<AvxMatrix> avxMatrices = input.Matrices;
+            Debug.Assert(avxMatrices != null);
+            Debug.Assert(avxMatrices.Count == KernelDepth);
 
-            Debug.Assert(convTensor.Matrices.Count == KernelDepth);
-
-            var ret = FeedForwardConvolutionPlusBiasPlusActivation(convTensor.Matrices);
+            var ret = FeedForwardConvolutionPlusBiasPlusActivation(avxMatrices);
             return new ConvolutionTensor(ret);
         }
 
