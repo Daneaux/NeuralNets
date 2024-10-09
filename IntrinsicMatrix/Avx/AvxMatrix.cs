@@ -47,7 +47,6 @@ namespace MatrixLibrary
 
         public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
-        // [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public unsafe AvxMatrix AddMatrix(AvxMatrix b)
         {
             const int floatsPerVector = 16;
@@ -182,7 +181,6 @@ namespace MatrixLibrary
             return result;
         }
 
-
         public static AvxMatrix operator -(AvxMatrix lhs, AvxMatrix rhs) => lhs.SubtractMatrix(rhs);
 
         public unsafe AvxMatrix SubtractMatrix(AvxMatrix b)
@@ -220,7 +218,7 @@ namespace MatrixLibrary
             return result;
         }
 
-        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, int filterSize, int stride = 1)
+        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, int kernelSize, bool isFull = false, int stride = 1)
         {
             // W = input volume
             // K = kernel size
@@ -228,11 +226,26 @@ namespace MatrixLibrary
             // S = stride
             // result size = 1 + (W - K + 2P) / S
             //  filter is square
-            int cols = 1 + ((matrix.Cols - filterSize) / stride);
-            int rows = 1 + ((matrix.Rows - filterSize) / stride);
+            int cols = 1 + ((matrix.Cols - kernelSize) / stride);
+            int rows = 1 + ((matrix.Rows - kernelSize) / stride);
+
+            if (isFull)
+            {
+                cols += 2 * (kernelSize - 1);
+                rows += 2 * (kernelSize - 1);
+            }
+
+#if DEBUG
+            if(isFull && stride == 1)
+            {
+                Debug.Assert(cols == matrix.Cols + kernelSize - 1);
+                Debug.Assert(rows == matrix.Rows + kernelSize - 1);
+            }
+#endif
+
             return (rows, cols);
         }
-        public static (int r, int c) ConvolutionSizeHelper(InputOutputShape inputShape, int kernelSize, int stride = 1)
+        public static (int r, int c) ConvolutionSizeHelper(InputOutputShape inputShape, int kernelSize, bool isFull = false, int stride = 1)
         {
             // W = input volume
             // K = kernel size
@@ -242,6 +255,13 @@ namespace MatrixLibrary
             //  filter is square
             int cols = 1 + ((inputShape.Width - kernelSize) / stride);
             int rows = 1 + ((inputShape.Height - kernelSize) / stride);
+
+            if (isFull)
+            {
+                cols += 2 * (kernelSize - 1);
+                rows += 2 * (kernelSize - 1);
+            }
+
             return (rows, cols);
         }
 
@@ -252,32 +272,76 @@ namespace MatrixLibrary
 
             if (kernel.FilterSize == 4)
                 return Convolution4x4(kernel);
-            else if(kernel.FilterSize == 8)
+            else if (kernel.FilterSize == 8)
                 return Convolution8x8(kernel);
 
             (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, kernel.Rows);
             AvxMatrix result = new AvxMatrix(rows, cols);
 
-            for(int r = 0; r < rows; r++)
+            for (int r = 0; r < rows; r++)
             {
-                
-                for(int c = 0, destC = 0; c < cols; c++, destC++)
+                for (int c = 0; c < cols; c++)
                 {
                     // run the kernel
-                    result[r,c] = OneKernel(r, c, kernel);
+                    result[r, c] = OneKernel(r, c, kernel);
                 }
             }
 
             return result;
         }
 
+        public AvxMatrix CrossCorrelate(SquareKernel kernel)
+        {
+            // rotates 180 degrees is:  kernel[k - 1 - m, k - 1 - n]
+            return null;
+        }
+
+        public AvxMatrix ConvolutionFull(SquareKernel kernel)
+        {
+            if (Rows < kernel.Rows || Cols < kernel.Cols)
+                throw new ArgumentException("matrix smaller than kernel");
+
+            (int destRows, int destCols) = AvxMatrix.ConvolutionSizeHelper(this, kernel.Rows, isFull: true);
+            AvxMatrix result = new AvxMatrix(destRows, destCols);
+
+            // in terms of the src matrix (not kernel, not result)
+            int left = -(kernel.FilterSize - 1);
+            int top  = -(kernel.FilterSize - 1);
+
+            // move top left of kernel full path over src Matrix
+            for(int srcRow = top, destR = 0; srcRow < this.Rows; srcRow++, destR++)
+            {
+                for(int srcCol = left, destC = 0; srcCol < this.Cols; srcCol++, destC++)
+                {
+                    Debug.Assert(destR < destRows && destC < destCols);
+                    result[destR, destC] = OneKernelFull(srcRow, srcCol, kernel);
+                }
+            }
+
+            return result;
+        }
+
+
         private float OneKernel(int startR, int startC, SquareKernel kernel)
         {
             float res = 0f;
-            for(int r = startR, kr =0; kr < kernel.FilterSize; r++, kr++)
+            for (int r = startR, kr = 0; kr < kernel.FilterSize; r++, kr++)
+                for (int c = startC, kc = 0; kc < kernel.FilterSize; c++, kc++)
+                    res += this[r, c] * kernel[kr, kc];
+
+            return res;
+        }
+
+        private float OneKernelFull(int startR, int startC, SquareKernel kernel)
+        {
+            float res = 0f;
+            for (int r = startR, kr = 0; kr < kernel.FilterSize; r++, kr++)
             {
                 for (int c = startC, kc = 0; kc < kernel.FilterSize; c++, kc++)
                 {
+                    if (r < 0 || c < 0) continue;
+                    if (r >= this.Rows || c >= this.Cols) continue;
+
                     res += this[r, c] * kernel[kr, kc];
                 }
             }

@@ -19,7 +19,7 @@ namespace NeuralNets
             KernelDepth = kernelDepth;
             KernelSize = kernelSquareDimension;
             FlatOutputSize = kernelDepth * KernelSize * KernelSize * KernelCount;
-            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(inputShape, KernelSize, Stride);
+            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(inputShape, KernelSize, isFull:false, Stride);
 
             OutputShape = new InputOutputShape(destColumns, destRows, KernelDepth, KernelCount);
         }
@@ -49,7 +49,7 @@ namespace NeuralNets
         {
             Debug.Assert(stride >= 1);
 
-            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(mat, filterSize, stride);
+            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(mat, filterSize, isFull: false, stride);
 
             AvxMatrix result = new AvxMatrix(destRows, destColumns);
             for(int r = 0, dr = 0; dr < destRows; r += stride, dr++)

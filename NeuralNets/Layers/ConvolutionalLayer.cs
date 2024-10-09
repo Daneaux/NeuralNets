@@ -34,7 +34,7 @@ namespace NeuralNets
             KernelDepth = inputShape.Depth;
             FilterSize = kernelSquareDimension;
             Stride = stride;
-            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputShape, FilterSize, stride);
+            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputShape, FilterSize, isFull: false, stride);
             OutputShape = new InputOutputShape(c, r, KernelDepth, kernelCount);
             Kernels = new List<List<SquareKernel>>(kernelCount);
             for (int i = 0; i < kernelCount; i++)
@@ -74,9 +74,73 @@ namespace NeuralNets
             return activation;
         }
 
-        public List<AvxMatrix> Derivative(List<AvxMatrix> lastActivation)
+        public List<AvxMatrix> Derivative(List<AvxMatrix> derivativeE_wrt_Y)
         {
-            throw new NotImplementedException();
+            // Y = output = X ** K + B  (Input convolve with Kernel + Bias)
+            // X = Input to the convolution layer. For example, an image
+            // K = Kernel
+            // B = Bias
+            // Z = Activation(Y)
+
+            /* Credit:  https://www.youtube.com/watch?v=Lakz2MoHy6o
+             * Example output variable:
+             * y11 = b11 + k11 * X11 + K12 * X12 + K21 * x21 + K22 * X22
+             * y12 = b12 + k11 * X12 + K12 * X13 + K21 * x22 + K22 * X23
+             * y21 = b21 + k11 * X21 + K12 * X22 + K21 * x31 + K22 * X32
+             * y22 = b22 + k11 * X22 + K12 * X23 + K21 * x32 + K22 * X33
+             * 
+
+            - We want DE / DK
+            - DE / DK = DE / DY * DY / DK
+
+            So for the example above:
+            * DE / Dk11 = DE/Dy11 * Dy11/Dk11 +   DE/Dy12 * Dy12/Dk11   +   DE/Dy21 * Dy21/Dk11 + DE/Dy22 * Dy22/Dk11
+            *           = De/Dy11 * X11       +   De/Dy12 * X12         +   De/Dy21 * X21       + De/Dy22 * X22
+            *           
+            * (do all the rows)
+            * And we realize that this is the cross correlation between X (input matrix) and DE/DY (Output gradient)
+            * DE/DK11 = X1 <cross correlated> DE/DY1
+            * 
+            * Remember, however, that the full feed forward convolution equation is
+            * 'd' inputs (for example an images with X depth, is x matrices, each the same size)
+            * So we have X1 ... Xd inputs.
+            * For the input we have N corresponding Kernels, each Kernel has the same depth (so if the input image is a 28x28 x3 (3 depth), then each kernel is 3 deep as well
+            * And we have N Kernels.
+            * For each Kernel stack, we have one Bias
+            * Since we have N kernel stacks, we therefore have N outputs. Y1 ... YN
+            * So we need the E/K for all K's (remember there's 3 K's per stack, and N Kernels.
+            * If you think of all the kernels as a matrix (let's say each 'stack' is 3 deep, and there's N kernels)
+            * ------------
+            *  K11 K12 K12
+            *  K21 K22 K23
+            *  K31 K32 K33
+            *  K41 ... ...
+            *  ... ... ...
+            *  KN1 KN2 KN3
+            * ------------
+            * 
+            * From above
+            * DE/Dk11 = X1 ** DE/Dy1
+            * DE/Dk43 = X4 ** DE/Dy3
+            * etc...
+            * DE / D(Kij) = Xj ** DE/D(Yi)
+            */
+
+
+            /* -- BIAS Derivative
+             * DE / DBi = DE / DYi
+             */
+
+            /* -- DE / DX
+             * De/Dx11 = De/Dy11*K11
+             * De/Dx12 = De/y11*K12 + De/Dy12 * K11
+             * ...
+             * 
+             * De/Dx = the FULL Convolution: DE **Full** K (rotation 180degrees)
+             * 
+             * DE/DXj = Sigma(i=1 .. d)[De/DYi **full** Kij, j = 1...n
+             */
+            return null;
         }
 
         public override void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient)
