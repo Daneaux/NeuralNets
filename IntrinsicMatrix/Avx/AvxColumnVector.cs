@@ -20,6 +20,17 @@ namespace MatrixLibrary
             this.column = new float[size];
         }
 
+        public float GetMax()
+        {
+            float max = float.MinValue;
+            for(int i = 0; i < column.Length; i++)
+            {
+                if(column[i] > max)
+                    max = column[i];
+            }
+            return max;
+        }
+
         protected AvxColumnVector() { }
         public unsafe float Sum()
         {
@@ -376,13 +387,6 @@ namespace MatrixLibrary
             {
                 column[r] = (float)((rnd.NextDouble() * width) + min);
             }
-        }
-
-        public AvxColumnVector SoftmaxHelper()
-        {
-            // todo: cheat for now, not sure avx acceleration would help here
-            // and even if it did, what percent of our time is spent here?
-            return new ColumnVector(this.Column).SoftmaxHelper().ToAvxVector();
         }
     }
 }

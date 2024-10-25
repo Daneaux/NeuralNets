@@ -163,29 +163,6 @@ namespace MatrixLibrary
             return max;
         }
 
-        public float SumExpEMinusMax(float max)
-        {
-            float scale = 0;
-            for (int i = 0; i < this.Size; i++)
-            {
-                scale += (float)Math.Exp(this[i] - max);
-            }
-            return scale;
-        }
-
-        // todo: column vector not really supposed to know how to generate softmax ...
-        public ColumnVector SoftmaxHelper()
-        {
-            float max = this.GetMax();
-            float scaleFactor = this.SumExpEMinusMax(max);
-            ColumnVector softMaxVector = new ColumnVector(this.Size);
-            for (int i = 0; i < this.Size; i++)
-            {
-                softMaxVector[i] = (float)(Math.Exp(this[i] - max) / scaleFactor);
-            }
-            return softMaxVector;
-        }
-
         public ColumnVector Log()
         {
             ColumnVector vector = new ColumnVector(this.Size);

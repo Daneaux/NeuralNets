@@ -8,20 +8,21 @@ namespace NeuralNets.Tests
         [TestMethod()]
         public void TestSoftMax()
         {
-            ColumnVector vec = new ColumnVector(new float[] { 1, 2, 3 });
-            ColumnVector softMax = vec.SoftmaxHelper();
-            Assert.AreEqual(softMax[0], 0.09003057, 0.001);
-            Assert.AreEqual(softMax[1], 0.24472847, 0.001);
-            Assert.AreEqual(softMax[2], 0.66524096, 0.001);
-            Assert.AreEqual(softMax.Sum(), 1, 0.001);
+            AvxColumnVector vec = new AvxColumnVector(new float[] { 1, 2, 3 });
+            SoftMax sm = new SoftMax();
+            AvxColumnVector softMaxVector = sm.Activate(vec);
+            Assert.AreEqual(softMaxVector[0], 0.09003057, 0.001);
+            Assert.AreEqual(softMaxVector[1], 0.24472847, 0.001);
+            Assert.AreEqual(softMaxVector[2], 0.66524096, 0.001);
+            Assert.AreEqual(softMaxVector.Sum(), 1, 0.001);
 
             // Make sure we're numerically stable
-            vec = new ColumnVector(new float[] { 10000, 20000, 30000 });
-            softMax = vec.SoftmaxHelper();
-            Assert.AreEqual(softMax[0], 0, 0.001);
-            Assert.AreEqual(softMax[1], 0, 0.001);
-            Assert.AreEqual(softMax[2], 1, 0.001);
-            Assert.AreEqual(softMax.Sum(), 1, 0.001);
+            vec = new AvxColumnVector(new float[] { 10000, 20000, 30000 });
+            softMaxVector = sm.Activate(vec);
+            Assert.AreEqual(softMaxVector[0], 0, 0.001);
+            Assert.AreEqual(softMaxVector[1], 0, 0.001);
+            Assert.AreEqual(softMaxVector[2], 1, 0.001);
+            Assert.AreEqual(softMaxVector.Sum(), 1, 0.001);
         }
 
         [TestMethod()]
@@ -95,12 +96,6 @@ namespace NeuralNets.Tests
             Assert.AreEqual(m.Mat[0, 1], mt.Mat[1, 0]);
             Assert.AreEqual(m.Mat[1, 3], mt.Mat[3, 1]);
             Assert.AreEqual(m.Mat[2, 2], mt.Mat[2, 2]);
-        }
-
-        [TestMethod]
-        public void Vectors()
-        {
-            // todo test row and column vectors
         }
 
         [TestMethod]
