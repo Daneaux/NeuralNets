@@ -4,24 +4,25 @@ namespace NeuralNets
 {
     public abstract class Layer
     {
+        public int NumNodes { get; private set; }
+        public int RandomSeed { get; }
         public InputOutputShape InputShape { get; }
         public abstract InputOutputShape OutputShape { get; }
-        public int NumNodes { get; private set; }
-        public IActivationFunction ActivationFunction { get; private set; }
-
-        public abstract Tensor FeedFoward(Tensor input);
 
         protected Layer(
             InputOutputShape inputShape,
-            int nodeCount, 
-            IActivationFunction activationFunction, 
-            int randomSeed = 12341324)
+            int nodeCount,
+            int randomSeed = 55)
         {
             NumNodes = nodeCount;
+            RandomSeed = randomSeed;
             InputShape = inputShape;
-            ActivationFunction = activationFunction;
         }
 
-        public abstract void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient);
+        public virtual void ResetAccumulators() { }
+
+        public abstract Tensor FeedFoward(Tensor input);
+        public abstract Tensor BackPropagation(Tensor dE_dY);
+        public virtual void UpdateWeightsAndBiasesWithScaledGradients(float learningRate) { }
     }
 }

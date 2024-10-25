@@ -5,12 +5,21 @@ namespace NeuralNets
 {
     public class SoftMax : IActivationFunction
     {
+        public Tensor LastActivation {  get; private set; }
+
         public AvxColumnVector Activate(AvxColumnVector input)
         {
-            return input.SoftmaxHelper();
+            var la = input.SoftmaxHelper();
+            LastActivation = la.ToTensor();
+            return la;
         }
 
         public AvxMatrix Activate(AvxMatrix input)
+        {
+            throw new NotImplementedException();
+        }
+
+        public List<AvxMatrix> Activate(List<AvxMatrix> input)
         {
             throw new NotImplementedException();
         }

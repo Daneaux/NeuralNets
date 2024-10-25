@@ -315,6 +315,12 @@ namespace MatrixLibrary
             return result;
         }
 
+        public virtual AvxMatrix RhsOuterProduct(Tensor lhs)
+        {
+            AvxColumnVector lhsVec = lhs.ToAvxColumnVector();
+            return lhsVec.OuterProduct(this);
+        }
+
         // Effectively multiply column times vector and get outer product. doesn't matter if it's really a column or a row though.
         // the rhs is just a vector, and the outerproduct calc is the same regardless of what we call that vector.
         public unsafe AvxMatrix OuterProduct(AvxColumnVector rhs)
@@ -354,6 +360,12 @@ namespace MatrixLibrary
             }
 
             return result;
+        }
+
+        public AvxMatrix OuterProduct(FlattenedMatricesAsVector rhs)
+        {
+            float[] floats = rhs.FlattenAllMatricesAndCopyUgh();
+            return OuterProduct(new AvxColumnVector(floats));
         }
 
         public void SetRandom(int seed, int min, int max)

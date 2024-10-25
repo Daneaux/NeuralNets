@@ -16,5 +16,26 @@
         {
             FilterSize = filterSize;
         }
+
+        public static SquareKernel operator +(SquareKernel lhs, SquareKernel rhs)
+        {
+            AvxMatrix ret = lhs.AddMatrix(rhs);
+            return new SquareKernel(ret.Mat);
+        }
+        public static SquareKernel operator -(SquareKernel lhs, SquareKernel rhs)
+        {
+            AvxMatrix ret = lhs.SubtractMatrix(rhs);
+            return new SquareKernel(ret.Mat);
+        }
+
+        public static SquareKernel operator *(SquareKernel lhs, float scalar) => lhs.MultiplyScalarSquareKernel(scalar);
+        public static SquareKernel operator *(float scalar, SquareKernel lhs) => lhs.MultiplyScalarSquareKernel(scalar);
+
+        public SquareKernel MultiplyScalarSquareKernel(float scalar)
+        {
+            AvxMatrix ret = this.MultiplyScalar(scalar);
+            return new SquareKernel(ret.Mat);
+        }
+
     }
 }

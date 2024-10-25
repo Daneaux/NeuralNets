@@ -35,16 +35,33 @@ class AnnHarness
     private static void DoCNN()
     {
         MNISTTrainingSet trainingSet = new MNISTTrainingSet();
-        ConvolutionLayer conv1 = new ConvolutionLayer(trainingSet.OutputShape, 4, 4, new ReLUActivaction(), 1);
-        PoolingLayer p1 = new PoolingLayer(conv1.OutputShape, 2, 5, 2, 1);
-        WeightedLayer w1 = new WeightedLayer(p1.OutputShape, 10, new SigmoidActivation(), p1.FlatOutputSize);
-        ConvolutionNN nn = new ConvolutionNN(new List<Layer> { conv1, p1, w1 }, 0.05f, 1, 1, new SquaredLoss());
+        var conv1 = new ConvolutionLayer(trainingSet.OutputShape, 5, 4, 1);
+        var p1 = new PoolingLayer(conv1.OutputShape, 2, 5, 2, 1);
+        var p2 = new FlattenLayer(p1.OutputShape, 1);
+        List<Layer> layers = new List<Layer>()
+        {
+            conv1,
+            new ReLUActivaction(),
+            p1,
+            p2,
+            //new NormalizationLayer(p1.OutputShape, 1),
+            new WeightedLayer(p2.OutputShape, 10, p2.OutputShape.TotalFlattenedSize),
+            new SigmoidActivation()
+        };
+        ConvolutionNN nn = new ConvolutionNN(layers, 0.05f, 1, 1, new SquaredLoss());
         ConvolutionRenderContext crn = new ConvolutionRenderContext(nn, 256, trainingSet);
 
         List<TrainingPair> tps = trainingSet.BuildNewRandomizedTrainingList();
 
-        Tensor t = crn.FeedForward(tps[0].Input);
+        GeneralFeedForwardANN gann = new GeneralFeedForwardANN(layers, 0.05f, 784, 10, new SquaredLoss());
+        RenderContext ctx = new RenderContext(gann, 64, new MNISTTrainingSet());
 
+        int epochs = 1000;
+        ctx.EpochTrain(epochs);
+
+
+        //Tensor t = crn.FeedForward(tps[0].Input);
+        
         
     }
 }

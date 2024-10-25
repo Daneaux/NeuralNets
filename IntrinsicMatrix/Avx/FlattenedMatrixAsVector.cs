@@ -23,6 +23,12 @@ namespace MatrixLibrary
         {
             AvxMatrices = avxMatrices;
         }
+        public override AvxMatrix RhsOuterProduct(Tensor lhs)
+        {
+            AvxColumnVector rhs = new AvxColumnVector(FlattenAllMatricesAndCopyUgh());
+            AvxColumnVector lhsVec = lhs.ToAvxColumnVector();
+            return lhsVec.OuterProduct(rhs);
+        }
 
         public static AvxColumnVector operator *(AvxMatrix lhs, FlattenedMatricesAsVector vec) => vec.MatrixTimesColumn(lhs);
 
@@ -40,6 +46,21 @@ namespace MatrixLibrary
                 }
             }
             return result;
+        }
+
+        // So ugly, but for now, let's get this correct (namely the out product needs this)
+        // and later optimize. Correctness first ... 
+        public float[] FlattenAllMatricesAndCopyUgh()
+        {
+            float[] floats = new float[this.Size];
+            int i = 0;
+            foreach(AvxMatrix mat in AvxMatrices)
+            {
+                for (int r = 0; r < mat.Rows; r++)
+                    for (int c = 0; c < mat.Cols; c++)
+                        floats[i++] = mat[r, c];
+            }
+            return floats;
         }
 
         private unsafe void MatrixTimesColumnPartial(
@@ -86,7 +107,5 @@ namespace MatrixLibrary
                 *destCol = v1DotCol;
             }
         }
-
-
     }
 }

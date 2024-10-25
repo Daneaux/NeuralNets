@@ -29,6 +29,6 @@ namespace NeuralNets
         public int NumberOfSamples { get; }
         public int NumberOfLabels { get; }
         public List<TrainingPair> TrainingList { get; }
-        public List<TrainingPair> BuildNewRandomizedTrainingList();
+        public List<TrainingPair> BuildNewRandomizedTrainingList(bool normalized2D);
     }
 }

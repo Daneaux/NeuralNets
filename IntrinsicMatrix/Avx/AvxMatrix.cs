@@ -47,8 +47,11 @@ namespace MatrixLibrary
 
         public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
 
-        public unsafe AvxMatrix AddMatrix(AvxMatrix b)
+        public unsafe AvxMatrix AddMatrix(AvxMatrix rhs)
         {
+            Debug.Assert(rhs.Rows == this.Rows);
+            Debug.Assert(rhs.Cols == this.Cols);
+
             const int floatsPerVector = 16;
             int size = Rows * Cols;
             int numVectors = size / floatsPerVector;
@@ -57,7 +60,7 @@ namespace MatrixLibrary
             AvxMatrix result = new AvxMatrix(Rows, Cols);
 
             fixed (float* m1 = this.Mat,
-                          m2 = b.Mat,
+                          m2 = rhs.Mat,
                           d1 = result.Mat)
             {
                 float* mat1 = m1;
@@ -183,7 +186,7 @@ namespace MatrixLibrary
 
         public static AvxMatrix operator -(AvxMatrix lhs, AvxMatrix rhs) => lhs.SubtractMatrix(rhs);
 
-        public unsafe AvxMatrix SubtractMatrix(AvxMatrix b)
+        public unsafe AvxMatrix SubtractMatrix(AvxMatrix rhs)
         {
             const int floatsPerVector = 16;
             int size = Rows * Cols;
@@ -192,13 +195,13 @@ namespace MatrixLibrary
 
             AvxMatrix result = new AvxMatrix(Rows, Cols);
 
-            fixed (float* m1 = this.Mat,
-                          m2 = b.Mat,
-                          d1 = result.Mat)
+            fixed (float* lhs_ = this.Mat,
+                          rhs_ = rhs.Mat,
+                          res_ = result.Mat)
             {
-                float* lhsMat = m1;
-                float* rhsMat = m2;
-                float* dest = d1;
+                float* lhsMat = lhs_;
+                float* rhsMat = rhs_;
+                float* dest   = res_;
 
                 for (int i = 0; i < numVectors; i++, lhsMat += 16, rhsMat += 16, dest += 16)
                 {
@@ -882,6 +885,13 @@ namespace MatrixLibrary
                 AvxColumnVector unrolled = new AvxColumnVector(floats);
                 return unrolled;
             }
+        }
+
+        public void SetDiagonal(float diagonalValue)
+        {
+            Debug.Assert(Rows == Cols);
+            for (int r = 0; r < Rows; r++)
+                this.Mat[r, r] = diagonalValue;
         }
     }
 }

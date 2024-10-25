@@ -1,86 +1,131 @@
 ﻿using MatrixLibrary;
 using MatrixLibrary.Avx;
 using System.Diagnostics;
-using System.Numerics;
 
 namespace NeuralNets
 {
-    // Note: here we use "weights" but that's really filters, the little NxN matrices we use to convole the incoming stacked matrices
-    // note bug bug: Inputs can be lists of matrices of depth N, which means a list of a stack of matrices.
     public class ConvolutionLayer : Layer
     {
         private readonly int KernelDepth;
         private readonly int KernelCount;
 
-        public int FilterSize { get; }
         public int Stride { get; }
-        public List<AvxMatrix> Biases { get; } = new List<AvxMatrix>();
+        public int KernelSize { get; }
+        public List<AvxMatrix> Biases { get; private set; }
+        public List<AvxMatrix> BiasesGradientAccumulator { get; private set; }
         public override InputOutputShape OutputShape { get; }
-        public List<List<SquareKernel>> Kernels { get; private set; }
+        public KernelStacks Kernels { get; private set; }
+        public KernelStacks KernelGradientAccumulator { get; private set; }
+        public int AccumulationCount { get; private set; }
+        private List<AvxMatrix> LastInput { get; set; }
 
         public ConvolutionLayer(
             InputOutputShape inputShape,
             int kernelCount,
             int kernelSquareDimension,
-            IActivationFunction activationFunction,
             int stride = 1,
-            int randomSeed = 12341324) :
-            base(inputShape, kernelCount, activationFunction, randomSeed)
+            int randomSeed = 55) :
+            base(inputShape, kernelCount, randomSeed)
         {
             Debug.Assert(inputShape.Count == 1);
             // I'm keeping my own copies of these properties even though they already exist on the base class
             // simply because my naming is specialized.
             KernelCount = kernelCount;
             KernelDepth = inputShape.Depth;
-            FilterSize = kernelSquareDimension;
+            KernelSize = kernelSquareDimension;
             Stride = stride;
-            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputShape, FilterSize, isFull: false, stride);
+
+            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputShape, KernelSize, isFull: false, stride);
             OutputShape = new InputOutputShape(c, r, KernelDepth, kernelCount);
-            Kernels = new List<List<SquareKernel>>(kernelCount);
-            for (int i = 0; i < kernelCount; i++)
+            InitKernelsAndBiases();
+            ResetAccumulators();
+        }
+
+        private void InitKernelsAndBiases()
+        {
+            Biases = new List<AvxMatrix>(KernelCount);
+            Kernels = new KernelStacks(KernelCount, KernelDepth, KernelSize);
+            for (int i = 0; i < KernelCount; i++)
             {
-                List<SquareKernel> kernelStack = new List<SquareKernel>(KernelDepth);
-                for (int z = 0; z < KernelDepth; z++)
+                for (int j = 0; j < KernelDepth; j++)
                 {
-                    SquareKernel filter = new SquareKernel(kernelSquareDimension);
-                    filter.SetRandom(randomSeed, (float)-Math.Sqrt(kernelCount), (float)Math.Sqrt(kernelCount)); // Xavier initilization
-                    kernelStack.Add(filter);
+                    SquareKernel kernel = new SquareKernel(KernelSize);
+                    kernel.SetRandom(RandomSeed, (float)-Math.Sqrt(KernelCount), (float)Math.Sqrt(KernelCount)); // Xavier initilization
+                    Kernels[i, j] = kernel;
                 }
-                Kernels.Add(kernelStack);
-                AvxMatrix bias = new AvxMatrix(kernelSquareDimension, kernelSquareDimension); // not sure these are the right dimensions.  TODO
-                bias.SetRandom(randomSeed, -1f, 1f);
+                AvxMatrix bias = new AvxMatrix(OutputShape.Height, OutputShape.Width);
+                bias.SetRandom(RandomSeed, -1f, 1f);
                 Biases.Add(bias);
             }
         }
+
         public override Tensor FeedFoward(Tensor input)
         {
             List<AvxMatrix> avxMatrices = input.Matrices;
             Debug.Assert(avxMatrices != null);
             Debug.Assert(avxMatrices.Count == KernelDepth);
 
-            var ret = FeedForwardConvolutionPlusBiasPlusActivation(avxMatrices);
+            LastInput = avxMatrices;
+
+            var ret = FeedForwardConvolutionPlusBias(avxMatrices);
             return new ConvolutionTensor(ret);
         }
 
-        public List<AvxMatrix> Activate(List<AvxMatrix> input)
+        public override Tensor BackPropagation(Tensor dE_dX)
         {
-            Debug.Assert(input.Count == KernelCount);
-            List<AvxMatrix> activation = new List<AvxMatrix>();
-            foreach (AvxMatrix outputMat in input)
-            {
-                var act = ActivationFunction.Activate(outputMat);
-                activation.Add(act);
-            }
-            return activation;
+            AccumulationCount++;
+            (KernelStacks kernelGradients, List<AvxMatrix>? biasGradients, List<AvxMatrix>? inputGradients) = this.Derivative(dE_dX.Matrices);
+            AccumulateWeightsAndBiases(kernelGradients, biasGradients);
+            return inputGradients.ToTensor();
         }
 
-        public List<AvxMatrix> Derivative(List<AvxMatrix> derivativeE_wrt_Y)
+        public override void ResetAccumulators()
+        {
+            AccumulationCount = 0;
+            KernelGradientAccumulator = new KernelStacks(KernelCount, KernelDepth, KernelSize);
+            KernelGradientAccumulator.Reset();
+
+            BiasesGradientAccumulator = new List<AvxMatrix>();
+
+            int r = Biases[0].Rows;
+            int c = Biases[0].Cols;
+            for (int i = 0; i < Biases.Count; i++)
+                BiasesGradientAccumulator.Add(new AvxMatrix(r, c));
+        }
+
+        public override void UpdateWeightsAndBiasesWithScaledGradients(float learningRate)
+        {
+            KernelGradientAccumulator.ScaleAndAverage(AccumulationCount, learningRate);
+            Kernels.Subtract(KernelGradientAccumulator);
+
+            float scaleFactor = learningRate / (float)AccumulationCount;
+            for (int i = 0; i < BiasesGradientAccumulator.Count; i++)
+                BiasesGradientAccumulator[i] *= scaleFactor;
+
+            for (int i = 0; i < Biases.Count; i++)
+                Biases[i] -= BiasesGradientAccumulator[i];
+        }
+
+        private void AccumulateWeightsAndBiases(KernelStacks kernelGradients, List<AvxMatrix> biasGradients)
+        {
+            KernelGradientAccumulator.Accumulate(kernelGradients);
+
+            Debug.Assert(biasGradients.Count == Biases.Count);
+            for (int i = 0; i < this.Biases.Count; i++)
+            {
+                BiasesGradientAccumulator[i] += biasGradients[i];
+            }
+        }
+
+        public (KernelStacks kernelGradients, List<AvxMatrix> biasGradients, List<AvxMatrix> inputGradients) Derivative(List<AvxMatrix> derivativeE_wrt_Y)
         {
             // Y = output = X ** K + B  (Input convolve with Kernel + Bias)
             // X = Input to the convolution layer. For example, an image
             // K = Kernel
             // B = Bias
             // Z = Activation(Y)
+            // N = depth of input
+            // D = number of kernel stacks in the layer, also called layer depth. D is the number of outputs Y (Y1 ... YD)
 
             /* Credit:  https://www.youtube.com/watch?v=Lakz2MoHy6o
              * Example output variable:
@@ -102,14 +147,14 @@ namespace NeuralNets
             * DE/DK11 = X1 <cross correlated> DE/DY1
             * 
             * Remember, however, that the full feed forward convolution equation is
-            * 'd' inputs (for example an images with X depth, is x matrices, each the same size)
-            * So we have X1 ... Xd inputs.
-            * For the input we have N corresponding Kernels, each Kernel has the same depth (so if the input image is a 28x28 x3 (3 depth), then each kernel is 3 deep as well
-            * And we have N Kernels.
+            * 'n' inputs (for example an images with N depth, is N matrices, each the same size)
+            * So we have X1 ... XN inputs.
+            * For the input we have N corresponding Kernels (one for each 'depth' of the input). So if the input image is a 28x28 x3 (3 depth), then each kernel is 3 deep as well
+            * We also have D Kernels (each N deep). We can call each 'kernel' a kernel stack with N kernels in it.
             * For each Kernel stack, we have one Bias
-            * Since we have N kernel stacks, we therefore have N outputs. Y1 ... YN
-            * So we need the E/K for all K's (remember there's 3 K's per stack, and N Kernels.
-            * If you think of all the kernels as a matrix (let's say each 'stack' is 3 deep, and there's N kernels)
+            * Since we have D kernel stacks, we therefore have D outputs. Y1 ... YD
+            * So we need the E/K for all K's (remember there's 3 Kernels's per stack), and D Kernels.
+            * If you think of all the kernels as a matrix (let's say each 'stack' is 3 deep, and there's D kernels)
             * ------------
             *  K11 K12 K12
             *  K21 K22 K23
@@ -124,12 +169,39 @@ namespace NeuralNets
             * DE/Dk43 = X4 ** DE/Dy3
             * etc...
             * DE / D(Kij) = Xj ** DE/D(Yi)
+            * Here 'i' is the index of the kernel stack (1 ... D) and index of the output derivative we're given (Yi)
+            * And 'j' is the index of the kernel inside each kernel stack (1 ... N)
+            * 
+            * So: Kernels.Count == D == DE/DY.Count = # of derivative matrices of Y from next layer
+            * And: this.KernelDepth == N == Input count (number of matrices coming in as X)
             */
+            Debug.Assert(this.Kernels.KernelCount == derivativeE_wrt_Y.Count);
+            Debug.Assert(this.KernelDepth == this.LastInput.Count);
 
+            List<List<SquareKernel>> kernelGradients = new List<List<SquareKernel>>();
+            int N = this.KernelDepth;
+            int D = this.KernelCount;
+            for(int i = 0; i < D; i++)
+            {
+                kernelGradients.Add(new List<SquareKernel>());
+                var inputs = LastInput;
+                for(int j = 0; j < N; j++)
+                {
+                    AvxMatrix dE_dY = derivativeE_wrt_Y[j];
+                    var gradientE_K = LastInput[j].Convolution(dE_dY.ToSquareKernel()).ToSquareKernel();
+                    kernelGradients[i].Add(gradientE_K);
+                }
+            }
 
             /* -- BIAS Derivative
              * DE / DBi = DE / DYi
              */
+            List<AvxMatrix> biasGradients = new List<AvxMatrix>();
+            foreach(AvxMatrix dedy in derivativeE_wrt_Y)
+            {
+                biasGradients.Add(dedy);
+            }
+
 
             /* -- DE / DX
              * De/Dx11 = De/Dy11*K11
@@ -140,19 +212,23 @@ namespace NeuralNets
              * 
              * DE/DXj = Sigma(i=1 .. d)[De/DYi **full** Kij, j = 1...n
              */
-            return null;
-        }
 
-        public override void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient)
-        {
-            ConvolutionTensor ctBiases = biasGradient as ConvolutionTensor;
-            ConvolutionTensor ctWeights = weightGradient as ConvolutionTensor;
-            if (ctWeights == null || ctBiases == null)
+            List<AvxMatrix> dEdXGradients = new List<AvxMatrix>();
+            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(derivativeE_wrt_Y[0], this.Kernels.KernelSize, true);
+            Debug.Assert(r == c);
+            for (int k = 0; k < N; k++)
+                dEdXGradients.Add(new AvxMatrix(r,c));
+
+            for (int i = 0; i < D; i++)
             {
-                throw new ArgumentException("Expectd ConvolutionTensor");
+                for (int j = 0; j < N; j++)
+                {
+                    AvxMatrix foo = (derivativeE_wrt_Y[j].ConvolutionFull(this.Kernels[i, j]));
+                    dEdXGradients[j] = dEdXGradients[j] + foo;
+                }
             }
 
-            // todo: figure out how to updates "weights" and biases for convoultions.
+            return (new KernelStacks(kernelGradients), biasGradients, dEdXGradients);
         }
 
         // The input to the this layer is always a stack. In a CNN we don't receive different inputs
@@ -162,33 +238,31 @@ namespace NeuralNets
         // For example if the input is an image with 3 layers (R, G, and B), then each Kernel has
         // 3 corresponding layers (3 square filters). And one bias.
         // Number of "kernels" refers to the total number of trainable kernels (each having 3 layers, ie: 3 filters)
-        private List<AvxMatrix> FeedForwardConvolutionPlusBiasPlusActivation(List<AvxMatrix> inputStack)
+        private List<AvxMatrix> FeedForwardConvolutionPlusBias(List<AvxMatrix> inputStack)
         {
             Debug.Assert(inputStack != null);
+            Debug.Assert(inputStack.Count == this.KernelDepth);
 
             List<AvxMatrix> output = new List<AvxMatrix>();
             for (int i = 0; i < KernelCount; i++)
             {
-                List<SquareKernel> filters = Kernels[i];
-                AvxMatrix convolvedStack = ConvolveStacks(inputStack, filters);
+                AvxMatrix convolvedStack = ConvolveStacks(inputStack, Kernels[i]);
                 AvxMatrix Oh = convolvedStack + Biases[i];
                 output.Add(Oh);
             }
 
-            List<AvxMatrix> activation = Activate(output);
-            Debug.Assert(activation.Count == KernelCount);
-            return activation;
+            return output;
         }
 
-        private static AvxMatrix ConvolveStacks(List<AvxMatrix> stack, List<SquareKernel> filters)
+        private static AvxMatrix ConvolveStacks(List<AvxMatrix> inputStack, List<SquareKernel> kernelStack)
         {
-            Debug.Assert(stack.Count == filters.Count);
-            Debug.Assert(filters[0].Rows == filters[0].Cols);  // sanity check
-            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(stack[0], filters[0].FilterSize);
+            Debug.Assert(inputStack.Count == kernelStack.Count);
+            Debug.Assert(kernelStack[0].Rows == kernelStack[0].Cols);  // sanity check
+            (int r, int c) = AvxMatrix.ConvolutionSizeHelper(inputStack[0], kernelStack[0].FilterSize);
             AvxMatrix result = new AvxMatrix(r, c);
-            for (int i = 0; i < stack.Count; i++)
+            for (int i = 0; i < inputStack.Count; i++)
             {
-                result += stack[i].Convolution(filters[i]);
+                result += inputStack[i].Convolution(kernelStack[i]);
             }
             return result;
         }

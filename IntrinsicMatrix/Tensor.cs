@@ -1,15 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.NetworkInformation;
-using System.Text;
-using System.Threading.Tasks;
-using static TorchSharp.torch.nn;
+﻿using System.Diagnostics;
 
 namespace MatrixLibrary
-{   
+{
     public static class TensorExtensions
     {
+        public static Tensor ToTensor(this List<AvxMatrix> input)
+        {
+            return new ConvolutionTensor(input);
+        }
         public static Tensor ToTensor(this ColumnVector input)
         {
             return new AnnTensor(null, new AvxColumnVector(input.Column));
@@ -50,6 +48,9 @@ namespace MatrixLibrary
         public static Tensor operator +(Tensor lhs, Tensor rhs) => lhs.Add(rhs);
         public abstract Tensor Add(Tensor rhs);
 
+        public static Tensor operator *(Tensor lhs, Tensor rhs) => lhs.Multiply(rhs);
+        public abstract Tensor Multiply(Tensor rhs);
+
         public abstract List<AvxMatrix> Matrices { get; }
     }
 
@@ -64,6 +65,16 @@ namespace MatrixLibrary
         public override Tensor Add(Tensor rhs)
         {
             throw new NotImplementedException();
+        }
+        public override Tensor Multiply(Tensor rhs)
+        {
+            Debug.Assert(this.Matrices.Count == rhs.Matrices.Count);
+            List<AvxMatrix> result = new List<AvxMatrix>();
+            for(int i = 0; i < Matrices.Count; i++)
+            {
+                result.Add(Matrices[i] * rhs.Matrices[i]);
+            }
+            return result.ToTensor();
         }
     }
 
@@ -81,6 +92,15 @@ namespace MatrixLibrary
         public override Tensor Add(Tensor rhs)
         {
             throw new NotImplementedException();
+        }
+
+        public override Tensor Multiply(Tensor rhs_)
+        {
+            AnnTensor rhs = rhs_ as AnnTensor;
+            if (rhs.ColumnVector != null & this.ColumnVector != null)
+                return (this.ColumnVector * rhs.ColumnVector).ToTensor();
+            else
+                return (this.Matrix * rhs.Matrix).ToTensor();
         }
     }
 

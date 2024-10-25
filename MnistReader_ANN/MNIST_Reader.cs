@@ -1,4 +1,5 @@
 ﻿using System.Drawing;
+using static TorchSharp.torch.utils;
 
 namespace MnistReader_ANN
 {
@@ -18,17 +19,22 @@ namespace MnistReader_ANN
         }
     */
 
-    public class Image
+    public abstract class Image
     {
-        public byte Label { get; set; }
-        public required byte[] Data { get; set; }
-        public int Size { get { return Data.Length; } }
+        public virtual byte Label { get; set; }
+        public abstract int Size { get; }
     }
-    public class Normalized2DImage
+
+    public class Normalized1DImage : Image
     {
-        public byte Label { get; set; }
+        public required float[] Data { get; set; }
+        public override int Size { get { return Data.Length; } }
+
+    }
+    public class Normalized2DImage : Image
+    {
         public required float[,] Data { get; set; }
-        public int Size { get { return Data.Length; } }
+        public override int Size { get { return Data.Length; } }
     }
 
     public static class Extensions
@@ -59,36 +65,43 @@ namespace MnistReader_ANN
         private const string TestImages = "mnistdataset\\t10k-images.idx3-ubyte";
         private const string TestLabels = "mnistdataset\\t10k-labels.idx1-ubyte";
 
-        public static IEnumerable<Image> ReadTrainingData()
+        public static IEnumerable<Image> ReadTrainingData(bool do2dImage = false)
         {
-            foreach (var item in Read(TrainImages, TrainLabels))
+            if (do2dImage)
             {
-                yield return item;
+                foreach (var item in Read2DNorm(TrainImages, TrainLabels))
+                {
+                    yield return item;
+                }
+            }
+            else
+            {
+                foreach (var item in Read1DNorm(TrainImages, TrainLabels))
+                {
+                    yield return item;
+                }
+            }
+
+        }
+
+        public static IEnumerable<Image> ReadTestData(bool do2DImage = false)
+        {
+            if (do2DImage)
+            {
+                foreach (var item in Read2DNorm(TestImages, TestLabels))
+                {
+                    yield return item;
+                }
+            }
+            else
+            {
+                foreach (var item in Read1DNorm(TestImages, TestLabels))
+                {
+                    yield return item;
+                }
             }
         }
 
-        public static IEnumerable<Image> ReadTestData()
-        {
-            foreach (var item in Read(TestImages, TestLabels))
-            {
-                yield return item;
-            }
-        }
-        public static IEnumerable<Normalized2DImage> ReadNormTrainingData()
-        {
-            foreach (var item in ReadNorm(TrainImages, TrainLabels))
-            {
-                yield return item;
-            }
-        }
-
-        public static IEnumerable<Normalized2DImage> ReadNormTestData()
-        {
-            foreach (var item in ReadNorm(TestImages, TestLabels))
-            {
-                yield return item;
-            }
-        }
 
         public static void GetMNISTTrainingMetaData(out int numberOfImages, out int numberOfLabels, out int imageWidth, out int imageHeight)
         {
@@ -117,7 +130,7 @@ namespace MnistReader_ANN
             images = null;
         }
 
-        private static IEnumerable<Image> Read(string imagesPath, string labelsPath)
+        private static IEnumerable<Image> Read1DNorm(string imagesPath, string labelsPath)
         {
             imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
             labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
@@ -135,9 +148,15 @@ namespace MnistReader_ANN
             for (int i = 0; i < numberOfImages; i++)
             {
                 var bytes = images.ReadBytes(width * height);
-                yield return new Image()
+                float[] floats = new float[bytes.Length];
+                for (int j = 0; j < bytes.Length; j++)
                 {
-                    Data = bytes,
+                    floats[j] = (float)bytes[j] / 255.0f;
+                }
+
+                yield return new Normalized1DImage()
+                {
+                    Data = floats,
                     Label = labels.ReadByte()
                 };
             }
@@ -149,7 +168,7 @@ namespace MnistReader_ANN
             images = null;
         }
 
-        private static IEnumerable<Normalized2DImage> ReadNorm(string imagesPath, string labelsPath)
+        private static IEnumerable<Image> Read2DNorm(string imagesPath, string labelsPath)
         {
             imagesPath = Directory.GetCurrentDirectory() + "\\" + imagesPath;
             labelsPath = Directory.GetCurrentDirectory() + "\\" + labelsPath;
@@ -189,9 +208,5 @@ namespace MnistReader_ANN
             labels = null;
             images = null;
         }
-
-
-
-
     }
 }

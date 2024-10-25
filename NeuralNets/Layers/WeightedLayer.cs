@@ -1,10 +1,5 @@
 ﻿using MatrixLibrary;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace NeuralNets
 {
@@ -20,31 +15,27 @@ namespace NeuralNets
     /// </summary>
     public class WeightedLayer : Layer
     {
+        public AvxColumnVector? X { get; private set; }
+        public AvxColumnVector Y { get; private set; }
         public AvxMatrix Weights { get; set; }
         public AvxColumnVector Biases { get; set; }
-        public bool IsSoftMaxActivation
-        {
-            get
-            {
-                return this.ActivationFunction is SoftMax;
-            }
-        }
+
+        private List<AvxMatrix> accumulatedWeights = new List<AvxMatrix>();
+        private List<AvxColumnVector> accumulatedBiases = new List<AvxColumnVector>();
 
         public override InputOutputShape OutputShape => new InputOutputShape(1, NumNodes, 1, 1);
 
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount, 
-            IActivationFunction activationFunction, 
-            int randomSeed = 12341324) : base(inputShape, nodeCount, activationFunction, randomSeed)
+            int randomSeed = 55) : base(inputShape, nodeCount, randomSeed)
         {
             Biases = new AvxColumnVector(nodeCount);
             Weights = new AvxMatrix(nodeCount, inputShape.TotalFlattenedSize);
             
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
-
-            Debug.Assert(activationFunction != null);
+            
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);
         }
@@ -52,26 +43,15 @@ namespace NeuralNets
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount,
-            IActivationFunction activationFunction,
             AvxMatrix initialWeights,
-            AvxColumnVector initialBiases) : base(inputShape, nodeCount, activationFunction)
+            AvxColumnVector initialBiases) : base(inputShape, nodeCount)
         {
             this.Biases = initialBiases;
             this.Weights = initialWeights;
-            Debug.Assert(activationFunction != null);
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);
         }
 
-        public AvxColumnVector Activate(AvxColumnVector input)
-        {
-            return ActivationFunction.Activate(input);
-        }
-        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
-        {
-            AvxColumnVector derivative = ActivationFunction.Derivative(lastActivation);
-            return derivative;
-        }
         public override Tensor FeedFoward(Tensor input)
         {
             AnnTensor annTensor = input as AnnTensor;
@@ -85,26 +65,70 @@ namespace NeuralNets
             {
                 vectorInput = input.ToFlattenedMatrices();
             }
+            this.X = vectorInput;
+            this.Y = (Weights * X) + Biases;
 
-            AvxColumnVector Z = Weights * vectorInput + Biases;
-            AvxColumnVector O = this.ActivationFunction.Activate(Z);
-            return new AnnTensor(null, O);
+            return new AnnTensor(null, Y);
         }
-        public override void UpdateWeightsAndBiasesWithScaledGradients(Tensor weightGradient, Tensor biasGradient)
+
+        public override Tensor BackPropagation(Tensor dE_dY)
         {
-            AnnTensor ctBiases = biasGradient as AnnTensor;
-            AnnTensor ctWeights = weightGradient as AnnTensor;
-            if (ctWeights == null || ctBiases == null)
+            // We want 3 gradients:
+            // DE/DX (gradient of my Inputs)
+            // DE/DW (gradient of my Weights)
+            // DE/DB (gradient of my Baises)
+            // Remember:  Y = W * X + B
+            // Y : output
+            // X : input
+            // W : weights
+            // B : Biases
+
+            // Y = WX + B
+            // We have DE/DY (this is the input to the method)
+            // We want DE/DW
+            // DE/DW = DE/DY * DY/DW
+            //       = DE/DY * X
+            AvxMatrix weightGradient = X.RhsOuterProduct(dE_dY); // todo: ugly hack
+            //AvxMatrix weightGradient = dE_dY.ToAvxColumnVector().OuterProduct(X);
+            AvxColumnVector biasGradient = dE_dY.ToAvxColumnVector();
+            this.AccumulateGradients(weightGradient, biasGradient);
+
+            // Now build De/Dx
+            // De/Dx = De/Dy * Dy/Dx = De/Dy * W
+            AvxColumnVector dE_dX = this.Weights.GetTransposedMatrix() * dE_dY.ToAvxColumnVector();
+            return new AnnTensor(null, dE_dX);
+        }
+
+        public override void UpdateWeightsAndBiasesWithScaledGradients(float learningRate)
+        {
+            // add up and average all the gradients
+            AvxMatrix averageWeights = accumulatedWeights[0];
+            for(int i = 1; i < accumulatedWeights.Count; i++)
             {
-                throw new ArgumentException("Expectd ConvolutionTensor");
+                averageWeights += accumulatedWeights[i];
             }
+            averageWeights = averageWeights * ( learningRate / (float)accumulatedWeights.Count);
 
-            this.UpdateWeightsAndBiasesWithScaledGradients(ctWeights.Matrix, ctBiases.ColumnVector);
+            AvxColumnVector avgBiases = accumulatedBiases[0];
+            for(int i = 1;i < accumulatedBiases.Count; i++)
+            {
+                avgBiases += accumulatedBiases[i];
+            }
+            avgBiases = avgBiases * (learningRate / (float)accumulatedBiases.Count);
+
+            Biases -= avgBiases;
+            Weights -= averageWeights;
         }
-        private void UpdateWeightsAndBiasesWithScaledGradients(AvxMatrix weightGradient, AvxColumnVector biasGradient)
+
+        public override void ResetAccumulators()
         {
-            Weights = Weights - weightGradient;
-            Biases = Biases - biasGradient;
+            accumulatedBiases.Clear();
+            accumulatedWeights.Clear();
+        }
+        private void AccumulateGradients(AvxMatrix weightGradient, AvxColumnVector biasGradient)
+        {
+            accumulatedBiases.Add(biasGradient);
+            accumulatedWeights.Add(weightGradient);
         }
     }
 }
