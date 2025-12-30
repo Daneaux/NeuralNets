@@ -161,7 +161,7 @@ namespace NeuralNets
 #endif
 
 
-        // tmep changes to hack this, undo
+        // temp changes to hack this, undo
         public AvxColumnVector FeedForward(Tensor inputVecTensor)
         {
             //AvxColumnVector inputVec = inputVecTensor.ToAvxColumnVector();

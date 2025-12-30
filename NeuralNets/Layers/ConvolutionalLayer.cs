@@ -223,8 +223,8 @@ namespace NeuralNets
             {
                 for (int j = 0; j < N; j++)
                 {
-                    AvxMatrix foo = (derivativeE_wrt_Y[j].ConvolutionFull(this.Kernels[i, j]));
-                    dEdXGradients[j] = dEdXGradients[j] + foo;
+                    AvxMatrix fullConvolve = derivativeE_wrt_Y[j].ConvolutionFull(this.Kernels[i, j]);
+                    dEdXGradients[j] = dEdXGradients[j] + fullConvolve;
                 }
             }
 
