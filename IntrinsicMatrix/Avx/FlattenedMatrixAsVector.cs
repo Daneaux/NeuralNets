@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MatrixLibrary.BaseClasses;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -10,39 +11,39 @@ namespace MatrixLibrary
 {
     public class FlattenedMatricesAsVector : AvxColumnVector
     {
-        public List<AvxMatrix> AvxMatrices { get; }
+        public List<MatrixBase> Matrices { get; }
 
-        public override int Size => this.AvxMatrices.Count * AvxMatrices[0].TotalSize;
+        public override int Size => this.Matrices.Count * Matrices[0].TotalSize;
 
         // The crazy idea here is, you have a bunch of N x M matrices, but we 
-        // need to unroll them and contatinate them into one long column vector
+        // need to unroll them and concatinate them into one long column vector
         // So... rather than copy each matrix into a new float[], which is super wasetful
         // we wrap all the matrices here and treat them like a long vector; for all the operations
         // If this was C++ I would just case the float[,] to a float[] and be done. But you can't in C#.
-        public FlattenedMatricesAsVector(List<AvxMatrix> avxMatrices) : base()
+        public FlattenedMatricesAsVector(List<MatrixBase> avxMatrices) : base()
         {
-            AvxMatrices = avxMatrices;
+            Matrices = avxMatrices;
         }
         public override AvxMatrix RhsOuterProduct(Tensor lhs)
         {
             AvxColumnVector rhs = new AvxColumnVector(FlattenAllMatricesAndCopyUgh());
-            AvxColumnVector lhsVec = lhs.ToAvxColumnVector();
+            AvxColumnVector lhsVec = lhs.ToColumnVector() as AvxColumnVector;
             return lhsVec.OuterProduct(rhs);
         }
 
         public static AvxColumnVector operator *(AvxMatrix lhs, FlattenedMatricesAsVector vec) => vec.MatrixTimesColumn(lhs);
 
-        public unsafe override AvxColumnVector MatrixTimesColumn(AvxMatrix lhs)
+        public unsafe override AvxColumnVector MatrixTimesColumn(MatrixBase lhs)
         {
             AvxColumnVector result = new AvxColumnVector(lhs.Rows);
 
-            Debug.Assert(this.AvxMatrices.Count * this.AvxMatrices[0].TotalSize == lhs.Cols);
+            Debug.Assert(this.Matrices.Count * this.Matrices[0].TotalSize == lhs.Cols);
             fixed (float* res_ = result.Column)
             {
                 float* res = res_;
                 for (int r = 0; r < lhs.Rows; r++, res++)
                 {
-                    this.MatrixTimesColumnPartial(lhs, r, this.AvxMatrices, res); 
+                    this.MatrixTimesColumnPartial(lhs as AvxMatrix, r, this.Matrices, res); 
                 }
             }
             return result;
@@ -54,7 +55,7 @@ namespace MatrixLibrary
         {
             float[] floats = new float[this.Size];
             int i = 0;
-            foreach(AvxMatrix mat in AvxMatrices)
+            foreach(AvxMatrix mat in Matrices)
             {
                 for (int r = 0; r < mat.Rows; r++)
                     for (int c = 0; c < mat.Cols; c++)
@@ -66,7 +67,7 @@ namespace MatrixLibrary
         private unsafe void MatrixTimesColumnPartial(
             AvxMatrix lhs, 
             int lhsStartingRow, 
-            List<AvxMatrix> flattenMatrices,
+            List<MatrixBase> flattenMatrices,
             float *destCol)
         {
             const int floatsPerVector = 16;

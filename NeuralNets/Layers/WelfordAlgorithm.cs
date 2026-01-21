@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -8,11 +9,11 @@ namespace NeuralNets
         public double Mean { get; private set; }
         private double M2;
         
-        public AvxColumnVector Vec { get; }
+        public ColumnVectorBase Vec { get; }
         public double StandardDeviation { get; }
         public double StandardDeviation2 { get; }
 
-        public WelfordAlgorithm(AvxColumnVector vec)
+        public WelfordAlgorithm(ColumnVectorBase vec)
         {
             count = 0;
             Mean = 0.0;

@@ -1,6 +1,6 @@
 ﻿using MatrixLibrary;
-using MatrixLibrary.Avx;
 using System.Diagnostics;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -19,7 +19,7 @@ namespace NeuralNets
             KernelDepth = kernelDepth;
             KernelSize = kernelSquareDimension;
             FlatOutputSize = kernelDepth * KernelSize * KernelSize * KernelCount;
-            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(inputShape, KernelSize, isFull:false, Stride);
+            (int destRows, int destColumns) = MatrixLibrary.MatrixHelpers.ConvolutionSizeHelper(inputShape, KernelSize, isFull:false, Stride);
 
             OutputShape = new InputOutputShape(destColumns, destRows, KernelDepth, KernelCount);
         }
@@ -42,11 +42,11 @@ namespace NeuralNets
         public override Tensor FeedFoward(Tensor input)
         {
             GradientRouters = new List<GradientRouter>();
-            List<AvxMatrix> pooledMatrices = new List<AvxMatrix>();
-            foreach(AvxMatrix mat in input.Matrices)
+            List<MatrixBase> pooledMatrices = new List<MatrixBase>();
+            foreach(MatrixBase mat in input.Matrices)
             {
                 GradientRouter gradientRouter = new GradientRouter();
-                AvxMatrix pooledMat = DoMaxPool(mat, Stride, KernelSize, out gradientRouter);
+                MatrixBase pooledMat = DoMaxPool(mat, Stride, KernelSize, out gradientRouter);
                 pooledMatrices.Add(pooledMat);
                 GradientRouters.Add(gradientRouter);
             }
@@ -55,16 +55,16 @@ namespace NeuralNets
             return convolutionTensor;
         }
 
-        private AvxMatrix DoMaxPool(AvxMatrix mat, int stride, int filterSize, out GradientRouter gradientRouter)
+        private MatrixBase DoMaxPool(MatrixBase mat, int stride, int filterSize, out GradientRouter gradientRouter)
         {
             Debug.Assert(stride >= 1);
 
-            (int destRows, int destColumns) = AvxMatrix.ConvolutionSizeHelper(mat, filterSize, isFull: false, stride);
+            (int destRows, int destColumns) = MatrixLibrary.MatrixHelpers.ConvolutionSizeHelper(mat, filterSize, isFull: false, stride);
             gradientRouter.maxPoolHistogram = new bool[mat.Rows, mat.Cols];
             gradientRouter.originalRows = mat.Rows;
             gradientRouter.originalColumns = mat.Cols;
 
-            AvxMatrix result = new AvxMatrix(destRows, destColumns);
+            MatrixBase result = MatrixFactory.CreateMatrix(destRows, destColumns);
             for(int r = 0, dr = 0; dr < destRows; r += stride, dr++)
             {
                 for(int c = 0, dc = 0; dc < destColumns; c += stride, dc++)
@@ -77,7 +77,7 @@ namespace NeuralNets
             return result;
         }
 
-        private float DoMaxSample(AvxMatrix mat, int r, int c, int filterSize, GradientRouter gradientRouter) 
+        private float DoMaxSample(MatrixBase mat, int r, int c, int filterSize, GradientRouter gradientRouter) 
         {
             int maxR =0, maxC=0;
             float max = float.MinValue;
@@ -101,26 +101,26 @@ namespace NeuralNets
 
         public override Tensor BackPropagation(Tensor dE_dX)
         {
-            List<AvxMatrix> incomingGradients;
-            if (dE_dX.ToAvxColumnVector() != null)
+            List<MatrixBase> incomingGradients;
+            if (dE_dX.ToColumnVector() != null)
             {
                 // unflatten the incoming gradients back to a series of matrices (that we orignally flattened to pass on to a dense layer)
-                incomingGradients = UnflattenIncomingVector(dE_dX.ToAvxColumnVector());
+                incomingGradients = UnflattenIncomingVector(dE_dX.ToColumnVector());
             }
             else
             {
                 incomingGradients = dE_dX.Matrices;
             }
 
-            List<AvxMatrix> outgoingGradients = new List<AvxMatrix>();
+            List<MatrixBase> outgoingGradients = new List<MatrixBase>();
             Debug.Assert(incomingGradients.Count == GradientRouters.Count);
             for(int i = 0;  i < incomingGradients.Count; i++)
             {
                 int incomingCount = 0;
-                AvxMatrix incomingGradient = incomingGradients[i];
+                MatrixBase incomingGradient = incomingGradients[i];
                 GradientRouter gradientRouter = GradientRouters[i];
                 // todo: how to assert assumption that gradient order corresponds to previous output order (and associated gradientrouter)??
-                AvxMatrix gradient = new AvxMatrix(gradientRouter.originalRows, gradientRouter.originalColumns);
+                MatrixBase gradient = MatrixFactory.CreateMatrix(gradientRouter.originalRows, gradientRouter.originalColumns);
                 // only pass up gradients to the max elemenet in the previously pooled window. All other gradients are zero.
                 for (int r = 0; r < gradientRouter.originalRows; r++)
                 {
@@ -141,19 +141,19 @@ namespace NeuralNets
         }
 
         // there has to be a better way than copying. todo.
-        private List<AvxMatrix> UnflattenIncomingVector(AvxColumnVector? avxColumnVector)
+        private List<MatrixBase> UnflattenIncomingVector(ColumnVectorBase? ColumnVectorBase)
         {
-            List<AvxMatrix> mats = new List<AvxMatrix>();
+            List<MatrixBase> mats = new List<MatrixBase>();
             int rows = GradientRouters[0].originalRows;
             int cols = GradientRouters[0].originalColumns;
-            int numMatrices = avxColumnVector.Size / (rows * cols);
-            Debug.Assert(avxColumnVector.Size % (rows * cols) == 0 );
+            int numMatrices = ColumnVectorBase.Size / (rows * cols);
+            Debug.Assert(ColumnVectorBase.Size % (rows * cols) == 0 );
             for (int i = 0, j = 0; i < numMatrices; i++)
             {
-                mats[i] = new AvxMatrix(rows, cols);
+                mats[i] = MatrixFactory.CreateMatrix(rows, cols);
                 for (int r = 0; r < rows; r++)
                     for (int c = 0; c < cols; c++)
-                        mats[i][r, c] = avxColumnVector[j++];
+                        mats[i][r, c] = ColumnVectorBase[j++];
             }
 
             return mats;

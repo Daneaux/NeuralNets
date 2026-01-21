@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 using Microsoft.Diagnostics.Tracing.Parsers.MicrosoftWindowsTCPIP;
 using System;
 using System.Collections.Generic;
@@ -22,7 +23,7 @@ namespace NeuralNets
         {
             public float Mean;
             public float Stddev;
-            public AvxMatrix NormalizedMatrix;
+            public MatrixBase NormalizedMatrix;
         }
         private List<normMatMetaData> normMatMetaDataList;
 
@@ -30,7 +31,7 @@ namespace NeuralNets
         {
             public double Mean { get; set; }
             public double Stddev { get; set; }
-            public AvxColumnVector NormalizedVector { get; set; }
+            public ColumnVectorBase NormalizedVector { get; set; }
         }
         private List<normVectorMetaData> normVectorMetaDataList = new List<normVectorMetaData>();
 
@@ -39,14 +40,14 @@ namespace NeuralNets
         {
             // mean over all input. std deviation over all input
             // for each input (x - mean) / (std + epsilon)
-            AvxColumnVector vec = input.ToAvxColumnVector();
+            ColumnVectorBase vec = input.ToColumnVector();
             if(vec != null)
                 return doVectorFeedForward(vec);
             else
                 return doMatrixFeedForward(input.Matrices);
         }
 
-        private Tensor doVectorFeedForward(AvxColumnVector input)
+        private Tensor doVectorFeedForward(ColumnVectorBase input)
         {
             this.normMatMetaDataList = new List<normMatMetaData>();
             float epsilon = 0.000000001f;
@@ -56,21 +57,21 @@ namespace NeuralNets
             var mean = (float)soMean.Mean;
             var stdDev = (float)soMean.StandardDeviation;
 
-            AvxColumnVector normVector = (input + -mean) * (float)(1.0f / stdDev);
+            ColumnVectorBase normVector = (input + -mean) * (float)(1.0f / stdDev);
             normVectorMetaDataList.Add(new normVectorMetaData { Mean = mean, Stddev = stdDev, NormalizedVector = normVector });
 
             return normVector.ToTensor();
         }
-        private Tensor doMatrixFeedForward(List<AvxMatrix> input)
+        private Tensor doMatrixFeedForward(List<MatrixBase> input)
         {
             this.normMatMetaDataList = new List<normMatMetaData>();
             float epsilon = 0.000000001f;
-            List<AvxMatrix> normalizedMatrices = new List<AvxMatrix>();
-            foreach (AvxMatrix mat in input)
+            List<MatrixBase> normalizedMatrices = new List<MatrixBase>();
+            foreach (MatrixBase mat in input)
             {
                 float mean = this.incrementalAverage(mat);
                 float stdDev = this.incrementalStdDeviation(mat, mean) + epsilon;
-                AvxMatrix normMat = (mat + -mean) * (float)(1.0f / stdDev);
+                MatrixBase normMat = (mat + -mean) * (float)(1.0f / stdDev);
                 normalizedMatrices.Add(normMat);
                 normMatMetaDataList.Add(new normMatMetaData { Mean = mean, Stddev = stdDev, NormalizedMatrix = normMat });
             }
@@ -82,39 +83,39 @@ namespace NeuralNets
         public override Tensor BackPropagation(Tensor dE_dY)
         {
             float epsilon = 0.000000001f;
-            AvxColumnVector inputVec = dE_dY.ToAvxColumnVector();
+            ColumnVectorBase inputVec =  dE_dY.ToColumnVector();
             
             // I have no idea what it means if we have multiple normMatMetaData's and one input vector ... TODO
             Debug.Assert(inputVec != null);
             Debug.Assert(this.normMatMetaDataList.Count == 1);
 
-            List<AvxMatrix> jacobians = new List<AvxMatrix>();
-            List<AvxColumnVector> results = new List<AvxColumnVector>();
+            List<MatrixBase> jacobians = new List<MatrixBase>();
+            List<ColumnVectorBase> results = new List<ColumnVectorBase>();
             foreach (normVectorMetaData meta in this.normVectorMetaDataList)
             {
                 int N = meta.NormalizedVector.Size;
-                AvxMatrix IN = new AvxMatrix(N, N);
+                MatrixBase IN = MatrixFactory.CreateMatrix(N, N);
                 IN.SetDiagonal((float)N);
                 double oneOverN = 1.0 / (double)N;
                 double oneOverStdDev = 1.0 / (meta.Stddev + epsilon);
                 double oneOverNTimes_OneOverStdDev = oneOverN * oneOverStdDev;
-                AvxMatrix p1 = (IN + -1.0f) * (float)(oneOverNTimes_OneOverStdDev);  // N * I - 1 / Nq
+                MatrixBase p1 = (IN + -1.0f) * (float)(oneOverNTimes_OneOverStdDev);  // N * I - 1 / Nq
 
                 double OneOverNTimes_OneOverStdDevPow3 = oneOverN * oneOverStdDev * oneOverStdDev * oneOverStdDev;
 
                 var p2 = meta.NormalizedVector + (float) -meta.Mean;
                 // P2 is huge, before we make it even bigger, let's pre-reduce it
                 p2 = p2 * (float)OneOverNTimes_OneOverStdDevPow3;
-                AvxMatrix p3 = p2.OuterProduct(p2);  // == p2 dot p2_T
-/*                AvxMatrix p3_1 = p3 * (float)oneOverN;
-                AvxMatrix p3_2 = p3_1 * (float)oneOverStdDev;
+                MatrixBase p3 = p2.OuterProduct(p2);  // == p2 dot p2_T
+/*                MatrixBase p3_1 = p3 * (float)oneOverN;
+                MatrixBase p3_2 = p3_1 * (float)oneOverStdDev;
                  p3_2 = p3_1 * (float)oneOverStdDev;
                  p3_2 = p3_1 * (float)oneOverStdDev;
-*/                //AvxMatrix p4 = p3 * (float)(OneOverNTimes_OneOverStdDevPow3);  // (x-mu) dot (x-mu)T / Nq^3
-                AvxMatrix p4 = p3;
-                AvxMatrix Jacobian = p1 - p4;
+*/                //MatrixBase p4 = p3 * (float)(OneOverNTimes_OneOverStdDevPow3);  // (x-mu) dot (x-mu)T / Nq^3
+                MatrixBase p4 = p3;
+                MatrixBase Jacobian = p1 - p4;
                 jacobians.Add(Jacobian);
-                AvxColumnVector dydx = Jacobian * inputVec;
+                ColumnVectorBase dydx = Jacobian * inputVec;
                 results.Add(dydx);
             }
 
@@ -124,21 +125,21 @@ namespace NeuralNets
         public Tensor BackPropagation_(Tensor dE_dY)
         {
             float epsilon = 0.000000001f;
-            List<AvxMatrix> result = new List<AvxMatrix>();
+            List<MatrixBase> result = new List<MatrixBase>();
             foreach (normMatMetaData meta in this.normMatMetaDataList)
             {
                 int N = meta.NormalizedMatrix.Rows;
-                AvxMatrix IN = new AvxMatrix(N, N);
+                MatrixBase IN = MatrixFactory.CreateMatrix(N, N);
                 IN.SetDiagonal(N);
-                AvxMatrix p1 = (IN + -1.0f) * (N * meta.Stddev + epsilon);
-                AvxMatrix p2 = meta.NormalizedMatrix + -meta.Mean;
-                AvxMatrix p3 = p2.GetTransposedMatrix();
+                MatrixBase p1 = (IN + -1.0f) * (N * meta.Stddev + epsilon);
+                MatrixBase p2 = meta.NormalizedMatrix + -meta.Mean;
+                MatrixBase p3 = p2.GetTransposedMatrix();
 
             }
             return result.ToTensor();
         }
 
-        private float incrementalAverage(AvxColumnVector vec)
+        private float incrementalAverage(ColumnVectorBase vec)
         {
             int sz = vec.Size;
             double avg = 0;
@@ -148,7 +149,7 @@ namespace NeuralNets
             return (float)avg;
         }
 
-        private float incrementalStdDeviation(AvxColumnVector vec, float knownAverage)
+        private float incrementalStdDeviation(ColumnVectorBase vec, float knownAverage)
         {
             int sz = vec.Size;
             double squareddiff = 0;
@@ -165,7 +166,7 @@ namespace NeuralNets
         }
 
 
-        private float incrementalAverage(AvxMatrix mat)
+        private float incrementalAverage(MatrixBase mat)
         {
             int sz = mat.TotalSize;
             double avg = 0;
@@ -176,7 +177,7 @@ namespace NeuralNets
             return (float)avg;
         }
 
-        private float incrementalStdDeviation(AvxMatrix mat, float knownAverage)
+        private float incrementalStdDeviation(MatrixBase mat, float knownAverage)
         {
             int sz = mat.TotalSize;
             double squareddiff = 0;

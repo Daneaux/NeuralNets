@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -14,8 +15,8 @@ namespace NeuralNets
         public int InputDim { get; protected set; }
         public int OutputDim { get; protected set; }
 
-        public abstract float GetAveragelLoss(TrainingPair tp, AvxColumnVector predicted);
-        public abstract AvxColumnVector GetLossVector(TrainingPair tp, AvxColumnVector predicted);
-        public abstract float GetTotallLoss(TrainingPair tp, AvxColumnVector predicted);
+        public abstract float GetAveragelLoss(TrainingPair tp, ColumnVectorBase predicted);
+        public abstract ColumnVectorBase GetLossVector(TrainingPair tp, ColumnVectorBase predicted);
+        public abstract float GetTotallLoss(TrainingPair tp, ColumnVectorBase predicted);
     }
 }

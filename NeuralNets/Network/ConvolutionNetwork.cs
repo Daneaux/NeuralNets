@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
 
 namespace NeuralNets
@@ -26,18 +27,18 @@ namespace NeuralNets
             this.Layers = layers;
         }
 
-        public override float GetTotallLoss(TrainingPair tp, AvxColumnVector predicted)
+        public override float GetTotallLoss(TrainingPair tp, ColumnVectorBase predicted)
         {
-            AvxColumnVector lossVec = this.LossFunction.Error(tp.Output, predicted.ToTensor());
+            ColumnVectorBase lossVec = this.LossFunction.Error(tp.Output, predicted.ToTensor());
             return lossVec.Sum();
         }
 
-        public override AvxColumnVector GetLossVector(TrainingPair tp, AvxColumnVector predicted)
+        public override ColumnVectorBase GetLossVector(TrainingPair tp, ColumnVectorBase predicted)
         {
             return this.LossFunction.Error(tp.Output, predicted.ToTensor());
         }
 
-        public override float GetAveragelLoss(TrainingPair tp, AvxColumnVector predicted)
+        public override float GetAveragelLoss(TrainingPair tp, ColumnVectorBase predicted)
         {
             return this.GetTotallLoss(tp, predicted) / (float)predicted.Size;
         }

@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 using System.Runtime.CompilerServices;
 
 namespace NeuralNets
@@ -7,19 +8,19 @@ namespace NeuralNets
     {
         public Tensor LastActivation => throw new NotImplementedException();
 
-        public AvxColumnVector Activate(AvxColumnVector input)
+        public ColumnVectorBase Activate(ColumnVectorBase input)
         {
             float[] floats = new float[input.Size];
             for (int i = 0; i < input.Size; i++)
             {
                 floats[i] = MathPowE(input[i]);
             }
-            return new AvxColumnVector(floats);
+            return MatrixFactory.CreateColumnVector(floats);
         }
 
-        public AvxMatrix Activate(AvxMatrix input)
+        public MatrixBase Activate(MatrixBase input)
         {
-            AvxMatrix result = new AvxMatrix(input.Rows, input.Cols);
+            MatrixBase result = MatrixFactory.CreateMatrix(input.Rows, input.Cols);
             for (int r = 0; r < input.Rows; r++)
             {
                 for (int c = 0; c < input.Cols; c++)
@@ -30,19 +31,19 @@ namespace NeuralNets
             return result;
         }
 
-        public List<AvxMatrix> Activate(List<AvxMatrix> input)
+        public List<MatrixBase> Activate(List<MatrixBase> input)
         {
             throw new NotImplementedException();
         }
 
-        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
+        public ColumnVectorBase Derivative(ColumnVectorBase lastActivation)
         {
             if (lastActivation == null)
             {
                 throw new InvalidOperationException();
             }
 
-            AvxColumnVector derivative = lastActivation * (1f - lastActivation);
+            ColumnVectorBase derivative = lastActivation * (1f - lastActivation);
             return derivative;
         }
 
@@ -62,9 +63,9 @@ namespace NeuralNets
 
         public override Tensor FeedFoward(Tensor input)
         {
-            if(input.ToAvxColumnVector() != null)
+            if(input.ToColumnVector() != null)
             {
-                return this.Activate(input.ToAvxColumnVector()).ToTensor();
+                return this.Activate(input.ToColumnVector()).ToTensor();
             } 
             else if(input.Matrices != null)
             {
@@ -78,25 +79,25 @@ namespace NeuralNets
 
         public override Tensor BackPropagation(Tensor dE_dX)
         {
-            return Derivative(dE_dX.ToAvxColumnVector()).ToTensor();
+            return Derivative(dE_dX.ToColumnVector()).ToTensor();
         }
 
         public Tensor LastActivation { get; private set; }
-        public AvxColumnVector Activate(AvxColumnVector input)
+        public ColumnVectorBase Activate(ColumnVectorBase input)
         {
             float[] floats = new float[input.Size];
             for (int i = 0; i < input.Size; i++)
             {
                 floats[i] = MathPowE(input[i]);
             }
-            var result = new AvxColumnVector(floats);
+            var result = MatrixFactory.CreateColumnVector(floats);
             LastActivation = result.ToTensor();
             return result;
         }
 
-        public AvxMatrix Activate(AvxMatrix input)
+        public MatrixBase Activate(MatrixBase input)
         {
-            AvxMatrix result = new AvxMatrix(input.Rows, input.Cols);
+            MatrixBase result = MatrixFactory.CreateMatrix(input.Rows, input.Cols);
             for (int r = 0; r < input.Rows; r++)
             {
                 for (int c = 0; c < input.Cols; c++)
@@ -108,25 +109,25 @@ namespace NeuralNets
             return result;
         }
 
-        public List<AvxMatrix> Activate(List<AvxMatrix> input)
+        public List<MatrixBase> Activate(List<MatrixBase> input)
         {
-            List<AvxMatrix> resultList = new List<AvxMatrix>();
+            List<MatrixBase> resultList = new List<MatrixBase>();
 
-            foreach (AvxMatrix mat in input)
+            foreach (MatrixBase mat in input)
                 resultList.Add(this.Activate(mat));
 
             LastActivation = resultList.ToTensor();
             return resultList;
         }
 
-        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
+        public ColumnVectorBase Derivative(ColumnVectorBase lastActivation)
         {
             if (lastActivation == null)
             {
                 throw new InvalidOperationException();
             }
 
-            AvxColumnVector derivative = lastActivation * (1f - lastActivation);
+            ColumnVectorBase derivative = lastActivation * (1f - lastActivation);
             return derivative;
         }
 

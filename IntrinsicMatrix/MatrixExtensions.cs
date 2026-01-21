@@ -1,15 +1,8 @@
-﻿using MatrixLibrary.Avx;
-using System.Diagnostics;
-
+﻿
 namespace MatrixLibrary
 {
     public static class MatrixExtensions
     {
-        public static SquareKernel ToSquareKernel(this AvxMatrix matrix)
-        {
-            Debug.Assert(matrix.Cols == matrix.Rows);
-            return new SquareKernel(matrix.Mat);
-        }
 
         public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)
         {

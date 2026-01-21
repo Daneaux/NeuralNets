@@ -186,11 +186,11 @@ namespace NeuralNetsTests.ANNTests
            // AvxColumnVector hiddenLayerActivation = ctx.ActivationContext[ hiddenLayerIndex + 1 ];
            // AvxColumnVector outputLayerActivation = ctx.ActivationContext[ outputLayerIndex + 1 ];
 
-            Assert.AreEqual(0.593269992, act1.LastActivation.ToAvxColumnVector()[0], 0.000001);
-            Assert.AreEqual(0.596884378, act1.LastActivation.ToAvxColumnVector()[1], 0.000001);
+            Assert.AreEqual(0.593269992, act1.LastActivation.ToColumnVector()[0], 0.000001);
+            Assert.AreEqual(0.596884378, act1.LastActivation.ToColumnVector()[1], 0.000001);
 
-            Assert.AreEqual(0.75136507, act2.LastActivation.ToAvxColumnVector()[0], 0.000001);
-            Assert.AreEqual(0.772928465, act2.LastActivation.ToAvxColumnVector()[1], 0.000001);
+            Assert.AreEqual(0.75136507, act2.LastActivation.ToColumnVector()[0], 0.000001);
+            Assert.AreEqual(0.772928465, act2.LastActivation.ToColumnVector()[1], 0.000001);
 
 
             totLoss = ann.GetTotallLoss(tp, finalOutput);
@@ -224,21 +224,21 @@ namespace NeuralNetsTests.ANNTests
             // 
             // hand rolled feed forward and test!
             //
-            float z1 = hiddenLayer.Weights[0, 0] * tp.Input.ToAvxColumnVector()[0] + hiddenLayer.Weights[0, 1] * tp.Input.ToAvxColumnVector()[1] + hiddenLayer.Biases[0];
-            float z2 = hiddenLayer.Weights[1, 0] * tp.Input.ToAvxColumnVector()[0] + hiddenLayer.Weights[1, 1] * tp.Input.ToAvxColumnVector()[1] + hiddenLayer.Biases[1];
+            float z1 = hiddenLayer.Weights[0, 0] * tp.Input.ToColumnVector()[0] + hiddenLayer.Weights[0, 1] * tp.Input.ToColumnVector()[1] + hiddenLayer.Biases[0];
+            float z2 = hiddenLayer.Weights[1, 0] * tp.Input.ToColumnVector()[0] + hiddenLayer.Weights[1, 1] * tp.Input.ToColumnVector()[1] + hiddenLayer.Biases[1];
 
             Tensor a_ = act1.FeedFoward(new AvxColumnVector([z1, z2]).ToTensor());
-            var a = a_.ToAvxColumnVector();
+            var a = a_.ToColumnVector();
 
             float oz1 = outputLayer.Weights[0, 0] * a[0] + outputLayer.Weights[0, 1] * a[1] + outputLayer.Biases[0];
             float oz2 = outputLayer.Weights[1, 0] * a[0] + outputLayer.Weights[1, 1] * a[1] + outputLayer.Biases[1];
 
             Tensor oa_ = act2.FeedFoward(new AvxColumnVector([oz1, oz2]).ToTensor());
-            var oa = oa_.ToAvxColumnVector();
+            var oa = oa_.ToColumnVector();
 
             // truth - predicted
-            float error1 = 0.5f * (tp.Output.ToAvxColumnVector()[0] - oa[0]) * (tp.Output.ToAvxColumnVector()[0] - oa[0]);
-            float error2 = 0.5f * (tp.Output.ToAvxColumnVector()[1] - oa[1]) * (tp.Output.ToAvxColumnVector()[1] - oa[1]);
+            float error1 = 0.5f * (tp.Output.ToColumnVector()[0] - oa[0]) * (tp.Output.ToColumnVector()[0] - oa[0]);
+            float error2 = 0.5f * (tp.Output.ToColumnVector()[1] - oa[1]) * (tp.Output.ToColumnVector()[1] - oa[1]);
             float totalErrorPass2 = error1 + error2;
             Assert.AreEqual(0.28047, totalErrorPass2, 0.001);
 

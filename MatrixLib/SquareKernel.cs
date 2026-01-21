@@ -1,4 +1,4 @@
-﻿namespace MatrixLibrary.Avx
+﻿namespace MatrixLib
 {
     public class SquareKernel : AvxMatrix
     {
@@ -36,6 +36,5 @@
             AvxMatrix ret = this.MultiplyScalar(scalar);
             return new SquareKernel(ret.Mat);
         }
-
     }
 }

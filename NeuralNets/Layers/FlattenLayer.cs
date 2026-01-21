@@ -1,5 +1,6 @@
 ﻿using MatrixLibrary;
 using System.Diagnostics;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -15,16 +16,16 @@ namespace NeuralNets
 
         public override Tensor BackPropagation(Tensor dE_dY)
         {
-            Debug.Assert(dE_dY.ToAvxColumnVector() != null);
-            AvxColumnVector input = dE_dY.ToAvxColumnVector();
+            Debug.Assert(dE_dY.ToColumnVector() != null);
+            ColumnVectorBase input = dE_dY.ToColumnVector();
             Debug.Assert(input.Size == InputShape.TotalFlattenedSize);
 
-            List<AvxMatrix> result = new List<AvxMatrix>();
+            List<MatrixBase> result = new List<MatrixBase>();
             // UN FLATTEN!
             int k = 0;
             for(int i = 0; i < InputShape.Count; i++) // not sure if it's Count or Depth ... 
             {
-                AvxMatrix mat = new AvxMatrix(InputShape.Height, InputShape.Width);
+                MatrixBase mat = MatrixFactory.CreateMatrix(InputShape.Height, InputShape.Width);
                 for (int r = 0; r < InputShape.Height; r++)
                     for (int c = 0; c < InputShape.Width; c++)
                         mat[r, c] = input[k++];
@@ -37,7 +38,7 @@ namespace NeuralNets
         public override Tensor FeedFoward(Tensor input)
         {
             // flatten the ugliest way possible!
-            if (input.ToAvxColumnVector() != null) 
+            if (input.ToColumnVector() != null) 
                 return input;
             else 
             {
