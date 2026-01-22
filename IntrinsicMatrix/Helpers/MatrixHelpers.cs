@@ -5,6 +5,22 @@ namespace MatrixLibrary
 {
     public static class MatrixHelpers
     {
+        public static ColumnVectorBase UnrollMatricesToColumnVector(List<MatrixBase> matrices)
+        {
+            int size = matrices.Count * matrices[0].TotalSize;
+            float[] floats = new float[size];
+            int i = 0;
+            foreach (MatrixBase mat in matrices)
+            {
+                for (int r = 0; r < mat.Rows; r++)
+                    for (int c = 0; c < mat.Cols; c++)
+                        floats[i++] = mat[r, c];
+            }
+
+            ColumnVectorBase result = MatrixFactory.CreateColumnVector(floats);
+            return result;
+        }
+
 
         public static (int r, int c) ConvolutionSizeHelper(MatrixBase matrix, MatrixBase filter)
         {

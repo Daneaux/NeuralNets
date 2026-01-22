@@ -296,8 +296,9 @@ namespace MatrixLibrary
 
 		public override AvxMatrix OuterProduct(FlattenedMatricesAsVector rhs)
 		{
-			float[] floats = rhs.FlattenAllMatricesAndCopyUgh();
-			return OuterProduct(new AvxColumnVector(floats));
+            throw new NotImplementedException();
+			//var column = rhs.UnrollMatricesToColumnVector();
+            //return OuterProduct(column);
 		}
 	}
 }

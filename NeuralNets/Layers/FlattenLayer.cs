@@ -42,10 +42,8 @@ namespace NeuralNets
                 return input;
             else 
             {
-                var fm = new FlattenedMatricesAsVector(input.Matrices);
-                float[] fv = fm.FlattenAllMatricesAndCopyUgh();
-                AvxColumnVector ffv = new AvxColumnVector(fv);
-                return ffv.ToTensor();
+                var column = MatrixHelpers.UnrollMatricesToColumnVector(input.Matrices);
+                return column.ToTensor();
             }
         }
     }

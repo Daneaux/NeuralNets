@@ -9,31 +9,40 @@ using System.Threading.Tasks;
 
 namespace MatrixLibrary
 {
-    public class FlattenedMatricesAsVector : AvxColumnVector
+    /// <summary>
+    /// Container class that flattens matrices into a long row
+    /// So matrix:
+    /// a b c
+    /// d e f
+    /// g h i
+    /// 
+    /// becomes:  a b c d e f g h i
+    /// </summary>
+    public class FlattenedMatricesAsVector
     {
         public List<MatrixBase> Matrices { get; }
 
-        public override int Size => this.Matrices.Count * Matrices[0].TotalSize;
+        public int Size => this.Matrices.Count * Matrices[0].TotalSize;
 
         // The crazy idea here is, you have a bunch of N x M matrices, but we 
         // need to unroll them and concatinate them into one long column vector
         // So... rather than copy each matrix into a new float[], which is super wasetful
         // we wrap all the matrices here and treat them like a long vector; for all the operations
         // If this was C++ I would just case the float[,] to a float[] and be done. But you can't in C#.
-        public FlattenedMatricesAsVector(List<MatrixBase> avxMatrices) : base()
+        public FlattenedMatricesAsVector(List<MatrixBase> avxMatrices)
         {
             Matrices = avxMatrices;
         }
-        public override AvxMatrix RhsOuterProduct(Tensor lhs)
+/*        public MatrixBase RhsOuterProduct(Tensor lhs)
         {
-            AvxColumnVector rhs = new AvxColumnVector(FlattenAllMatricesAndCopyUgh());
-            AvxColumnVector lhsVec = lhs.ToColumnVector() as AvxColumnVector;
+            var rhs = MatrixHelpers.UnrollMatricesToColumnVector(lhs.Matrices);
+            var lhsVec = lhs.ToColumnVector();
             return lhsVec.OuterProduct(rhs);
-        }
+        }*/
 
         public static AvxColumnVector operator *(AvxMatrix lhs, FlattenedMatricesAsVector vec) => vec.MatrixTimesColumn(lhs);
 
-        public unsafe override AvxColumnVector MatrixTimesColumn(MatrixBase lhs)
+        public unsafe AvxColumnVector MatrixTimesColumn(MatrixBase lhs)
         {
             AvxColumnVector result = new AvxColumnVector(lhs.Rows);
 
@@ -43,29 +52,15 @@ namespace MatrixLibrary
                 float* res = res_;
                 for (int r = 0; r < lhs.Rows; r++, res++)
                 {
-                    this.MatrixTimesColumnPartial(lhs as AvxMatrix, r, this.Matrices, res); 
+                    this.MatrixTimesColumnPartial(lhs, r, this.Matrices, res); 
                 }
             }
             return result;
         }
 
-        // So ugly, but for now, let's get this correct (namely the out product needs this)
-        // and later optimize. Correctness first ... 
-        public float[] FlattenAllMatricesAndCopyUgh()
-        {
-            float[] floats = new float[this.Size];
-            int i = 0;
-            foreach(AvxMatrix mat in Matrices)
-            {
-                for (int r = 0; r < mat.Rows; r++)
-                    for (int c = 0; c < mat.Cols; c++)
-                        floats[i++] = mat[r, c];
-            }
-            return floats;
-        }
 
         private unsafe void MatrixTimesColumnPartial(
-            AvxMatrix lhs, 
+            MatrixBase lhs, 
             int lhsStartingRow, 
             List<MatrixBase> flattenMatrices,
             float *destCol)

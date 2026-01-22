@@ -1,11 +1,4 @@
-﻿using MatrixLibrary.Avx;
-using MatrixLibrary;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
+﻿using MatrixLibrary;
 using System.Diagnostics;
 
 namespace NeuralNetsTests.Math
@@ -70,7 +63,7 @@ namespace NeuralNetsTests.Math
             }
 
             AvxMatrix lhs = new AvxMatrix(source);
-            SquareKernel rhs = new SquareKernel(kernel);
+            var rhs = new AvxMatrix(kernel);
             AvxMatrix result = lhs.Convolution(rhs);
             VerifyOutput(expectedOutput, result.Mat);
         }
@@ -133,7 +126,7 @@ namespace NeuralNetsTests.Math
             }
 
             AvxMatrix lhs = new AvxMatrix(paddedSource);
-            SquareKernel rhs = new SquareKernel(kernel);
+            var rhs = new AvxMatrix(kernel);
             AvxMatrix result = lhs.ConvolutionFull(rhs);
             VerifyOutput(expectedOutput, result.Mat, true);
         }

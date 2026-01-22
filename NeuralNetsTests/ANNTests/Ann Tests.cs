@@ -94,7 +94,7 @@ namespace NeuralNetsTests.ANNTests
             for (int i = 0; i < testSamples; i++)
             {
                 RenderContext lossCtx = new RenderContext(ann, 1, ts2);
-                AvxColumnVector prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
+                var prediction = lossCtx.FeedForward(ts.TrainingList[i].Input);
                 averageLoss += ann.GetAveragelLoss(ts.TrainingList[i], prediction);
             }
 
@@ -181,7 +181,7 @@ namespace NeuralNetsTests.ANNTests
 
             float totLoss = 0;
 
-            AvxColumnVector finalOutput = ctx.FeedForward(tp.Input);
+            var finalOutput = ctx.FeedForward(tp.Input);
 
            // AvxColumnVector hiddenLayerActivation = ctx.ActivationContext[ hiddenLayerIndex + 1 ];
            // AvxColumnVector outputLayerActivation = ctx.ActivationContext[ outputLayerIndex + 1 ];
@@ -197,7 +197,7 @@ namespace NeuralNetsTests.ANNTests
             Assert.AreEqual(0.75136507, finalOutput[0], 0.00001);
             Assert.AreEqual(0.772928465, finalOutput[1], 0.00001);
 
-            AvxColumnVector lossVector = ann.GetLossVector(tp, finalOutput);
+            var lossVector = ann.GetLossVector(tp, finalOutput);
             Assert.AreEqual(0.274811083, lossVector[0], 0.00001);
             Assert.AreEqual(0.023560026, lossVector[1], 0.00001);
 
@@ -259,7 +259,7 @@ namespace NeuralNetsTests.ANNTests
 
             {
                 RenderContext ctx4 = new RenderContext(ann, 1, ts);
-                AvxColumnVector pout = ctx4.FeedForward(tp.Input);
+                var pout = ctx4.FeedForward(tp.Input);
                 totLoss = ctx4.Network.GetTotallLoss(tp, pout);
             }
 

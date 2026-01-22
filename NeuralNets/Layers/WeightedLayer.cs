@@ -64,7 +64,7 @@ namespace NeuralNets
             }
             else 
             {
-                vectorInput = input.ToFlattenedMatrices();
+                vectorInput = MatrixHelpers.UnrollMatricesToColumnVector(input.Matrices);
             }
             this.X = vectorInput;
             this.Y = (Weights * X) + Biases;

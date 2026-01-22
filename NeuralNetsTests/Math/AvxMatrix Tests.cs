@@ -1,4 +1,5 @@
 using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNetsTests.Math
 {
@@ -130,13 +131,14 @@ namespace NeuralNetsTests.Math
                     lhs[r, c] = rnd.Next(1, 100);
 
             AvxMatrix lhsMatrix = new AvxMatrix(lhs);
-            List<AvxMatrix> matricesToFlatten = new List<AvxMatrix>();
+            List<MatrixBase> matricesToFlatten = new List<MatrixBase>();
             for (int i = 0; i < rhsMatCount; i++)
                 matricesToFlatten.Add(new AvxMatrix(rhsMatrix));
 
-            FlattenedMatricesAsVector rhsVector = new FlattenedMatricesAsVector(matricesToFlatten);
+            //FlattenedMatricesAsVector rhsVector = new FlattenedMatricesAsVector(matricesToFlatten);
+            var rhsVector = MatrixHelpers.UnrollMatricesToColumnVector(matricesToFlatten);
 
-            var vecResult = rhsVector.MatrixTimesColumn(lhsMatrix);
+            var vecResult = lhsMatrix.MatrixTimesColumn(rhsVector);
 
             Assert.AreEqual(vecResult.Size, lhsRows);
             Assert.AreEqual(lhsMatrix.Cols, rhsLinear.Length);
