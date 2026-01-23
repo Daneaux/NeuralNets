@@ -4,7 +4,7 @@ Feel free to check it out, appologies in advance for ugly hacks and messy code i
 
 It's been a blast!
 
-Benchmarks (using the new GPU matrix library!) on an AMD 7600 and a GTX 3090
+Matrix multiply (64x64, 256x256, 1024x1024) benchmarks (using the new GPU matrix library!) on an AMD 7600 and a GTX 3090
 
 | Method   | Size | Mean            | 
 |--------- |----- |----------------:|
