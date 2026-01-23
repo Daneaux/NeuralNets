@@ -61,12 +61,12 @@ namespace MatrixLibrary
 
         public override Matrix2D Log()
         {
-            Matrix2D logMat = new Matrix2D(this.Cols, this.Rows);
-            for (int i = 0; i < this.Rows; ++i)
+            Matrix2D logMat = new Matrix2D(this.Rows, this.Cols);
+            for (int r = 0; r < this.Rows; ++r)
             {
-                for (int j = 0; j < this.Cols; ++j)
+                for (int c = 0; c < this.Cols; ++c)
                 {
-                    logMat[i, j] = (float)Math.Log(this[i, j]);
+                    logMat[r, c] = (float)Math.Log(this[r, c]);
                 }
             }
             return logMat;
