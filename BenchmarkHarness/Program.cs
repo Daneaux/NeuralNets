@@ -7,20 +7,12 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        if (args.Length > 0 && args[0] == "--gpu")
-        {
-            var summary = BenchmarkRunner.Run<GpuBenchmarks>();
-        }
-        else if (args.Length > 0 && args[0] == "--all")
-        {
-            BenchmarkRunner.Run<IntrinsicsBenchmarks>();
-            if (BackendSelector.IsGPUAvailable())
-                BenchmarkRunner.Run<GpuBenchmarks>();
-        }
-        else
-        {
-            var summary = BenchmarkRunner.Run<IntrinsicsBenchmarks>();
-        }
+
+        if (BackendSelector.IsGPUAvailable())
+            BenchmarkRunner.Run<GpuBenchmarks>();
+
+        BenchmarkRunner.Run<IntrinsicsBenchmarks>();
+
     }
 }
 
