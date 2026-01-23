@@ -1,11 +1,1 @@
-﻿namespace CublasTests
-{
-    [TestClass]
-    public sealed class Test1
-    {
-        [TestMethod]
-        public void TestMethod1()
-        {
-        }
-    }
-}
+// This file intentionally left empty — tests are in GpuMatrixTests.cs, GpuColumnVectorTests.cs, and CudaContextTests.cs

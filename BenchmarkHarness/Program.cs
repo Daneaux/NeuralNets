@@ -7,7 +7,20 @@ public class Program
 {
     public static void Main(string[] args)
     {
-        var summary = BenchmarkRunner.Run<IntrinsicsBenchmarks>();
+        if (args.Length > 0 && args[0] == "--gpu")
+        {
+            var summary = BenchmarkRunner.Run<GpuBenchmarks>();
+        }
+        else if (args.Length > 0 && args[0] == "--all")
+        {
+            BenchmarkRunner.Run<IntrinsicsBenchmarks>();
+            if (BackendSelector.IsGPUAvailable())
+                BenchmarkRunner.Run<GpuBenchmarks>();
+        }
+        else
+        {
+            var summary = BenchmarkRunner.Run<IntrinsicsBenchmarks>();
+        }
     }
 }
 
@@ -134,6 +147,137 @@ public class IntrinsicsBenchmarks
     {
         AvxMatrix MT = m1.GetTransposedMatrix();
     }
+}
 
 
+public class GpuBenchmarks
+{
+    private GpuMatrix g1;
+    private GpuMatrix g2;
+    private GpuMatrix gpuKernel4;
+    private GpuColumnVector gpuVec;
+
+    private AvxMatrix m1;
+    private AvxMatrix m2;
+
+    private Matrix2D nm1;
+    private Matrix2D nm2;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        if (!BackendSelector.IsGPUAvailable())
+            throw new InvalidOperationException("GPU not available for benchmarks");
+
+        int matSize = 1024;
+        int range = 100;
+        int seed = 1253443;
+
+        g1 = new GpuMatrix(matSize, matSize);
+        g2 = new GpuMatrix(matSize, matSize);
+        g1.SetRandom(seed, -range, range);
+        g2.SetRandom(seed, -range, range);
+
+        m1 = new AvxMatrix(g1.Mat);
+        m2 = new AvxMatrix(g2.Mat);
+
+        nm1 = new Matrix2D(g1.Mat);
+        nm2 = new Matrix2D(g2.Mat);
+
+        gpuKernel4 = new GpuMatrix(4, 4);
+        gpuKernel4.SetRandom(seed, -range, range);
+
+        float[] vecData = new float[matSize];
+        var rnd = new Random(seed);
+        for (int i = 0; i < matSize; i++) vecData[i] = (float)(rnd.NextDouble() * 2 * range - range);
+        gpuVec = new GpuColumnVector(vecData);
+    }
+
+    [GlobalCleanup]
+    public void GlobalCleanup()
+    {
+        g1?.Dispose();
+        g2?.Dispose();
+        gpuKernel4?.Dispose();
+        gpuVec?.Dispose();
+    }
+
+    [Benchmark]
+    public void GpuMatrixMultiply()
+    {
+        MatrixBase m3 = g1.Multiply(g2);
+        (m3 as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void NaiveMatrixMultiply()
+    {
+        MatrixBase m3 = nm1 * nm2;
+    }
+
+    [Benchmark]
+    public void AvxMatrixMultiply()
+    {
+        MatrixBase m3 = m1 * m2;
+    }
+
+    [Benchmark]
+    public void GpuAdd()
+    {
+        MatrixBase m3 = g1.Add(g2);
+        (m3 as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void AvxAdd()
+    {
+        MatrixBase m3 = m1 + m2;
+    }
+
+    [Benchmark]
+    public void GpuTranspose()
+    {
+        MatrixBase mT = g1.GetTransposedMatrix();
+        (mT as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void AvxTranspose()
+    {
+        AvxMatrix mT = m1.GetTransposedMatrix();
+    }
+
+    [Benchmark]
+    public void GpuScalarMultiply()
+    {
+        MatrixBase m3 = g1.Multiply(2.5f);
+        (m3 as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void AvxScalarMultiply()
+    {
+        MatrixBase m3 = m1.Multiply(2.5f);
+    }
+
+    [Benchmark]
+    public void GpuMatrixTimesColumn()
+    {
+        ColumnVectorBase result = g1.MatrixTimesColumn(gpuVec);
+        (result as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void GpuConvolution4x4()
+    {
+        MatrixBase m3 = g1.Convolution(gpuKernel4);
+        (m3 as IDisposable)?.Dispose();
+    }
+
+    [Benchmark]
+    public void GpuHadamardProduct()
+    {
+        MatrixBase m3 = g1.HadamardProduct(g2);
+        (m3 as IDisposable)?.Dispose();
+    }
 }
