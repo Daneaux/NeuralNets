@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 using System.Net.NetworkInformation;
 
 namespace NeuralNets
@@ -19,44 +20,44 @@ namespace NeuralNets
 
         public override Tensor FeedFoward(Tensor input)
         {
-            if (input.ToAvxColumnVector() != null)
-                return Activate(input.ToAvxColumnVector()).ToTensor();
+            if (input.ToColumnVector() != null)
+                return Activate(input.ToColumnVector()).ToTensor();
             else
                 return Activate(input.Matrices).ToTensor();
         }
         public override Tensor BackPropagation(Tensor dE_dX)
         {
-            if(dE_dX.ToAvxColumnVector() != null)
-                return this.Derivative(dE_dX.ToAvxColumnVector()).ToTensor();
+            if(dE_dX.ToColumnVector() != null)
+                return this.Derivative(dE_dX.ToColumnVector()).ToTensor();
             else
                 return this.Derivative(dE_dX.Matrices).ToTensor();
         }
 
-        public AvxColumnVector Activate(AvxColumnVector input)
+        public ColumnVectorBase Activate(ColumnVectorBase input)
         {
             float[] floats = new float[input.Size];
             for (int i = 0; i < input.Size; i++)
             {
                 floats[i] = Math.Max(0, input[i]);
             }
-            var activation = new AvxColumnVector(floats);
+            var activation = MatrixFactory.CreateColumnVector(floats);
             LastActivation = activation.ToTensor();
             return activation;
         }
 
-        public AvxMatrix Activate(AvxMatrix input)
+        public MatrixBase Activate(MatrixBase input)
         {
-            return Activate(new List<AvxMatrix> { input })[0];
+            return Activate(new List<MatrixBase> { input })[0];
         }
 
-        public List<AvxMatrix> Activate(List<AvxMatrix> input)
+        public List<MatrixBase> Activate(List<MatrixBase> input)
         {
             int rows = input[0].Rows;
             int cols = input[0].Cols;
-            List<AvxMatrix> resultList = new List<AvxMatrix>();
-            foreach (AvxMatrix mat in input)
+            List<MatrixBase> resultList = new List<MatrixBase>();
+            foreach (MatrixBase mat in input)
             {
-                AvxMatrix result = new AvxMatrix(rows, cols);
+                MatrixBase result = MatrixFactory.CreateMatrix(rows, cols);
                 for (int r = 0; r < rows; r++)
                 {
                     for (int c = 0; c < cols; c++)
@@ -70,7 +71,7 @@ namespace NeuralNets
             return resultList;
         }
 
-        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
+        public ColumnVectorBase Derivative(ColumnVectorBase lastActivation)
         {
             if (lastActivation == null)
                 throw new InvalidOperationException();
@@ -83,18 +84,18 @@ namespace NeuralNets
                 else
                     derivative[i] = 0;
             }
-            AvxColumnVector dVec = new AvxColumnVector(derivative);
+            ColumnVectorBase dVec =  MatrixFactory.CreateColumnVector(derivative);
             return dVec;
         }
-        public List<AvxMatrix> Derivative(List<AvxMatrix> lastActivation)
+        public List<MatrixBase> Derivative(List<MatrixBase> lastActivation)
         {
             if (lastActivation == null)
                 throw new InvalidOperationException();
 
-            List<AvxMatrix> result = new List<AvxMatrix>();
-            foreach(AvxMatrix activationMat in lastActivation)
+            List<MatrixBase> result = new List<MatrixBase>();
+            foreach(MatrixBase activationMat in lastActivation)
             {
-                var dMat = new AvxMatrix(activationMat.Rows, activationMat.Cols);
+                var dMat = MatrixFactory.CreateMatrix(activationMat.Rows, activationMat.Cols);
                 for(int r = 0; r < activationMat.Rows; r++)
                     for(int c = 0; c < activationMat.Cols; c++)
                     {
@@ -113,18 +114,18 @@ namespace NeuralNets
     {
         public Tensor LastActivation => throw new NotImplementedException();
 
-        public AvxColumnVector Activate(AvxColumnVector input)
+        public ColumnVectorBase Activate(ColumnVectorBase input)
         {
             float[] floats = new float[input.Size];
             for (int i = 0; i < input.Size; i++)
             {
                 floats[i] = Math.Max(0, input[i]);
             }
-            return new AvxColumnVector(floats);
+            return MatrixFactory.CreateColumnVector(floats);
         }
-        public AvxMatrix Activate(AvxMatrix input)
+        public MatrixBase Activate(MatrixBase input)
         {
-            AvxMatrix result = new AvxMatrix(input.Rows, input.Cols);
+            MatrixBase result = MatrixFactory.CreateMatrix(input.Rows, input.Cols);
             for (int r = 0; r < input.Rows; r++)
             {
                 for (int c = 0; c < input.Cols; c++)
@@ -135,12 +136,12 @@ namespace NeuralNets
             return result;
         }
 
-        public List<AvxMatrix> Activate(List<AvxMatrix> input)
+        public List<MatrixBase> Activate(List<MatrixBase> input)
         {
             throw new NotImplementedException();
         }
 
-        public AvxColumnVector Derivative(AvxColumnVector lastActivation)
+        public ColumnVectorBase Derivative(ColumnVectorBase lastActivation)
         {
             if (lastActivation == null)
             {
@@ -155,7 +156,7 @@ namespace NeuralNets
                 else
                     derivative[i] = 0;
             }
-            AvxColumnVector dVec = new AvxColumnVector(derivative);
+            ColumnVectorBase dVec = MatrixFactory.CreateColumnVector(derivative);
             return dVec;
         }
     }

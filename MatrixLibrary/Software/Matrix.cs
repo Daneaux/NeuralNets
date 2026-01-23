@@ -1,81 +1,14 @@
-﻿using MatrixLibrary.Avx;
+﻿using System.Text;
 using System.Diagnostics;
+using MatrixLibrary.BaseClasses;
 using System.Runtime.CompilerServices;
-using System.Runtime.Intrinsics;
-using System.Text;
 
 namespace MatrixLibrary
 {
-    public static class MatrixExtensions
+
+    public class Matrix2D : MatrixBase
     {
-        public static SquareKernel ToSquareKernel(this AvxMatrix matrix)
-        {
-            Debug.Assert(matrix.Cols == matrix.Rows);
-            return new SquareKernel(matrix.Mat);
-        }
-
-        public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)
-        {
-            return new AvxColumnVector(columnVector.Column);
-        }
-
-        public static ColumnVector ToColumnVector(this AvxColumnVector avxColumnVector)
-        {
-            return new ColumnVector(avxColumnVector.Column);
-        }
-
-        public static Matrix2D ToMatrix2d(this AvxMatrix matrix)
-        {
-            return new Matrix2D(matrix.Mat);
-        }
-
-        public static AvxMatrix ToAvxMatrix(this Matrix2D matrix)
-        {
-            return new AvxMatrix(matrix.Mat);            
-        }
-    }
-
-    public abstract class Matrix_Base
-    {
-        public int Rows { get; protected set; }
-        public int Cols { get; protected set; }
-
-        public abstract float this[int r, int c]
-        {
-            get;
-            set;
-        }
-        public void SetRandom(int seed, float min, float max)
-        {
-            Random rnd = new Random(seed);
-            float width = max - min;
-            for (int c = 0; c < Cols; c++)
-            {
-                for (int r = 0; r < Rows; r++)
-                {
-                    this[r, c] = (float)((rnd.NextDouble() * width) + min);
-                    // for testing only:  Mat[r, c] = 0.5;
-                }
-            }
-        }
-
-        public virtual float Sum()
-        {
-            float sum = 0;
-            for (int i = 0; i < this.Rows; ++i)
-            {
-                for (int j = 0; j < this.Cols; ++j)
-                {
-                    sum += this[i, j];
-                }
-            }
-            return sum;
-        }
-    }
-
-    public class Matrix2D : Matrix_Base
-    {
-        public float[,] Mat { get; private set; }
+        public MatrixBackend Backend => MatrixBackend.Software;
 
         public Matrix2D(int r, int c)
         {
@@ -100,7 +33,7 @@ namespace MatrixLibrary
             Debug.Assert(filter.Rows < this.Rows);
             Debug.Assert(filter.Cols < this.Cols);
 
-            (int rows, int cols) = Matrix2D.ConvolutionSizeHelper(this, filter);
+            (int rows, int cols) = MatrixHelpers.ConvolutionSizeHelper(this, filter);
             Matrix2D result = new Matrix2D(rows, cols);
 
             int stride = this.Cols;
@@ -125,14 +58,8 @@ namespace MatrixLibrary
 
             return result;
         }
-        public static (int r, int c) ConvolutionSizeHelper(Matrix2D matrix, Matrix2D filter)
-        {
-            int cols = matrix.Cols - filter.Cols + 1;
-            int rows = matrix.Rows - filter.Rows + 1;
-            return (rows, cols);
-        }
 
-        public virtual Matrix2D Log()
+        public override Matrix2D Log()
         {
             Matrix2D logMat = new Matrix2D(this.Cols, this.Rows);
             for (int i = 0; i < this.Rows; ++i)
@@ -145,11 +72,14 @@ namespace MatrixLibrary
             return logMat;
         }
 
+        public override void SetDiagonal(float diagonalValue)
+        {
+            Debug.Assert(Rows == Cols);
+            for (int i = 0; i < Rows; i++)
+                Mat[i, i] = diagonalValue;
+        }
 
-
-        public static Matrix2D operator +(Matrix2D a, Matrix2D b) => a.Add(b);
-
-        private Matrix2D Add(Matrix2D b)
+        public override Matrix2D Add(MatrixBase b)
         {
             if (this.Rows != b.Rows || this.Cols != b.Cols)
             {
@@ -168,9 +98,8 @@ namespace MatrixLibrary
             return res;
         }
 
-
         // I'm on the left of 'm'
-        public virtual Matrix2D Multiply(Matrix2D m)
+        public override Matrix2D Multiply(MatrixBase m)
         {
             if (this.Cols == m.Rows)
             {
@@ -194,9 +123,7 @@ namespace MatrixLibrary
             }
         }
 
-       public static RowVector operator *(RowVector left, Matrix2D right) => right.RowTimesMatrix(left);
-
-        private RowVector RowTimesMatrix(RowVector left)
+/*        public RowVector RowTimesMatrix(RowVector left)
         {
             if (left.Size == this.Rows)
             {
@@ -212,10 +139,9 @@ namespace MatrixLibrary
                 throw new ArgumentOutOfRangeException("Bad dimensions");
             }
         }
+*/
 
-        public static ColumnVector operator *(Matrix2D left, ColumnVector right) => left.MatrixTimesColumn(right);
-
-        public ColumnVector MatrixTimesColumn(ColumnVector colVec)
+        public override ColumnVector MatrixTimesColumn(ColumnVectorBase colVec)
         {
             if (this.Cols == colVec.Size)
             {
@@ -233,16 +159,7 @@ namespace MatrixLibrary
             }
         }
 
-        public static Matrix2D operator *(Matrix2D a, Matrix2D b) => a.Multiply(b);
-        public override float this[int r, int c]
-        {
-            get { return this.Mat[r, c]; }
-            set { this.Mat[r, c] = value; }
-        }
-
-        public static Matrix2D operator *(float scalar, Matrix2D b) => b.Multiply(scalar);
-        public static Matrix2D operator *(Matrix2D b, float scalar) => b.Multiply(scalar);
-        public Matrix2D Multiply(float scalar)
+        public override Matrix2D Multiply(float scalar)
         {
             Matrix2D res = new Matrix2D(Rows, Cols);
             for (int r = 0; r < Rows; r++)
@@ -255,9 +172,7 @@ namespace MatrixLibrary
             return res;
         }
 
-        public static Matrix2D operator -(Matrix2D a, Matrix2D b) => a.Subtract(b);
-
-        private Matrix2D Subtract(Matrix2D b)
+        public override Matrix2D Subtract(MatrixBase b)
         {
             Debug.Assert(HasSameDimensions(b));
 
@@ -280,14 +195,14 @@ namespace MatrixLibrary
             }
         }
 
-        public Matrix2D HadamardProduct(Matrix2D b)
+        public override Matrix2D HadamardProduct(MatrixBase b)
         {
             if (this.HasSameDimensions(b))
             {
                 Matrix2D res = new Matrix2D(Rows, Cols);
                 for (int r = 0; r < Rows; r++)
                 {
-                    for (int c = 0; c < Cols; c++)
+                    for (int c = 0; c < this.Cols; c++)
                     {
                         res.Mat[r, c] = this.Mat[r, c] * b.Mat[r, c];
                     }
@@ -297,31 +212,29 @@ namespace MatrixLibrary
             return null;
         }
 
-        private bool HasSameDimensions(Matrix2D b) => (Rows == b.Rows) && (Cols == b.Cols);
+        private bool HasSameDimensions(MatrixBase b) => (Rows == b.Rows) && (Cols == b.Cols);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private float DoRowTimesColumn(int myRow, int rightMatrixCol, Matrix2D rightMatrix)
+        private float DoRowTimesColumn(int myRow, int rightMatrixCol, MatrixBase rightMatrix)
         {
-            float cum = 0;
+            float result = 0;
             for (int i = 0; i < Cols; i++)
-            {
-                cum += this[myRow, i] * rightMatrix[i, rightMatrixCol];
-            }
-            return cum;
+                result += this[myRow, i] * rightMatrix[i, rightMatrixCol];
+            return result;
         }
 
-        private float DoRowTimesColumnVector(int myRow, ColumnVector colVec)
+        private float DoRowTimesColumnVector(int myRow, ColumnVectorBase colVec)
         {
             Debug.Assert(colVec.Size == this.Cols);
             float product = 0;
-            for(int c =0; c < Cols; c++)
+            for(int c = 0; c < Cols; c++)
             {
                 product += this.Mat[myRow, c] * colVec[c];
             }
             return product;
         }
 
-        private float DoRowVectorTimesColumn(RowVector rowVec, int myCol)
+        private float DoRowVectorTimesColumn(RowVectorBase rowVec, int myCol)
         {
             Debug.Assert(rowVec.Size == this.Rows);
             float cum = 0;
@@ -332,7 +245,7 @@ namespace MatrixLibrary
             return cum;
         }
 
-        public Matrix2D GetTransposedMatrix()
+        public override Matrix2D GetTransposedMatrix()
         {
             Matrix2D mt = new Matrix2D(this.Cols, this.Rows);
             for (int c = 0; c < this.Cols; c++)
@@ -344,7 +257,6 @@ namespace MatrixLibrary
             }
             return mt;
         }
-
 
         public void Print()
         {
@@ -359,7 +271,30 @@ namespace MatrixLibrary
             }
             Console.Write(str);
         }
+
+        public override MatrixBase Add(float scalar)
+        {
+            Matrix2D res = new Matrix2D(Rows, Cols);
+            for (int r = 0; r < Rows; r++)
+                for (int c = 0; c < Cols; c++)
+                    res.Mat[r, c] = this[r, c] + scalar;
+
+            return res;
+        }
+
+        public override MatrixBase Convolution(MatrixBase kernel)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override MatrixBase ConvolutionFull(MatrixBase kernel)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override MatrixBase Transpose()
+        {
+            throw new NotImplementedException();
+        }
     }
 }
-
-

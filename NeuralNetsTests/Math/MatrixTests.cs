@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets.Tests
 {
@@ -10,7 +11,7 @@ namespace NeuralNets.Tests
         {
             AvxColumnVector vec = new AvxColumnVector(new float[] { 1, 2, 3 });
             SoftMax sm = new SoftMax();
-            AvxColumnVector softMaxVector = sm.Activate(vec);
+            ColumnVectorBase softMaxVector = sm.Activate(vec);
             Assert.AreEqual(softMaxVector[0], 0.09003057, 0.001);
             Assert.AreEqual(softMaxVector[1], 0.24472847, 0.001);
             Assert.AreEqual(softMaxVector[2], 0.66524096, 0.001);
@@ -69,7 +70,7 @@ namespace NeuralNets.Tests
             };
             Matrix2D m2 = new Matrix2D(eee);
 
-            Matrix2D m12 = m1 * m2;
+            Matrix2D m12 = m1.Multiply(m2);
 
             Assert.AreEqual(2, m12.Rows);
             Assert.AreEqual(2, m12.Cols);

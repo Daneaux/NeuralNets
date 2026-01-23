@@ -1,4 +1,4 @@
-﻿using MatrixLibrary.Avx;
+﻿using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics;
@@ -6,15 +6,8 @@ using System.Runtime.Intrinsics.X86;
 
 namespace MatrixLibrary
 {
-    public class AvxMatrix
+    public class AvxMatrix : MatrixBase
     {
-        public readonly float[,] Mat;
-        public float this[int r, int c]
-        {
-            get { return this.Mat[r, c]; }
-            set { this.Mat[r, c] = value; }
-        }
-
         public AvxMatrix(float[,] mat)
         {
             Mat = mat;
@@ -28,26 +21,22 @@ namespace MatrixLibrary
             Cols = cols;
             Mat = new float[rows, cols];
         }
-        public void SetRandom(int seed, float min, float max)
-        {
-            Random rnd = new Random(seed);
-            float width = max - min;
-            for (int c = 0; c < Cols; c++)
-            {
-                for (int r = 0; r < Rows; r++)
+        /*        public void SetRandom(int seed, float min, float max)
                 {
-                    Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
-                }
-            }
-        }
+                    Random rnd = new Random(seed);
+                    float width = max - min;
+                    for (int c = 0; c < Cols; c++)
+                    {
+                        for (int r = 0; r < Rows; r++)
+                        {
+                            Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
+                        }
+                    }
+                }*/
 
-        public int Rows { get; private set; }
-        public int Cols { get; private set; }
-        public int TotalSize { get { return Cols * Rows; } }
+        //public MatrixBackend Backend => MatrixBackend.AVX;
 
-        public static AvxMatrix operator +(AvxMatrix lhs, AvxMatrix rhs) => lhs.AddMatrix(rhs);
-
-        public unsafe AvxMatrix AddMatrix(AvxMatrix rhs)
+        public override unsafe AvxMatrix Add(MatrixBase rhs)
         {
             Debug.Assert(rhs.Rows == this.Rows);
             Debug.Assert(rhs.Cols == this.Cols);
@@ -85,10 +74,8 @@ namespace MatrixLibrary
             return result;
         }
 
-        public static AvxMatrix operator +(AvxMatrix lhs, float scalar) => lhs.AddScalar(scalar);
-
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe AvxMatrix AddScalar(float scalar)
+        public override unsafe AvxMatrix Add(float scalar)
         {
             const int floatsPerVector = 16;
             int size = Rows * Cols;
@@ -121,7 +108,7 @@ namespace MatrixLibrary
             return result;
         }
 
-        public unsafe float Sum()
+        public unsafe override float Sum()
         {
             float sum = 0f;
             const int floatsPerVector = 16;
@@ -147,11 +134,8 @@ namespace MatrixLibrary
             return sum;
         }
 
-        public static AvxMatrix operator *(AvxMatrix lhs, float scalar) => lhs.MultiplyScalar(scalar);
-        public static AvxMatrix operator *(float scalar, AvxMatrix lhs) => lhs.MultiplyScalar(scalar);
-
         // [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public unsafe AvxMatrix MultiplyScalar(float scalar)
+        public override unsafe AvxMatrix Multiply(float scalar)
         {
             const int floatsPerVector = 16;
             int size = Rows * Cols;
@@ -183,10 +167,61 @@ namespace MatrixLibrary
 
             return result;
         }
+        public override unsafe AvxMatrix Multiply(MatrixBase rhs)
+        {
+            // First transpose the rhs matrix
+            MatrixBase rhsT = rhs.GetTransposedMatrix();
 
-        public static AvxMatrix operator -(AvxMatrix lhs, AvxMatrix rhs) => lhs.SubtractMatrix(rhs);
+            Debug.Assert(this.Cols == rhsT.Cols);
+            const int floatsPerVector = 16;
+            int numVectorsPerColumnRHS = rhsT.Rows / floatsPerVector;
+            int remainingVectorsPerColumnRHS = rhsT.Rows % floatsPerVector;
 
-        public unsafe AvxMatrix SubtractMatrix(AvxMatrix rhs)
+            int numVecPerRowLHS = this.Cols / floatsPerVector;
+            int remainingVecPerRowLHS = this.Cols % floatsPerVector;
+
+            // result is still in the correct shape, but rhs is transposed.
+            AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
+
+            fixed (float* m1 = this.Mat,
+                          m2 = rhsT.Mat,
+                          d1 = result.Mat)
+            {
+                float* mat1 = m1;
+                float* mat2 = m2;
+                float* dest = d1;
+
+                for (int r = 0; r < Rows; r++)
+                {
+                    for (int rhsRowIndex = 0; rhsRowIndex < rhsT.Rows; rhsRowIndex++)
+                    {
+                        // note: we're re-reading the same row many times. is there a way to cache it? next version: use r1 partial against all the corresponding c1's
+                        mat1 = m1 + r * this.Cols; // point to the beginning of the same lhs row (until we increment r)
+
+                        mat2 = m2 + rhsRowIndex * this.Cols; // point to the biggingin of the next rhs row
+
+                        float v1DotCol = 0;
+                        for (int c = 0; c < numVecPerRowLHS; c++, mat1 += 16, mat2 += 16)
+                        {
+                            Vector512<float> lhsRow = Vector512.Load<float>(mat1);
+                            Vector512<float> rhsRow = Vector512.Load<float>(mat2);
+                            v1DotCol += Vector512.Dot(lhsRow, rhsRow);
+                        }
+
+                        // do remainder
+                        for (int i = 0; i < remainingVecPerRowLHS; i++, mat1++, mat2++)
+                        {
+                            v1DotCol += (*mat1) * (*mat2);
+                        }
+                        *dest = v1DotCol;
+                        dest++;
+                    }
+                }
+            }
+            return result;
+        }
+
+        public override unsafe AvxMatrix Subtract(MatrixBase rhs)
         {
             const int floatsPerVector = 16;
             int size = Rows * Cols;
@@ -221,64 +256,25 @@ namespace MatrixLibrary
             return result;
         }
 
-        public static (int r, int c) ConvolutionSizeHelper(AvxMatrix matrix, int kernelSize, bool isFull = false, int stride = 1)
+        private int ThrowIfNotSquare(MatrixBase kernel)
         {
-            // W = input volume
-            // K = kernel size
-            // P = padding (not used here yet)
-            // S = stride
-            // result size = 1 + (W - K + 2P) / S
-            //  filter is square
-            int cols = 1 + ((matrix.Cols - kernelSize) / stride);
-            int rows = 1 + ((matrix.Rows - kernelSize) / stride);
-
-            if (isFull)
-            {
-                cols += 2 * (kernelSize - 1);
-                rows += 2 * (kernelSize - 1);
-            }
-
-#if DEBUG
-            if(isFull && stride == 1)
-            {
-                Debug.Assert(cols == matrix.Cols + kernelSize - 1);
-                Debug.Assert(rows == matrix.Rows + kernelSize - 1);
-            }
-#endif
-
-            return (rows, cols);
+            if (kernel.Cols != kernel.Rows)
+                throw new ArgumentException("expected square matrix as kerne");
+            return kernel.Cols;
         }
-        public static (int r, int c) ConvolutionSizeHelper(InputOutputShape inputShape, int kernelSize, bool isFull = false, int stride = 1)
+        public override AvxMatrix Convolution(MatrixBase squareKernel)
         {
-            // W = input volume
-            // K = kernel size
-            // P = padding (not used here yet)
-            // S = stride
-            // result size = 1 + (W - K + 2P) / S
-            //  filter is square
-            int cols = 1 + ((inputShape.Width - kernelSize) / stride);
-            int rows = 1 + ((inputShape.Height - kernelSize) / stride);
+            int KernelSize = ThrowIfNotSquare(squareKernel);
 
-            if (isFull)
-            {
-                cols += 2 * (kernelSize - 1);
-                rows += 2 * (kernelSize - 1);
-            }
-
-            return (rows, cols);
-        }
-
-        public AvxMatrix Convolution(SquareKernel kernel)
-        {
-            if (Rows < kernel.Rows || Cols < kernel.Cols)
+            if (Rows < squareKernel.Rows || Cols < squareKernel.Cols)
                 throw new ArgumentException("matrix smaller than kernel");
 
-            if (kernel.FilterSize == 4)
-                return Convolution4x4(kernel);
-            else if (kernel.FilterSize == 8)
-                return Convolution8x8(kernel);
+            if (KernelSize == 4)
+                return Convolution4x4(squareKernel);
+            else if (KernelSize == 8)
+                return Convolution8x8(squareKernel);
 
-            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, kernel.Rows);
+            (int rows, int cols) = MatrixHelpers.ConvolutionSizeHelper(this, squareKernel.Rows);
             AvxMatrix result = new AvxMatrix(rows, cols);
 
             for (int r = 0; r < rows; r++)
@@ -286,30 +282,32 @@ namespace MatrixLibrary
                 for (int c = 0; c < cols; c++)
                 {
                     // run the kernel
-                    result[r, c] = OneKernel(r, c, kernel);
+                    result[r, c] = OneKernel(r, c, squareKernel);
                 }
             }
 
             return result;
         }
 
-        public AvxMatrix CrossCorrelate(SquareKernel kernel)
+        /*public override AvxMatrix CrossCorrelate(MatrixBase kernel)
         {
             // rotates 180 degrees is:  kernel[k - 1 - m, k - 1 - n]
             return null;
-        }
+        }*/
 
-        public AvxMatrix ConvolutionFull(SquareKernel kernel)
+        public override AvxMatrix ConvolutionFull(MatrixBase kernel)
         {
+            int KernelSize = ThrowIfNotSquare(kernel);
+
             if (Rows < kernel.Rows || Cols < kernel.Cols)
                 throw new ArgumentException("matrix smaller than kernel");
 
-            (int destRows, int destCols) = AvxMatrix.ConvolutionSizeHelper(this, kernel.Rows, isFull: true);
+            (int destRows, int destCols) = MatrixHelpers.ConvolutionSizeHelper(this, kernel.Rows, isFull: true);
             AvxMatrix result = new AvxMatrix(destRows, destCols);
 
             // in terms of the src matrix (not kernel, not result)
-            int left = -(kernel.FilterSize - 1);
-            int top  = -(kernel.FilterSize - 1);
+            int left = -(KernelSize - 1);
+            int top  = -(KernelSize - 1);
 
             // move top left of kernel full path over src Matrix
             for(int srcRow = top, destR = 0; srcRow < this.Rows; srcRow++, destR++)
@@ -324,23 +322,24 @@ namespace MatrixLibrary
             return result;
         }
 
-
-        private float OneKernel(int startR, int startC, SquareKernel kernel)
+        private float OneKernel(int startR, int startC, MatrixBase kernel)
         {
+            int KernelSize = ThrowIfNotSquare(kernel);
             float res = 0f;
-            for (int r = startR, kr = 0; kr < kernel.FilterSize; r++, kr++)
-                for (int c = startC, kc = 0; kc < kernel.FilterSize; c++, kc++)
+            for (int r = startR, kr = 0; kr < KernelSize; r++, kr++)
+                for (int c = startC, kc = 0; kc < KernelSize; c++, kc++)
                     res += this[r, c] * kernel[kr, kc];
 
             return res;
         }
 
-        private float OneKernelFull(int startR, int startC, SquareKernel kernel)
+        private float OneKernelFull(int startR, int startC, MatrixBase kernel)
         {
+            int KernelSize = ThrowIfNotSquare(kernel);
             float res = 0f;
-            for (int r = startR, kr = 0; kr < kernel.FilterSize; r++, kr++)
+            for (int r = startR, kr = 0; kr < KernelSize; r++, kr++)
             {
-                for (int c = startC, kc = 0; kc < kernel.FilterSize; c++, kc++)
+                for (int c = startC, kc = 0; kc < KernelSize; c++, kc++)
                 {
                     if (r < 0 || c < 0) continue;
                     if (r >= this.Rows || c >= this.Cols) continue;
@@ -351,19 +350,19 @@ namespace MatrixLibrary
             return res;
         }
 
-        private unsafe AvxMatrix Convolution4x4(SquareKernel filter)
+        private unsafe AvxMatrix Convolution4x4(MatrixBase filter)
         {
             // slide a 4x4 filter across this matrix.
             // resulting matrix dimensions are: lhx - filter.x + 1 
+            int KernelSize = ThrowIfNotSquare(filter);
 
             Debug.Assert(filter != null);
             Debug.Assert(filter.Rows == 4);
             Debug.Assert(filter.Cols == 4);
             Debug.Assert(filter.Rows < this.Rows);
             Debug.Assert(filter.Cols < this.Cols);
-            Debug.Assert(filter.Rows == filter.FilterSize);
 
-            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter.Rows);
+            (int rows, int cols) = MatrixHelpers.ConvolutionSizeHelper(this, filter.Rows);
             AvxMatrix result = new AvxMatrix(rows, cols);
 
             int stride = this.Cols;
@@ -408,16 +407,16 @@ namespace MatrixLibrary
             return result;
         }
 
-        private unsafe AvxMatrix Convolution8x8(SquareKernel filter)
+        private unsafe AvxMatrix Convolution8x8(MatrixBase filter)
         {
+            int KernelSize = ThrowIfNotSquare(filter);
             Debug.Assert(filter != null);
             Debug.Assert(filter.Rows == 8);
             Debug.Assert(filter.Cols == 8);
             Debug.Assert(filter.Rows < this.Rows);
             Debug.Assert(filter.Cols < this.Cols);
-            Debug.Assert(filter.Rows == filter.FilterSize);
 
-            (int rows, int cols) = AvxMatrix.ConvolutionSizeHelper(this, filter.Rows);
+            (int rows, int cols) = MatrixHelpers.ConvolutionSizeHelper(this, filter.Rows);
             AvxMatrix result = new AvxMatrix(rows, cols);
 
             int stride = this.Cols;
@@ -471,8 +470,6 @@ namespace MatrixLibrary
 
             return result;
         }
-
-        public static AvxMatrix operator *(AvxMatrix lhs, AvxMatrix rhs) => lhs.MatrixTimesMatrix(rhs);
 
         // no transpose, no tile
         private unsafe AvxMatrix MatrixTimesMatrix_slow(AvxMatrix rhs)
@@ -553,59 +550,6 @@ namespace MatrixLibrary
         }
 
         // try transpose, no tile
-        public unsafe AvxMatrix MatrixTimesMatrix(AvxMatrix rhs)
-        {
-            // First transpose the rhs matrix
-            AvxMatrix rhsT = rhs.GetTransposedMatrix();
-
-            Debug.Assert(this.Cols == rhsT.Cols);
-            const int floatsPerVector = 16;
-            int numVectorsPerColumnRHS = rhsT.Rows / floatsPerVector;
-            int remainingVectorsPerColumnRHS = rhsT.Rows % floatsPerVector;
-
-            int numVecPerRowLHS = this.Cols / floatsPerVector;
-            int remainingVecPerRowLHS = this.Cols % floatsPerVector;
-
-            // result is still in the correct shape, but rhs is transposed.
-            AvxMatrix result = new AvxMatrix(this.Rows, rhs.Cols);
-
-            fixed (float* m1 = this.Mat,
-                          m2 = rhsT.Mat,
-                          d1 = result.Mat)
-            {
-                float* mat1 = m1;
-                float* mat2 = m2;
-                float* dest = d1;
-
-                for (int r = 0; r < Rows; r++)
-                {
-                    for (int rhsRowIndex = 0; rhsRowIndex < rhsT.Rows; rhsRowIndex++)
-                    {
-                        // note: we're re-reading the same row many times. is there a way to cache it? next version: use r1 partial against all the corresponding c1's
-                        mat1 = m1 + r * this.Cols; // point to the beginning of the same lhs row (until we increment r)
-
-                        mat2 = m2 + rhsRowIndex * this.Cols; // point to the biggingin of the next rhs row
-
-                        float v1DotCol = 0;
-                        for (int c = 0; c < numVecPerRowLHS; c++, mat1 += 16, mat2 += 16)
-                        {
-                            Vector512<float> lhsRow = Vector512.Load<float>(mat1);
-                            Vector512<float> rhsRow = Vector512.Load<float>(mat2);
-                            v1DotCol += Vector512.Dot(lhsRow, rhsRow);
-                        }
-
-                        // do remainder
-                        for (int i = 0; i < remainingVecPerRowLHS; i++, mat1++, mat2++)
-                        {
-                            v1DotCol += (*mat1) * (*mat2);
-                        }
-                        *dest = v1DotCol;
-                        dest++;
-                    }
-                }
-            }
-            return result;
-        }
 
         public AvxMatrix MatrixMultiply_Tiled(AvxMatrix rhs)
         {
@@ -854,7 +798,7 @@ namespace MatrixLibrary
             return result;
         }
 
-        public AvxMatrix GetTransposedMatrix()
+        public override AvxMatrix GetTransposedMatrix()
         {
             if (Rows < 16 || Cols < 16 || Cols % 16 != 0 || Rows % 16 != 0)
             {
@@ -867,7 +811,7 @@ namespace MatrixLibrary
         }
 
         // todo: can't find an AVX512 (or any other intrinsic) to do simd logarithm
-        public AvxMatrix Log()
+        public override AvxMatrix Log()
         {
             return new Matrix2D(this.Mat).Log().ToAvxMatrix();
         }
@@ -887,11 +831,94 @@ namespace MatrixLibrary
             }
         }
 
-        public void SetDiagonal(float diagonalValue)
+        public override void SetDiagonal(float diagonalValue)
         {
             Debug.Assert(Rows == Cols);
             for (int r = 0; r < Rows; r++)
                 this.Mat[r, r] = diagonalValue;
         }
+
+        public override MatrixBase Transpose()
+        {
+            return this.GetTransposedMatrix();
+        }
+
+        // Helper method for matrix-vector multiplication
+        public AvxColumnVector MatrixTimesColumnSoftware(ColumnVectorBase vector)
+        {
+            int resultSize = this.Rows;
+            float[] result = new float[resultSize];
+            for (int r = 0; r < this.Rows; r++)
+            {
+                float sum = 0;
+                for (int c = 0; c < this.Cols; c++)
+                {
+                    sum += this[r, c] * vector[c];
+                }
+                result[r] = sum;
+            }
+            return new AvxColumnVector(result);
+        }
+
+        public override unsafe AvxColumnVector MatrixTimesColumn(ColumnVectorBase vector)
+        {
+            const int floatsPerVector = 16;
+            int numVectorsPerRow = this.Cols / floatsPerVector;
+            int remainingColumns = this.Cols % floatsPerVector;
+
+            AvxColumnVector result = new AvxColumnVector(this.Rows);
+
+            fixed (float* m1 = this.Mat,
+                          col = vector.Column,
+                          resCol = result.Column)
+            {
+                float* mat1 = m1;
+                float* col1 = col;
+                float* destCol = resCol;
+
+                for (int r = 0; r < this.Rows; r++, destCol++)
+                {
+                    col1 = col;             // restart at the top of the column vector
+                    float v1DotCol = 0;
+                    for (int c = 0; c < numVectorsPerRow; c++, mat1 += 16, col1 += 16)
+                    {
+                        Vector512<float> rhsVec = Vector512.Load<float>(col1);
+                        Vector512<float> lhsVec = Vector512.Load<float>(mat1);
+                        v1DotCol += Vector512.Dot(lhsVec, rhsVec);
+                    }
+
+                    // do remainder
+                    for (int i = 0; i < remainingColumns; i++, mat1++, col1++)
+                    {
+                        v1DotCol += (*mat1) * (*col1);
+                    }
+                    *destCol = v1DotCol;
+                }
+            }
+            return result;
+        }
+
+
+        // Hadamard product (element-wise multiplication)
+        public override AvxMatrix HadamardProduct(MatrixBase other)
+        {
+            Debug.Assert(this.Rows == other.Rows);
+            Debug.Assert(this.Cols == other.Cols);
+            AvxMatrix result = new AvxMatrix(this.Rows, this.Cols);
+            for (int r = 0; r < this.Rows; r++)
+            {
+                for (int c = 0; c < this.Cols; c++)
+                {
+                    result[r, c] = this[r, c] * other[r, c];
+                }
+            }
+            return result;
+        }
+
+
+        /*public override AvxRowVector RowTimesMatrix(RowVectorBase left)
+        {
+            throw new NotImplementedException();
+        }*/
     }
 }

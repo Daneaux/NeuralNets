@@ -41,7 +41,7 @@ namespace NeuralNetsTests.Math
             float[,] bArray = { { 2, 0 }, { 1, 2 } };
             Matrix2D a = new Matrix2D(aArray);
             Matrix2D b = new Matrix2D(bArray);
-            Matrix2D result = a * b;
+            Matrix2D result = a.Multiply(b);
 
             float[,] expectedArray = { { 4, 4 }, { 10, 8 } };
             Matrix2D expected = new Matrix2D(expectedArray);
@@ -64,7 +64,7 @@ namespace NeuralNetsTests.Math
             Matrix2D a = new Matrix2D(aArray);
             Matrix2D b = new Matrix2D(bArray);
 
-            Matrix2D result = a * b; // This should throw an exception
+            Matrix2D result = a.Multiply(b); // This should throw an exception
         }
 
         [TestMethod]
@@ -74,7 +74,7 @@ namespace NeuralNetsTests.Math
             float[,] bArray = { { 1, 2 }, { 3, 4 } };
             Matrix2D a = new Matrix2D(aArray);
             Matrix2D b = new Matrix2D(bArray);
-            Matrix2D result = a - b;
+            Matrix2D result = a.Subtract(b);
 
             float[,] expectedArray = { { 4, 4 }, { 4, 4 } };
             Matrix2D expected = new Matrix2D(expectedArray);

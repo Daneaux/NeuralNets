@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -7,8 +8,8 @@ namespace NeuralNets
      */
     public interface ILossFunction
     {
-        AvxColumnVector Error(AvxColumnVector truth, AvxColumnVector predicted);
-        AvxColumnVector Error(Tensor truth, Tensor predicted);
-        AvxColumnVector Derivative(AvxColumnVector truth, AvxColumnVector predicted);
+        ColumnVectorBase Error(ColumnVectorBase truth, ColumnVectorBase predicted);
+        ColumnVectorBase Error(Tensor truth, Tensor predicted);
+        ColumnVectorBase Derivative(ColumnVectorBase truth, ColumnVectorBase predicted);
     }
 }

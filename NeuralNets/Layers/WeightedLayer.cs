@@ -1,4 +1,5 @@
 ﻿using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
 
 namespace NeuralNets
@@ -15,13 +16,13 @@ namespace NeuralNets
     /// </summary>
     public class WeightedLayer : Layer
     {
-        public AvxColumnVector? X { get; private set; }
-        public AvxColumnVector Y { get; private set; }
-        public AvxMatrix Weights { get; set; }
-        public AvxColumnVector Biases { get; set; }
+        public ColumnVectorBase? X { get; private set; }
+        public ColumnVectorBase Y { get; private set; }
+        public MatrixBase Weights { get; set; }
+        public ColumnVectorBase Biases { get; set; }
 
-        private List<AvxMatrix> accumulatedWeights = new List<AvxMatrix>();
-        private List<AvxColumnVector> accumulatedBiases = new List<AvxColumnVector>();
+        private List<MatrixBase> accumulatedWeights = new List<MatrixBase>();
+        private List<ColumnVectorBase> accumulatedBiases = new List<ColumnVectorBase>();
 
         public override InputOutputShape OutputShape => new InputOutputShape(1, NumNodes, 1, 1);
 
@@ -30,8 +31,8 @@ namespace NeuralNets
             int nodeCount, 
             int randomSeed = 55) : base(inputShape, nodeCount, randomSeed)
         {
-            Biases = new AvxColumnVector(nodeCount);
-            Weights = new AvxMatrix(nodeCount, inputShape.TotalFlattenedSize);
+            Biases = MatrixFactory.CreateColumnVector(nodeCount);
+            Weights = MatrixFactory.CreateMatrix(nodeCount, inputShape.TotalFlattenedSize);
             
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
             this.Biases.SetRandom(randomSeed, -1, 10);
@@ -43,8 +44,8 @@ namespace NeuralNets
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount,
-            AvxMatrix initialWeights,
-            AvxColumnVector initialBiases) : base(inputShape, nodeCount)
+            MatrixBase initialWeights,
+            ColumnVectorBase initialBiases) : base(inputShape, nodeCount)
         {
             this.Biases = initialBiases;
             this.Weights = initialWeights;
@@ -55,7 +56,7 @@ namespace NeuralNets
         public override Tensor FeedFoward(Tensor input)
         {
             AnnTensor annTensor = input as AnnTensor;
-            AvxColumnVector ?vectorInput = null;
+            ColumnVectorBase ?vectorInput = null;
             if (annTensor != null)
             {
                 vectorInput = annTensor.ColumnVector;
@@ -63,7 +64,7 @@ namespace NeuralNets
             }
             else 
             {
-                vectorInput = input.ToFlattenedMatrices();
+                vectorInput = MatrixHelpers.UnrollMatricesToColumnVector(input.Matrices);
             }
             this.X = vectorInput;
             this.Y = (Weights * X) + Biases;
@@ -88,28 +89,28 @@ namespace NeuralNets
             // We want DE/DW
             // DE/DW = DE/DY * DY/DW
             //       = DE/DY * X
-            AvxMatrix weightGradient = X.RhsOuterProduct(dE_dY); // todo: ugly hack
-            //AvxMatrix weightGradient = dE_dY.ToAvxColumnVector().OuterProduct(X);
-            AvxColumnVector biasGradient = dE_dY.ToAvxColumnVector();
+            MatrixBase weightGradient = X.RhsOuterProduct(dE_dY); // todo: ugly hack
+            //MatrixBase weightGradient = dE_dY.ToAvxColumnVector().OuterProduct(X);
+            ColumnVectorBase biasGradient = dE_dY.ToColumnVector();
             this.AccumulateGradients(weightGradient, biasGradient);
 
             // Now build De/Dx
             // De/Dx = De/Dy * Dy/Dx = De/Dy * W
-            AvxColumnVector dE_dX = this.Weights.GetTransposedMatrix() * dE_dY.ToAvxColumnVector();
+            ColumnVectorBase dE_dX = this.Weights.GetTransposedMatrix() * dE_dY.ToColumnVector();
             return new AnnTensor(null, dE_dX);
         }
 
         public override void UpdateWeightsAndBiasesWithScaledGradients(float learningRate)
         {
             // add up and average all the gradients
-            AvxMatrix averageWeights = accumulatedWeights[0];
+            MatrixBase averageWeights = accumulatedWeights[0];
             for(int i = 1; i < accumulatedWeights.Count; i++)
             {
                 averageWeights += accumulatedWeights[i];
             }
             averageWeights = averageWeights * ( learningRate / (float)accumulatedWeights.Count);
 
-            AvxColumnVector avgBiases = accumulatedBiases[0];
+            ColumnVectorBase avgBiases = accumulatedBiases[0];
             for(int i = 1;i < accumulatedBiases.Count; i++)
             {
                 avgBiases += accumulatedBiases[i];
@@ -125,7 +126,7 @@ namespace NeuralNets
             accumulatedBiases.Clear();
             accumulatedWeights.Clear();
         }
-        private void AccumulateGradients(AvxMatrix weightGradient, AvxColumnVector biasGradient)
+        private void AccumulateGradients(MatrixBase weightGradient, ColumnVectorBase biasGradient)
         {
             accumulatedBiases.Add(biasGradient);
             accumulatedWeights.Add(weightGradient);

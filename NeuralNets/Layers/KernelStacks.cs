@@ -1,5 +1,6 @@
-﻿using MatrixLibrary.Avx;
-using System.Diagnostics;
+﻿using System.Diagnostics;
+using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -8,7 +9,7 @@ namespace NeuralNets
         public int KernelCount { get; }
         public int KernelDepth { get; }
         public int KernelSize { get; }
-        public List<List<SquareKernel>> Stacks { get; private set; }
+        public List<List<MatrixBase>> Stacks { get; private set; }
 
         public KernelStacks(int kernelCount, int kernelDepth, int kernelSize)
         {
@@ -18,7 +19,7 @@ namespace NeuralNets
             Reset();
         }
 
-        public KernelStacks(List<List<SquareKernel>> stacks)
+        public KernelStacks(List<List<MatrixBase>> stacks)
         {
             Stacks = stacks;
             KernelCount = stacks.Count;
@@ -29,24 +30,24 @@ namespace NeuralNets
 
         public void Reset()
         {
-            Stacks = new List<List<SquareKernel>>(KernelCount);
+            Stacks = new List<List<MatrixBase>>(KernelCount);
             for (int i = 0; i < KernelCount; i++)
             {
-                Stacks.Add(new List<SquareKernel>(KernelDepth));
+                Stacks.Add(new List<MatrixBase>(KernelDepth));
                 for (int j = 0; j < KernelDepth; j++)
                 {
-                    Stacks[i].Add(new SquareKernel(KernelSize));
+                    Stacks[i].Add(MatrixFactory.CreateMatrix(KernelSize, KernelSize));
                 }
             }
         }
 
-        public SquareKernel this[int i, int j]
+        public MatrixBase this[int i, int j]
         {
             get => Stacks[i][j];
             set => Stacks[i][j] = value;
         }
 
-        public List<SquareKernel> this[int i]
+        public List<MatrixBase> this[int i]
         {
             get => Stacks[i];
         }
@@ -56,8 +57,8 @@ namespace NeuralNets
             for (int i = 0; i < Stacks.Count; i++)
                 for (int j = 0; j < Stacks[i].Count; j++)
                 {
-                    SquareKernel s1 = ks[i, j];
-                    SquareKernel s2 = this[i, j];
+                    MatrixBase s1 = ks[i, j];
+                    MatrixBase s2 = this[i, j];
                     this[i, j] = s1 + s2;
                 }
         }
@@ -68,8 +69,8 @@ namespace NeuralNets
             for (int i = 0; i < Stacks.Count; i++)
                 for (int j = 0; j < Stacks[i].Count; j++)
                 {
-                    SquareKernel s1 = this[i, j];
-                    this[i, j] = (SquareKernel)(s1 * factor);
+                    MatrixBase s1 = this[i, j];
+                    this[i, j] = (MatrixBase)(s1 * factor);
                 }
         }
 
@@ -78,9 +79,9 @@ namespace NeuralNets
             for (int i = 0; i < Stacks.Count; i++)
                 for (int j = 0; j < Stacks[i].Count; j++)
                 {
-                    SquareKernel rhs = ks[i, j];
-                    SquareKernel lhs = this[i, j];
-                    this[i, j] = (SquareKernel)(lhs - rhs);
+                    MatrixBase rhs = ks[i, j];
+                    MatrixBase lhs = this[i, j];
+                    this[i, j] = (MatrixBase)(lhs - rhs);
                 }
         }
     }

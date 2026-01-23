@@ -1,7 +1,7 @@
-﻿using BenchmarkDotNet.Attributes;
-using MatrixLibrary;
+﻿using MatrixLibrary;
 using BenchmarkDotNet.Running;
-using MatrixLibrary.Avx;
+using BenchmarkDotNet.Attributes;
+using MatrixLibrary.BaseClasses;
 
 public class Program
 {
@@ -21,10 +21,10 @@ public class IntrinsicsBenchmarks
     private Matrix2D nm2;
     private Matrix2D filterMat2d;
 
-    private SquareKernel SquareKernel4;
-    private SquareKernel SquareKernel8;
-    private SquareKernel SquareKernel7;
-    private SquareKernel SquareKernel14;
+    private AvxMatrix SquareKernel4;
+    private AvxMatrix SquareKernel8;
+    private AvxMatrix SquareKernel7;
+    private AvxMatrix SquareKernel14;
 
     [GlobalSetup]
     public void Setup()
@@ -44,10 +44,10 @@ public class IntrinsicsBenchmarks
         nm1.SetRandom(seed, -range, range);
         nm2.SetRandom(seed, -range, range);
 
-        SquareKernel4 = new SquareKernel(4);
-        SquareKernel8 = new SquareKernel(8);
-        SquareKernel7 = new SquareKernel(7);
-        SquareKernel14 = new SquareKernel(14);
+        SquareKernel4 = new AvxMatrix(4,4);
+        SquareKernel8 = new AvxMatrix(8,8);
+        SquareKernel7 = new AvxMatrix(7, 7);
+        SquareKernel14 = new AvxMatrix(14, 14);
 
         SquareKernel4.SetRandom(seed, -range, range);
         SquareKernel8.SetRandom(seed, -range, range);
@@ -96,13 +96,13 @@ public class IntrinsicsBenchmarks
     [Benchmark]
     public void NaiveMatrixMultiply()
     {
-        Matrix2D m3 = nm1 * nm2;
+        MatrixBase m3 = nm1 * nm2;
     }
 
     [Benchmark]
     public void IntrinsicMatrixMultiply()
     {
-        AvxMatrix m3 = m1 * m2;
+        MatrixBase m3 = m1 * m2;
     }
 
     [Benchmark]
@@ -114,13 +114,13 @@ public class IntrinsicsBenchmarks
     [Benchmark]
     public void NaiveAdd()
     {
-        Matrix2D nm3 = nm1 + nm2;
+        MatrixBase nm3 = nm1 + nm2;
     }
 
     [Benchmark]
     public void IntrinsicAdd()
     {
-        AvxMatrix m3 = m1 + m2;
+        MatrixBase m3 = m1 + m2;
     }
 
     [Benchmark]
