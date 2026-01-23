@@ -314,14 +314,14 @@ namespace CublasTests
         [TestMethod]
         public void TestLog()
         {
-            float[,] a = { { 1, 2, 3 }, { 4, 5, 6 } };
+            float[,] a = { { 1, 2, 3 }, { 4, 5, 6 }, { 7, 8, 9 } };
             var gpu = new GpuMatrix(a);
-            var avx = new AvxMatrix(a);
+            var sw = new Matrix2D(a);
 
             var gpuResult = gpu.Log();
-            var avxResult = avx.Log();
+            var swResult = sw.Log();
 
-            AssertMatricesEqual(avxResult, gpuResult);
+            AssertMatricesEqual(swResult, gpuResult);
         }
 
         // ============================================================

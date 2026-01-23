@@ -40,15 +40,15 @@ namespace CublasTests
 
             var gpuA = new GpuColumnVector(dataA);
             var gpuB = new GpuColumnVector(dataB);
-            var avxA = new AvxColumnVector(dataA);
-            var avxB = new AvxColumnVector(dataB);
+            var swA = new ColumnVector(dataA);
+            var swB = new ColumnVector(dataB);
 
             var gpuResult = gpuA.Add(gpuB);
-            var avxResult = avxA.Add(avxB);
+            var swResult = swA.Add(swB);
 
-            Assert.AreEqual(avxResult.Size, gpuResult.Size);
+            Assert.AreEqual(swResult.Size, gpuResult.Size);
             for (int i = 0; i < size; i++)
-                Assert.AreEqual(avxResult[i], gpuResult[i], Tolerance,
+                Assert.AreEqual(swResult[i], gpuResult[i], Tolerance,
                     $"Mismatch at [{i}]");
         }
 
@@ -82,14 +82,14 @@ namespace CublasTests
 
             var gpuA = new GpuColumnVector(dataA);
             var gpuB = new GpuColumnVector(dataB);
-            var avxA = new AvxColumnVector(dataA);
-            var avxB = new AvxColumnVector(dataB);
+            var swA = new ColumnVector(dataA);
+            var swB = new ColumnVector(dataB);
 
             var gpuResult = gpuA.Subtract(gpuB);
-            var avxResult = avxA.Subtract(avxB);
+            var swResult = swA.Subtract(swB);
 
             for (int i = 0; i < size; i++)
-                Assert.AreEqual(avxResult[i], gpuResult[i], Tolerance,
+                Assert.AreEqual(swResult[i], gpuResult[i], Tolerance,
                     $"Mismatch at [{i}]");
         }
 
@@ -317,15 +317,15 @@ namespace CublasTests
 
             var gpuA = new GpuColumnVector(dataA);
             var gpuB = new GpuColumnVector(dataB);
-            var avxA = new AvxColumnVector(dataA);
-            var avxB = new AvxColumnVector(dataB);
+            var swA = new ColumnVector(dataA);
+            var swB = new ColumnVector(dataB);
 
             // Chain: (A + B) * 2.0
             var gpuResult = gpuA.Add(gpuB).Multiply(2.0f);
-            var avxResult = avxA.Add(avxB).Multiply(2.0f);
+            var swResult = swA.Add(swB).Multiply(2.0f);
 
             for (int i = 0; i < 32; i++)
-                Assert.AreEqual(avxResult[i], gpuResult[i], Tolerance);
+                Assert.AreEqual(swResult[i], gpuResult[i], Tolerance);
         }
 
         // ============================================================

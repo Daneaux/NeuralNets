@@ -3,15 +3,15 @@ using System.Runtime.InteropServices;
 namespace MatrixLibrary.Gpu
 {
     /// <summary>
-    /// P/Invoke declarations for CUDA Runtime and CUBLAS (CUDA 12.x).
+    /// P/Invoke declarations for CUDA Runtime and CUBLAS (CUDA 13.x).
     /// </summary>
     internal static class CublasNativeMethods
     {
-        private const string CUBLAS_DLL = "cublas64_12.dll";
-        private const string CUDART_DLL = "cudart64_12.dll";
+        private const string CUBLAS_DLL = "cublas64_13.dll";
+        private const string CUDART_DLL = "cudart64_13.dll";
 
         // ============================================================
-        // CUDA Runtime API (cudart64_12.dll)
+        // CUDA Runtime API (cudart64_13.dll)
         // ============================================================
 
         [DllImport(CUDART_DLL, CallingConvention = CallingConvention.Cdecl)]
