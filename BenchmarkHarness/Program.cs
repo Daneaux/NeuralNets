@@ -2,32 +2,70 @@
 using BenchmarkDotNet.Running;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
-using BenchmarkDotNet.Reports;
+using BenchmarkDotNet.Loggers;
 using MatrixLibrary.BaseClasses;
+
+public class SummaryOnlyLogger : ILogger
+{
+    private bool _inSummary;
+    public string Id => nameof(SummaryOnlyLogger);
+    public int Priority => 0;
+
+    public void Write(LogKind logKind, string text)
+    {
+        if (text.Contains("// * Summary *"))
+            _inSummary = true;
+        if (_inSummary)
+            Console.Write(text);
+    }
+
+    public void WriteLine()
+    {
+        if (_inSummary) Console.WriteLine();
+    }
+
+    public void WriteLine(LogKind logKind, string text)
+    {
+        if (text.Contains("// * Summary *"))
+            _inSummary = true;
+        if (_inSummary)
+            Console.WriteLine(text);
+        if (text.Contains("// * Legends *"))
+            _inSummary = false;
+    }
+
+    public void Flush() { }
+}
 
 public class Program
 {
+    private static ManualConfig GetConfig()
+    {
+        var defaults = DefaultConfig.Instance;
+        var config = ManualConfig.CreateEmpty();
+
+        // Copy everything from defaults except loggers
+        foreach (var job in defaults.GetJobs()) config.AddJob(job);
+        foreach (var a in defaults.GetAnalysers()) config.AddAnalyser(a);
+        foreach (var v in defaults.GetValidators()) config.AddValidator(v);
+        foreach (var e in defaults.GetExporters()) config.AddExporter(e);
+        foreach (var cp in defaults.GetColumnProviders()) config.AddColumnProvider(cp);
+
+        // Use our summary-only logger instead of ConsoleLogger
+        config.AddLogger(new SummaryOnlyLogger());
+        config.WithOptions(ConfigOptions.DisableLogFile);
+
+        return config;
+    }
+
     public static void Main(string[] args)
     {
-        if (args.Length > 0 && args[0] == "--conv")
-        {
-            BenchmarkRunner.Run<ConvolutionBenchmarks>();
-        }
-        else if (args.Length > 0 && args[0] == "--all")
-        {
-            BenchmarkRunner.Run<MultiplyBenchmarks>();
-            BenchmarkRunner.Run<AddBenchmarks>();
-            BenchmarkRunner.Run<SubtractBenchmarks>();
-            BenchmarkRunner.Run<TransposeBenchmarks>();
-            BenchmarkRunner.Run<ConvolutionBenchmarks>();
-        }
-        else
-        {
-            BenchmarkRunner.Run<MultiplyBenchmarks>();
-            BenchmarkRunner.Run<AddBenchmarks>();
-            BenchmarkRunner.Run<SubtractBenchmarks>();
-            BenchmarkRunner.Run<TransposeBenchmarks>();
-        }
+        var config = GetConfig();
+        BenchmarkRunner.Run<MultiplyBenchmarks>(config);
+        BenchmarkRunner.Run<AddBenchmarks>(config);
+        BenchmarkRunner.Run<SubtractBenchmarks>(config);
+        BenchmarkRunner.Run<TransposeBenchmarks>(config);
+        BenchmarkRunner.Run<ConvolutionBenchmarks>(config);
     }
 }
 
