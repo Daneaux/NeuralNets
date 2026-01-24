@@ -61,11 +61,22 @@ public class Program
     public static void Main(string[] args)
     {
         var config = GetConfig();
-        BenchmarkRunner.Run<MultiplyBenchmarks>(config);
-        BenchmarkRunner.Run<AddBenchmarks>(config);
-        BenchmarkRunner.Run<SubtractBenchmarks>(config);
-        BenchmarkRunner.Run<TransposeBenchmarks>(config);
-        BenchmarkRunner.Run<ConvolutionBenchmarks>(config);
+        bool onlyDoChainBench = args.Length > 0 && args[0] == "--chain";
+
+        if (true) //onlyDoChainBench)
+        {
+            BenchmarkRunner.Run<ChainingBenchmarks>(config);
+        }
+        else
+        {
+            BenchmarkRunner.Run<MultiplyBenchmarks>(config);
+            BenchmarkRunner.Run<AddBenchmarks>(config);
+            BenchmarkRunner.Run<SubtractBenchmarks>(config);
+            BenchmarkRunner.Run<TransposeBenchmarks>(config);
+            BenchmarkRunner.Run<ConvolutionBenchmarks>(config);
+            if (BackendSelector.IsGPUAvailable())
+                BenchmarkRunner.Run<ChainingBenchmarks>(config);
+        }
     }
 }
 
@@ -346,4 +357,201 @@ public class ConvolutionBenchmarks
 
     [Benchmark]
     public AvxMatrix AvxConvolution8x8() => m1.Convolution(SquareKernel8);
+}
+
+// ============================================================
+// Chaining Benchmarks: chained GPU ops vs non-chained (forced round-trip)
+// ============================================================
+
+/// <summary>
+/// Benchmarks comparing chained GPU operations (data stays on device between ops)
+/// vs non-chained (force host round-trip between each operation).
+///
+/// Chained: result GpuMatrix from op1 is passed directly to op2. The device pointer
+/// is already valid, so EnsureDeviceUpToDate() skips the upload.
+///
+/// NonChained: after each op, we create a new GpuMatrix from the host Mat of the result.
+/// This discards the device pointer and forces a fresh upload on the next op.
+/// </summary>
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+[BenchmarkCategory("Chaining")]
+public class ChainingBenchmarks
+{
+    private GpuMatrix g1, g2, g3;
+
+    [GlobalSetup]
+    public void Setup()
+    {
+        if (!BackendSelector.IsGPUAvailable())
+            throw new InvalidOperationException("GPU not available for benchmarks");
+
+        int matSize = 1024;
+        int range = 100;
+        int seed = 1253443;
+
+        g1 = new GpuMatrix(matSize, matSize);
+        g2 = new GpuMatrix(matSize, matSize);
+        g3 = new GpuMatrix(matSize, matSize);
+        g1.SetRandom(seed, -range, range);
+        g2.SetRandom(seed + 1, -range, range);
+        g3.SetRandom(seed + 2, -range, range);
+
+        // Warm up device pointers so first-run upload cost isn't in the benchmark
+        var warmup = g1.Add(g2);
+        (warmup as IDisposable)?.Dispose();
+        warmup = g2.Add(g3);
+        (warmup as IDisposable)?.Dispose();
+        warmup = g3.Add(g1);
+        (warmup as IDisposable)?.Dispose();
+    }
+
+    [GlobalCleanup]
+    public void Cleanup()
+    {
+        g1?.Dispose();
+        g2?.Dispose();
+        g3?.Dispose();
+    }
+
+    /// <summary>
+    /// Forces a host round-trip: creates a new GpuMatrix from host data,
+    /// discarding the device pointer and forcing re-upload on next use.
+    /// </summary>
+    private GpuMatrix ForceHostRoundTrip(MatrixBase result)
+    {
+        // Access .Mat to ensure host is populated, then create new GpuMatrix
+        // from that host data. The new instance has _deviceValid=false,
+        // so the next operation will have to upload again.
+        var hostData = result.Mat;
+        (result as IDisposable)?.Dispose(); // free the old device memory
+        return new GpuMatrix(hostData);
+    }
+
+    // ============================================================
+    // Add chain: A + B + C  (two additions)
+    // ============================================================
+
+    [Benchmark]
+    [BenchmarkCategory("Add3")]
+    public void AddChain_Chained()
+    {
+        var ab = (GpuMatrix)g1.Add(g2);
+        var abc = ab.Add(g3);
+        (ab as IDisposable)?.Dispose();
+        (abc as IDisposable)?.Dispose();
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("Add3")]
+    public void AddChain_NonChained()
+    {
+        var ab = ForceHostRoundTrip(g1.Add(g2));
+        var abc = ab.Add(g3);
+        (ab as IDisposable)?.Dispose();
+        (abc as IDisposable)?.Dispose();
+    }
+
+    // ============================================================
+    // Multiply chain: (A * B) * C  (two multiplications)
+    // ============================================================
+
+    [Benchmark]
+    [BenchmarkCategory("Mul3")]
+    public void MulChain_Chained()
+    {
+        var ab = (GpuMatrix)g1.Multiply(g2);
+        var abc = ab.Multiply(g3);
+        (ab as IDisposable)?.Dispose();
+        (abc as IDisposable)?.Dispose();
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("Mul3")]
+    public void MulChain_NonChained()
+    {
+        var ab = ForceHostRoundTrip(g1.Multiply(g2));
+        var abc = ab.Multiply(g3);
+        (ab as IDisposable)?.Dispose();
+        (abc as IDisposable)?.Dispose();
+    }
+
+    // ============================================================
+    // Mixed chain: (A + B) * C  (add then multiply)
+    // ============================================================
+
+    [Benchmark]
+    [BenchmarkCategory("AddThenMul")]
+    public void AddThenMul_Chained()
+    {
+        var ab = (GpuMatrix)g1.Add(g2);
+        var result = ab.Multiply(g3);
+        (ab as IDisposable)?.Dispose();
+        (result as IDisposable)?.Dispose();
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("AddThenMul")]
+    public void AddThenMul_NonChained()
+    {
+        var ab = ForceHostRoundTrip(g1.Add(g2));
+        var result = ab.Multiply(g3);
+        (ab as IDisposable)?.Dispose();
+        (result as IDisposable)?.Dispose();
+    }
+
+    // ============================================================
+    // Long chain: A + B - C + scalar * A  (four ops)
+    // ============================================================
+
+    [Benchmark]
+    [BenchmarkCategory("LongChain")]
+    public void LongChain_Chained()
+    {
+        var step1 = (GpuMatrix)g1.Add(g2);
+        var step2 = (GpuMatrix)step1.Subtract(g3);
+        var step3 = (GpuMatrix)g1.Multiply(2.5f);
+        var step4 = step2.Add(step3);
+        (step1 as IDisposable)?.Dispose();
+        (step2 as IDisposable)?.Dispose();
+        (step3 as IDisposable)?.Dispose();
+        (step4 as IDisposable)?.Dispose();
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("LongChain")]
+    public void LongChain_NonChained()
+    {
+        var step1 = ForceHostRoundTrip(g1.Add(g2));
+        var step2 = ForceHostRoundTrip(step1.Subtract(g3));
+        var step3 = ForceHostRoundTrip(g1.Multiply(2.5f));
+        var step4 = step2.Add(step3);
+        (step1 as IDisposable)?.Dispose();
+        (step2 as IDisposable)?.Dispose();
+        (step3 as IDisposable)?.Dispose();
+        (step4 as IDisposable)?.Dispose();
+    }
+
+    // ============================================================
+    // Transpose then multiply: A^T * B  (transpose + multiply)
+    // ============================================================
+
+    [Benchmark]
+    [BenchmarkCategory("TransposeMul")]
+    public void TransposeThenMul_Chained()
+    {
+        var aT = (GpuMatrix)g1.GetTransposedMatrix();
+        var result = aT.Multiply(g2);
+        (aT as IDisposable)?.Dispose();
+        (result as IDisposable)?.Dispose();
+    }
+
+    [Benchmark(Baseline = true)]
+    [BenchmarkCategory("TransposeMul")]
+    public void TransposeThenMul_NonChained()
+    {
+        var aT = ForceHostRoundTrip(g1.GetTransposedMatrix());
+        var result = aT.Multiply(g2);
+        (aT as IDisposable)?.Dispose();
+        (result as IDisposable)?.Dispose();
+    }
 }

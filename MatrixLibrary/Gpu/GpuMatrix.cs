@@ -11,47 +11,116 @@ namespace MatrixLibrary
     /// interpreted as column-major IS its transpose. We exploit this by swapping
     /// operand order in cublasSgemm calls, avoiding any explicit transpose of data.
     ///
-    /// Memory model:
-    /// Each GpuMatrix caches a device pointer (_devicePtr). The host Mat array is
-    /// always kept up-to-date. The device pointer is populated on first GPU use and
-    /// reused for subsequent operations. When host data changes (SetRandom, indexer
-    /// write, etc.), the device cache is invalidated.
+    /// Memory model: lazy device-resident.
+    ///
+    /// Each GpuMatrix maintains both a host buffer (Mat) and a device pointer (_devicePtr).
+    /// Data can be valid on one side, both, or neither (freshly allocated).
+    ///
+    /// - _deviceValid: device has current data (no need to upload)
+    /// - _hostValid:   host Mat has current data (no need to download)
+    ///
+    /// GPU operations produce results that live ONLY on the device (_hostValid=false).
+    /// Host data is only downloaded when someone reads Mat or the indexer.
+    /// This means chained GPU ops (e.g., A.Add(B).Multiply(C)) never round-trip through host.
     /// </summary>
     public class GpuMatrix : MatrixBase, IDisposable
     {
         private IntPtr _devicePtr = IntPtr.Zero;
         private bool _deviceValid = false;
+        private bool _hostValid = true;
+
+        /// <summary>
+        /// Overridden Mat property: downloads device data to host on first access.
+        /// </summary>
+        public override float[,] Mat
+        {
+            get
+            {
+                EnsureHostUpToDate();
+                return base.Mat;
+            }
+            protected set { base.Mat = value; }
+        }
+
+        /// <summary>
+        /// Overridden indexer: downloads device data to host on first read access.
+        /// </summary>
+        public override float this[int r, int c]
+        {
+            get
+            {
+                EnsureHostUpToDate();
+                return base.Mat[r, c];
+            }
+            set
+            {
+                EnsureHostUpToDate();
+                base.Mat[r, c] = value;
+                InvalidateDevice();
+            }
+        }
 
         public GpuMatrix(int rows, int cols)
         {
             Rows = rows;
             Cols = cols;
-            Mat = new float[rows, cols];
+            base.Mat = new float[rows, cols];
+            _hostValid = true;
         }
 
         public GpuMatrix(float[,] data)
         {
-            Mat = (float[,])data.Clone();
+            base.Mat = (float[,])data.Clone();
             Rows = data.GetLength(0);
             Cols = data.GetLength(1);
+            _hostValid = true;
         }
 
         /// <summary>
-        /// Internal constructor that takes ownership of data and a pre-allocated device pointer.
+        /// Internal constructor: device-only result. Host array is allocated but NOT populated.
+        /// Data lives only on GPU until someone reads Mat or the indexer.
+        /// </summary>
+        internal GpuMatrix(int rows, int cols, IntPtr devicePtr)
+        {
+            Rows = rows;
+            Cols = cols;
+            base.Mat = new float[rows, cols]; // allocated but uninitialized
+            _devicePtr = devicePtr;
+            _deviceValid = true;
+            _hostValid = false; // data is ONLY on device
+        }
+
+        /// <summary>
+        /// Internal constructor that takes ownership of host data and a device pointer.
+        /// Both host and device are valid.
         /// </summary>
         internal GpuMatrix(float[,] data, IntPtr devicePtr)
         {
-            Mat = data;
+            base.Mat = data;
             Rows = data.GetLength(0);
             Cols = data.GetLength(1);
             _devicePtr = devicePtr;
             _deviceValid = true;
+            _hostValid = true;
         }
 
         /// <summary>
-        /// Ensures device memory is allocated and contains current host data.
+        /// Downloads device data to host if not already valid.
         /// </summary>
-        private IntPtr EnsureDeviceUpToDate()
+        private void EnsureHostUpToDate()
+        {
+            if (!_hostValid && _deviceValid && _devicePtr != IntPtr.Zero)
+            {
+                GpuMemoryManager.CopyFromDevice(_devicePtr, base.Mat, Rows, Cols);
+                _hostValid = true;
+            }
+        }
+
+        /// <summary>
+        /// Ensures device memory is allocated and contains current data.
+        /// If host was modified, uploads to device.
+        /// </summary>
+        internal IntPtr EnsureDeviceUpToDate()
         {
             if (_devicePtr == IntPtr.Zero)
             {
@@ -60,7 +129,8 @@ namespace MatrixLibrary
             }
             if (!_deviceValid)
             {
-                GpuMemoryManager.CopyToDevice(Mat, _devicePtr, Rows, Cols);
+                // Host must be valid if device isn't
+                GpuMemoryManager.CopyToDevice(base.Mat, _devicePtr, Rows, Cols);
                 _deviceValid = true;
             }
             return _devicePtr;
@@ -138,10 +208,7 @@ namespace MatrixLibrary
 
                 CudaContext.CheckCublasStatus(status, "cublasSgemm_v2");
 
-                float[,] result = new float[resultRows, resultCols];
-                GpuMemoryManager.CopyFromDevice(dC, result, resultRows, resultCols);
-
-                return new GpuMatrix(result, dC);
+                return new GpuMatrix(resultRows, resultCols, dC);
             }
             catch
             {
@@ -258,9 +325,7 @@ namespace MatrixLibrary
 
                 CudaContext.CheckCublasStatus(status, "cublasSgeam(Add)");
 
-                float[,] result = new float[Rows, Cols];
-                GpuMemoryManager.CopyFromDevice(dC, result, Rows, Cols);
-                return new GpuMatrix(result, dC);
+                return new GpuMatrix(Rows, Cols, dC);
             }
             catch
             {
@@ -304,9 +369,7 @@ namespace MatrixLibrary
 
                 CudaContext.CheckCublasStatus(status, "cublasSgeam(Subtract)");
 
-                float[,] result = new float[Rows, Cols];
-                GpuMemoryManager.CopyFromDevice(dC, result, Rows, Cols);
-                return new GpuMatrix(result, dC);
+                return new GpuMatrix(Rows, Cols, dC);
             }
             catch
             {
@@ -342,9 +405,7 @@ namespace MatrixLibrary
 
                 CudaContext.CheckCublasStatus(status, "cublasSscal_v2");
 
-                float[,] result = new float[Rows, Cols];
-                GpuMemoryManager.CopyFromDevice(dResult, result, Rows, Cols);
-                return new GpuMatrix(result, dResult);
+                return new GpuMatrix(Rows, Cols, dResult);
             }
             catch
             {
@@ -404,9 +465,7 @@ namespace MatrixLibrary
 
                 CudaContext.CheckCublasStatus(status, "cublasSgeam(Transpose)");
 
-                float[,] result = new float[resultRows, resultCols];
-                GpuMemoryManager.CopyFromDevice(dC, result, resultRows, resultCols);
-                return new GpuMatrix(result, dC);
+                return new GpuMatrix(resultRows, resultCols, dC);
             }
             catch
             {

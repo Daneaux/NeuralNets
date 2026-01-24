@@ -9,7 +9,7 @@ namespace MatrixLibrary.BaseClasses
 
     public abstract class MatrixBase
     {
-        public float[,] Mat { get; protected set; }
+        public virtual float[,] Mat { get; protected set; }
 
         public int Rows { get; protected set; }
         public int Cols { get; protected set; }
@@ -17,7 +17,7 @@ namespace MatrixLibrary.BaseClasses
         public int TotalSize => Rows * Cols;
         public bool IsSquare() => Rows == Cols;
 
-        public float this[int r, int c]
+        public virtual float this[int r, int c]
         {
             get { return this.Mat[r, c]; }
             set { this.Mat[r, c] = value; }
