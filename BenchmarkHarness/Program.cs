@@ -84,7 +84,9 @@ public class MultiplyBenchmarks
     [Benchmark]
     public MatrixBase GPU()
     {
-        if (!gpuAvailable) return avx1.Multiply(avx2);
+        if (!gpuAvailable) 
+            throw new InvalidOperationException("GPU backend is not available.");
+
         var r = gpu1.Multiply(gpu2);
         (r as IDisposable)?.Dispose();
         return r;
