@@ -442,6 +442,176 @@ namespace CublasTests
             AssertMatricesEqual(avxResult, gpuResult);
         }
 
+        // ============================================================
+        // Chaining: GPU operations produce GpuMatrix results that
+        // remain device-resident, avoiding redundant host→device
+        // uploads when used as inputs to subsequent operations.
+        // ============================================================
+
+        [TestMethod]
+        public void TestChaining_AddThenMultiply()
+        {
+            // (A + B) * C — intermediate (A+B) stays on device
+            var (gpuA, avxA) = CreateRandomPair(64, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 64, 43);
+            var (gpuC, avxC) = CreateRandomPair(64, 64, 44);
+
+            var gpuResult = gpuA.Add(gpuB).Multiply(gpuC);
+            var avxResult = avxA.Add(avxB).Multiply(avxC);
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_MultiplyThenAdd()
+        {
+            // (A * B) + C
+            var (gpuA, avxA) = CreateRandomPair(32, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 32, 43);
+            var (gpuC, avxC) = CreateRandomPair(32, 32, 44);
+
+            var gpuResult = gpuA.Multiply(gpuB).Add(gpuC);
+            var avxResult = avxA.Multiply(avxB).Add(avxC);
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_SubtractThenScalarMultiply()
+        {
+            // (A - B) * scalar
+            var (gpuA, avxA) = CreateRandomPair(128, 128, 42);
+            var (gpuB, avxB) = CreateRandomPair(128, 128, 43);
+
+            var gpuResult = gpuA.Subtract(gpuB).Multiply(0.5f);
+            var avxResult = avxA.Subtract(avxB).Multiply(0.5f);
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_TransposeThenMultiply()
+        {
+            // A^T * B — transpose result feeds into multiply
+            var (gpuA, avxA) = CreateRandomPair(64, 32, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 48, 43);
+
+            var gpuResult = gpuA.GetTransposedMatrix().Multiply(gpuB);
+            var avxResult = avxA.GetTransposedMatrix().Multiply(avxB);
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_MultipleScalarOps()
+        {
+            // A * 2.0 + B * 3.0 — both scalar results chain into add
+            var (gpuA, avxA) = CreateRandomPair(64, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 64, 43);
+
+            var gpuResult = gpuA.Multiply(2.0f).Add(gpuB.Multiply(3.0f));
+            var avxResult = avxA.Multiply(2.0f).Add(avxB.Multiply(3.0f));
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_LongPipeline()
+        {
+            // ((A + B) * C - D) * 0.1  — 4 chained ops
+            var (gpuA, avxA) = CreateRandomPair(32, 32, 42);
+            var (gpuB, avxB) = CreateRandomPair(32, 32, 43);
+            var (gpuC, avxC) = CreateRandomPair(32, 32, 44);
+            var (gpuD, avxD) = CreateRandomPair(32, 32, 45);
+
+            var gpuResult = gpuA.Add(gpuB).Multiply(gpuC).Subtract(gpuD).Multiply(0.1f);
+            var avxResult = avxA.Add(avxB).Multiply(avxC).Subtract(avxD).Multiply(0.1f);
+
+            AssertMatricesEqual(avxResult, gpuResult, 1.0f); // larger tolerance for accumulated error
+        }
+
+        [TestMethod]
+        public void TestChaining_ReuseInputAcrossMultipleOps()
+        {
+            // Same matrix used in multiple operations stays on device
+            var (gpuA, avxA) = CreateRandomPair(64, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 64, 43);
+
+            // gpuA is used 3 times — device pointer should be reused
+            var gpuR1 = gpuA.Add(gpuB);
+            var gpuR2 = gpuA.Subtract(gpuB);
+            var gpuR3 = gpuA.Multiply(gpuB);
+
+            var avxR1 = avxA.Add(avxB);
+            var avxR2 = avxA.Subtract(avxB);
+            var avxR3 = avxA.Multiply(avxB);
+
+            AssertMatricesEqual(avxR1, gpuR1);
+            AssertMatricesEqual(avxR2, gpuR2);
+            AssertMatricesEqual(avxR3, gpuR3);
+        }
+
+        [TestMethod]
+        public void TestChaining_MatVecAfterMatMul()
+        {
+            // (A * B) * v — matrix multiply result feeds into mat-vec
+            var (gpuA, avxA) = CreateRandomPair(32, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 32, 43);
+
+            float[] vecData = new float[32];
+            var rnd = new Random(44);
+            for (int i = 0; i < 32; i++) vecData[i] = (float)(rnd.NextDouble() * 20 - 10);
+
+            var gpuVec = new GpuColumnVector(vecData);
+            var avxVec = new AvxColumnVector(vecData);
+
+            // Chain: (A * B) then multiply by vector
+            var gpuMatResult = gpuA.Multiply(gpuB);
+            var gpuVecResult = gpuMatResult.MatrixTimesColumn(gpuVec);
+
+            var avxMatResult = avxA.Multiply(avxB);
+            var avxVecResult = avxMatResult.MatrixTimesColumn(avxVec);
+
+            Assert.AreEqual(avxVecResult.Size, gpuVecResult.Size);
+            for (int i = 0; i < 32; i++)
+                Assert.AreEqual(avxVecResult[i], gpuVecResult[i], 0.01f,
+                    $"Mismatch at [{i}]"); // relaxed tolerance: chained 64-wide dot products accumulate FP error
+        }
+
+        [TestMethod]
+        public void TestChaining_IntermediateDispose_NoCorruption()
+        {
+            // Dispose intermediate results — final result should still be valid
+            var (gpuA, avxA) = CreateRandomPair(32, 32, 42);
+            var (gpuB, avxB) = CreateRandomPair(32, 32, 43);
+
+            var intermediate = gpuA.Add(gpuB);
+            var gpuResult = intermediate.Multiply(2.0f);
+            (intermediate as IDisposable)?.Dispose(); // free intermediate GPU memory
+
+            var avxResult = avxA.Add(avxB).Multiply(2.0f);
+
+            // Final result should still be correct despite intermediate being disposed
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
+        [TestMethod]
+        public void TestChaining_TransposeThenAddThenMultiply()
+        {
+            // (A^T + B) * C — exercises transpose, add, multiply in sequence
+            var (gpuA, avxA) = CreateRandomPair(48, 64, 42);
+            var (gpuB, avxB) = CreateRandomPair(64, 48, 43);
+            var (gpuC, avxC) = CreateRandomPair(64, 48, 44);
+
+            // A is 48x64, A^T is 64x48, B is 64x48, C is 64x48
+            // (A^T + B) is 64x48, then * C would be dimension mismatch
+            // Instead: (A^T + B) * scalar
+            var gpuResult = gpuA.GetTransposedMatrix().Add(gpuB).Multiply(0.25f);
+            var avxResult = avxA.GetTransposedMatrix().Add(avxB).Multiply(0.25f);
+
+            AssertMatricesEqual(avxResult, gpuResult);
+        }
+
         [TestMethod]
         public void TestDispose_NoThrow()
         {
