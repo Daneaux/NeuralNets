@@ -83,12 +83,12 @@ namespace CublasTests
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
         public void TestMultiply_DimensionMismatch()
         {
             var a = new GpuMatrix(3, 4);
             var b = new GpuMatrix(5, 2); // 4 != 5
-            a.Multiply(b);
+
+            Assert.ThrowsExactly<ArgumentException>(() => a.Multiply(b));
         }
 
         // ============================================================

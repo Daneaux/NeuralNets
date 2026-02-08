@@ -56,7 +56,6 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void Matrix_Multiply_DifferentDimensionsThrowsException()
         {
             float[,] aArray = { { 1, 2 }, { 3, 4 } };
@@ -64,7 +63,7 @@ namespace NeuralNetsTests.Math
             Matrix2D a = new Matrix2D(aArray);
             Matrix2D b = new Matrix2D(bArray);
 
-            Matrix2D result = a.Multiply(b); // This should throw an exception
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => a.Multiply(b));
         }
 
         [TestMethod]

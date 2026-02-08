@@ -1,5 +1,4 @@
 using MatrixLibrary;
-using MatrixLibrary.BaseClasses;
 
 namespace CublasTests
 {
@@ -349,21 +348,22 @@ namespace CublasTests
         // ============================================================
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
         public void TestAdd_DimensionMismatch()
         {
             var a = new GpuColumnVector(new float[] { 1, 2, 3 });
             var b = new GpuColumnVector(new float[] { 1, 2, 3, 4 });
-            a.Add(b);
+            
+            Assert.ThrowsExactly<ArgumentException>(() => a.Add(b));
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentException))]
         public void TestSubtract_DimensionMismatch()
         {
             var a = new GpuColumnVector(new float[] { 1, 2, 3 });
             var b = new GpuColumnVector(new float[] { 1, 2 });
-            a.Subtract(b);
+            //a.Subtract(b);
+
+            Assert.ThrowsExactly<ArgumentException>(() => a.Subtract(b));
         }
     }
 }

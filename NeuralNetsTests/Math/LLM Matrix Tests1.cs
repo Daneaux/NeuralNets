@@ -29,12 +29,11 @@ namespace NeuralNetsTests.Math
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ArgumentOutOfRangeException))]
         public void Multiply_ShouldThrowExceptionForInvalidDimensions()
         {
             var matrixA = new Matrix2D(2, 3);
             var matrixB = new Matrix2D(2, 2);
-            var result = matrixA.Multiply(matrixB);
+            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => matrixA.Multiply(matrixB));
         }
 
         [TestMethod]
