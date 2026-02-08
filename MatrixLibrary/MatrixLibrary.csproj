@@ -8,6 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="CublasTests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BenchmarkDotNet.Annotations" Version="0.14.0" />
     <PackageReference Include="TorchSharp" Version="0.103.0" />
     <PackageReference Include="TorchSharp-cpu" Version="0.103.0" />

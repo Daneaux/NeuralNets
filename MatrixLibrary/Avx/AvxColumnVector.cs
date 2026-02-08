@@ -197,7 +197,7 @@ namespace MatrixLibrary
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, col2 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v2 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Load<float>(col2);
                     Vector512<float> v3 = Avx512F.Add(v1, v2);
                     Vector512.Store<float>(v3, destCol);
                 }

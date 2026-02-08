@@ -3,40 +3,19 @@ using MatrixLibrary.BaseClasses;
 namespace MatrixLibrary
 {
     /// <summary>
-    /// GPU-accelerated row vector implementation (stub - throws NotImplementedException).
-    /// This stub allows the factory to create GPU instances without requiring
-    /// a full GPU implementation. In Phase 3, these methods will be
-    /// replaced with actual CUDA/OpenCL implementations.
+    /// GPU row vector — not supported. Use GpuColumnVector instead.
+    /// Matches the AVX backend pattern where RowVector is unsupported.
     /// </summary>
     public class GpuRowVector : RowVectorBase
     {
-        private readonly float[] _data;
-
-        public int Size { get; }
-        public float[] Row => _data;
-        public MatrixBackend Backend => MatrixBackend.GPU;
-
         public GpuRowVector(int size)
         {
-            Size = size;
-            _data = new float[size];
+            throw new NotSupportedException("GPU backend does not support RowVector. Use ColumnVector instead.");
         }
 
         public GpuRowVector(float[] data)
         {
-            _data = data;
-            Size = data.Length;
-        }
-
-        public float this[int i]
-        {
-            get => throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
-            set => throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
-        }
-
-        public float Sum()
-        {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            throw new NotSupportedException("GPU backend does not support RowVector. Use ColumnVector instead.");
         }
     }
 }

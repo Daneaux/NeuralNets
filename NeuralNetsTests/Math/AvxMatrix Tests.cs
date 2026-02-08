@@ -498,5 +498,72 @@ namespace NeuralNetsTests.Math
                 }
             }
         }
+
+        // ============================================================
+        // Bug regression: AvxColumnVector.Add loads col1 twice (line 200)
+        // instead of loading col1 and col2. Result is a+a, not a+b.
+        // ============================================================
+
+        [TestMethod]
+        [DataRow(16)]
+        [DataRow(32)]
+        [DataRow(57)]
+        public void TestColumnVectorAdd_Bug_LoadsCol1Twice(int size)
+        {
+            float[] dataA = new float[size];
+            float[] dataB = new float[size];
+            var rnd = new Random(42);
+            for (int i = 0; i < size; i++)
+            {
+                dataA[i] = (float)(rnd.NextDouble() * 20 - 10);
+                dataB[i] = (float)(rnd.NextDouble() * 20 - 10);
+            }
+
+            var avxA = new AvxColumnVector(dataA);
+            var avxB = new AvxColumnVector(dataB);
+            var swA = new ColumnVector(dataA);
+            var swB = new ColumnVector(dataB);
+
+            var avxResult = avxA.Add(avxB);
+            var swResult = swA.Add(swB);
+
+            for (int i = 0; i < size; i++)
+                Assert.AreEqual(swResult[i], avxResult[i], 1e-5f,
+                    $"AvxColumnVector.Add mismatch at [{i}]: expected {swResult[i]}, got {avxResult[i]}. " +
+                    $"If result equals 2*A[{i}]={2 * dataA[i]}, the bug is loading col1 twice.");
+        }
+
+        // ============================================================
+        // Bug regression: Matrix2D.Log() swaps Rows/Cols in constructor
+        // (line 64: new Matrix2D(this.Cols, this.Rows) instead of
+        //  new Matrix2D(this.Rows, this.Cols)).
+        // Crashes with IndexOutOfRangeException on non-square matrices.
+        // ============================================================
+
+        [TestMethod]
+        [DataRow(2, 3)]
+        [DataRow(5, 2)]
+        [DataRow(3, 7)]
+        public void TestLog_NonSquareMatrix_Bug_SwappedDimensions(int rows, int cols)
+        {
+            float[,] data = new float[rows, cols];
+            var rnd = new Random(42);
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    data[r, c] = (float)(rnd.NextDouble() * 9 + 1); // positive values for log
+
+            var avx = new AvxMatrix(data);
+            var result = avx.Log();
+
+            Assert.AreEqual(rows, result.Rows,
+                "Log() result has wrong row count — Matrix2D.Log() swaps Rows/Cols in constructor.");
+            Assert.AreEqual(cols, result.Cols,
+                "Log() result has wrong col count — Matrix2D.Log() swaps Rows/Cols in constructor.");
+
+            for (int r = 0; r < rows; r++)
+                for (int c = 0; c < cols; c++)
+                    Assert.AreEqual((float)System.Math.Log(data[r, c]), result[r, c], 1e-5f,
+                        $"Log mismatch at [{r},{c}]");
+        }
     }
 }

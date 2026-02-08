@@ -34,6 +34,8 @@ class AnnHarness
 
     private static void DoCNN()
     {
+        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+
         MNISTTrainingSet trainingSet = new MNISTTrainingSet();
         var conv1 = new ConvolutionLayer(trainingSet.OutputShape, 5, 4, 1);
         var p1 = new PoolingLayer(conv1.OutputShape, 2, 5, 2, 1);

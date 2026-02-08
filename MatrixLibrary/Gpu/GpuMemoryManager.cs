@@ -1,112 +1,117 @@
-namespace MatrixLibrary
+namespace MatrixLibrary.Gpu
 {
     /// <summary>
-    /// GPU memory manager (stub - throws NotImplementedException).
-    /// This stub allows the factory to work without requiring
-    /// a full GPU implementation. In Phase 3, these methods will be
-    /// replaced with actual CUDA/OpenCL implementations.
+    /// Static helpers for GPU memory allocation, deallocation, and host-device transfers.
+    /// All methods use 'fixed' to pin managed arrays for cudaMemcpy.
     /// </summary>
-    public class GpuMemoryManager
+    internal static class GpuMemoryManager
     {
         /// <summary>
-        /// Initializes the GPU device and runtime.
+        /// Allocates device memory for the specified number of floats.
         /// </summary>
-        public void Initialize()
+        internal static IntPtr Allocate(int floatCount)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(floatCount * sizeof(float));
+            var status = CublasNativeMethods.cudaMalloc(out IntPtr devicePtr, sizeInBytes);
+            CudaContext.CheckCudaStatus(status, "cudaMalloc");
+            return devicePtr;
         }
 
         /// <summary>
-        /// Shuts down the GPU device and releases all resources.
+        /// Frees device memory. Safe to call with IntPtr.Zero.
         /// </summary>
-        public void Shutdown()
+        internal static void Free(IntPtr devicePtr)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            if (devicePtr != IntPtr.Zero)
+            {
+                CublasNativeMethods.cudaFree(devicePtr);
+            }
         }
 
         /// <summary>
-        /// Allocates memory on the GPU device.
+        /// Copies a 2D float array (row-major, contiguous) from host to device.
         /// </summary>
-        /// <param name="sizeInBytes">Size in bytes to allocate</param>
-        /// <returns>Pointer to allocated device memory</returns>
-        public IntPtr AllocateDeviceMemory(int sizeInBytes)
+        internal static unsafe void CopyToDevice(float[,] hostData, IntPtr devicePtr, int rows, int cols)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(rows * cols * sizeof(float));
+            fixed (float* hostPtr = hostData)
+            {
+                var status = CublasNativeMethods.cudaMemcpy(
+                    devicePtr, (IntPtr)hostPtr, sizeInBytes, CudaMemcpyKind.HostToDevice);
+                CudaContext.CheckCudaStatus(status, "cudaMemcpy(H2D)");
+            }
         }
 
         /// <summary>
-        /// Frees memory on the GPU device.
+        /// Copies a 1D float array from host to device.
         /// </summary>
-        /// <param name="devicePtr">Pointer to device memory to free</param>
-        public void FreeDeviceMemory(IntPtr devicePtr)
+        internal static unsafe void CopyToDevice(float[] hostData, IntPtr devicePtr, int count)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(count * sizeof(float));
+            fixed (float* hostPtr = hostData)
+            {
+                var status = CublasNativeMethods.cudaMemcpy(
+                    devicePtr, (IntPtr)hostPtr, sizeInBytes, CudaMemcpyKind.HostToDevice);
+                CudaContext.CheckCudaStatus(status, "cudaMemcpy(H2D)");
+            }
         }
 
         /// <summary>
-        /// Copies data from host memory to device memory.
+        /// Copies from device to a 2D float array on host.
         /// </summary>
-        /// <param name="hostData">Array containing data to copy</param>
-        /// <param name="devicePtr">Pointer to device memory destination</param>
-        public void CopyHostToDevice(float[] hostData, IntPtr devicePtr)
+        internal static unsafe void CopyFromDevice(IntPtr devicePtr, float[,] hostData, int rows, int cols)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(rows * cols * sizeof(float));
+            fixed (float* hostPtr = hostData)
+            {
+                var status = CublasNativeMethods.cudaMemcpy(
+                    (IntPtr)hostPtr, devicePtr, sizeInBytes, CudaMemcpyKind.DeviceToHost);
+                CudaContext.CheckCudaStatus(status, "cudaMemcpy(D2H)");
+            }
         }
 
         /// <summary>
-        /// Copies data from device memory to host memory.
+        /// Copies from device to a 1D float array on host.
         /// </summary>
-        /// <param name="devicePtr">Pointer to device memory source</param>
-        /// <param name="hostData">Array to copy data into</param>
-        public void CopyDeviceToHost(IntPtr devicePtr, float[] hostData)
+        internal static unsafe void CopyFromDevice(IntPtr devicePtr, float[] hostData, int count)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(count * sizeof(float));
+            fixed (float* hostPtr = hostData)
+            {
+                var status = CublasNativeMethods.cudaMemcpy(
+                    (IntPtr)hostPtr, devicePtr, sizeInBytes, CudaMemcpyKind.DeviceToHost);
+                CudaContext.CheckCudaStatus(status, "cudaMemcpy(D2H)");
+            }
         }
 
         /// <summary>
-        /// Rents memory from a pool (for performance optimization).
+        /// Allocates device memory and uploads a 2D array in one step.
         /// </summary>
-        /// <param name="sizeInBytes">Size in bytes to rent</param>
-        /// <returns>Pointer to pooled device memory</returns>
-        public IntPtr RentMemory(int sizeInBytes)
+        internal static IntPtr AllocateAndUpload(float[,] hostData, int rows, int cols)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            IntPtr devicePtr = Allocate(rows * cols);
+            CopyToDevice(hostData, devicePtr, rows, cols);
+            return devicePtr;
         }
 
         /// <summary>
-        /// Returns memory to the pool.
+        /// Allocates device memory and uploads a 1D array in one step.
         /// </summary>
-        /// <param name="devicePtr">Pointer to device memory to return</param>
-        public void ReturnMemory(IntPtr devicePtr)
+        internal static IntPtr AllocateAndUpload(float[] hostData)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            IntPtr devicePtr = Allocate(hostData.Length);
+            CopyToDevice(hostData, devicePtr, hostData.Length);
+            return devicePtr;
         }
 
         /// <summary>
-        /// Sets the active GPU device.
+        /// Copies device-to-device memory.
         /// </summary>
-        /// <param name="deviceId">Device ID to activate</param>
-        public void SetActiveDevice(int deviceId)
+        internal static void CopyDeviceToDevice(IntPtr src, IntPtr dst, int floatCount)
         {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
-        }
-
-        /// <summary>
-        /// Gets the active GPU device ID.
-        /// </summary>
-        /// <returns>Active device ID</returns>
-        public int GetActiveDevice()
-        {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
-        }
-
-        /// <summary>
-        /// Gets the number of available GPU devices.
-        /// </summary>
-        /// <returns>Number of devices</returns>
-        public int GetDeviceCount()
-        {
-            throw new NotImplementedException("GPU backend not yet implemented - use AVX or Software backend");
+            ulong sizeInBytes = (ulong)(floatCount * sizeof(float));
+            var status = CublasNativeMethods.cudaMemcpy(dst, src, sizeInBytes, CudaMemcpyKind.DeviceToDevice);
+            CudaContext.CheckCudaStatus(status, "cudaMemcpy(D2D)");
         }
     }
 }

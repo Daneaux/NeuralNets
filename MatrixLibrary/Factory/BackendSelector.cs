@@ -33,9 +33,14 @@ namespace MatrixLibrary
             if (_gpuAvailable.HasValue)
                 return _gpuAvailable.Value;
 
-            // GPU detection will be implemented in Phase 3
-            // For now, return false
-            _gpuAvailable = false;
+            try
+            {
+                _gpuAvailable = Gpu.CudaContext.IsGpuAvailable();
+            }
+            catch
+            {
+                _gpuAvailable = false;
+            }
             return _gpuAvailable.Value;
         }
 
