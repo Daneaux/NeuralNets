@@ -10,31 +10,42 @@ public class SummaryOnlyLogger : ILogger
     private bool _inSummary;
     public string Id => nameof(SummaryOnlyLogger);
     public int Priority => 0;
-
+    static int progressCounter = 0; 
     public void Write(LogKind logKind, string text)
     {
         if (text.Contains("// * Summary *"))
             _inSummary = true;
-        if (_inSummary)
-            Console.Write(text);
-    }
 
-    public void WriteLine()
-    {
-        if (_inSummary) Console.WriteLine();
+        if (_inSummary)
+        {
+            Console.Write(text);
+        }
     }
 
     public void WriteLine(LogKind logKind, string text)
     {
+        progressCounter++;
         if (text.Contains("// * Summary *"))
             _inSummary = true;
         if (_inSummary)
-            Console.WriteLine(text);
+            Console.WriteLine("\n" + text);
+        else
+        {
+             if(progressCounter % 10 == 0)
+                 Console.Write($".");
+        }
+
         if (text.Contains("// * Legends *"))
             _inSummary = false;
     }
 
     public void Flush() { }
+
+    public void WriteLine()
+    {
+            if (_inSummary)
+                Console.WriteLine();
+    }
 }
 
 public class Program
@@ -63,7 +74,7 @@ public class Program
         var config = GetConfig();
         bool onlyDoChainBench = args.Length > 0 && args[0] == "--chain";
 
-        if (true) //onlyDoChainBench)
+        if (false) //onlyDoChainBench)
         {
             BenchmarkRunner.Run<ChainingBenchmarks>(config);
         }
@@ -71,7 +82,7 @@ public class Program
         {
             BenchmarkRunner.Run<MultiplyBenchmarks>(config);
             BenchmarkRunner.Run<AddBenchmarks>(config);
-            BenchmarkRunner.Run<SubtractBenchmarks>(config);
+            //BenchmarkRunner.Run<SubtractBenchmarks>(config);
             BenchmarkRunner.Run<TransposeBenchmarks>(config);
             BenchmarkRunner.Run<ConvolutionBenchmarks>(config);
             if (BackendSelector.IsGPUAvailable())
