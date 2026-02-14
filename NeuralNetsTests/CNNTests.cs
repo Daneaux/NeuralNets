@@ -260,7 +260,7 @@ namespace NeuralNetsTests
             float finalLoss = CalculateLoss(network, trainingPairs[0]);
             
             // Assert: Loss should decrease (with some tolerance for random initialization)
-            Assert.IsTrue(finalLoss < initialLoss * 1.1f,  // Allow 10% increase due to randomness
+            Assert.IsTrue(finalLoss < (initialLoss * 1.1f), 
                 $"Final loss ({finalLoss}) should be less than initial loss ({initialLoss}) or close to it");
         }
 

@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace NeuralNets
 {
-    public class SigmoidActivation_ : IActivationFunction
+    public class SigmoidActivation_Old : IActivationFunction
     {
         public Tensor LastActivation => throw new NotImplementedException();
 

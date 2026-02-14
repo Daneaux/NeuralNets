@@ -57,13 +57,16 @@ namespace NeuralNets
         {
             AnnTensor annTensor = input as AnnTensor;
             ColumnVectorBase ?vectorInput = null;
-            if (annTensor != null)
+            if (annTensor.IsVector)
             {
                 vectorInput = annTensor.ColumnVector;
-                Debug.Assert(annTensor.Matrix == null);
+                Debug.Assert(!input.IsMatrix);
+                Debug.Assert(input.IsVector);
             }
             else 
             {
+                Debug.Assert(input.IsMatrix);
+                Debug.Assert(!input.IsVector);
                 vectorInput = MatrixHelpers.UnrollMatricesToColumnVector(input.Matrices);
             }
             this.X = vectorInput;
