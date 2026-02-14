@@ -10,7 +10,7 @@ namespace NeuralNets.Tests
         public void TestSoftMax()
         {
             AvxColumnVector vec = new AvxColumnVector(new float[] { 1, 2, 3 });
-            SoftMax sm = new SoftMax();
+            SoftMax sm = new SoftMax(new InputOutputShape(1, 3, 1, 1), 1); // not sure what shape to use here, but it doesn't matter for this test
             ColumnVectorBase softMaxVector = sm.Activate(vec);
             Assert.AreEqual(softMaxVector[0], 0.09003057, 0.001);
             Assert.AreEqual(softMaxVector[1], 0.24472847, 0.001);

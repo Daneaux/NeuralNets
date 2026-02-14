@@ -1,10 +1,11 @@
-﻿using MatrixLibrary;
+﻿using System.Runtime.CompilerServices;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
-using System.Runtime.CompilerServices;
+using TorchSharp;
 
 namespace NeuralNets
 {
-    public class SigmoidActivation_ : IActivationFunction
+    public class SigmoidActivation_Old : IActivationFunction
     {
         public Tensor LastActivation => throw new NotImplementedException();
 
@@ -79,7 +80,34 @@ namespace NeuralNets
 
         public override Tensor BackPropagation(Tensor dE_dX)
         {
-            return Derivative(dE_dX.ToColumnVector()).ToTensor();
+            //return Derivative(dE_dX.ToColumnVector()).ToTensor();
+
+            bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
+
+            if (dE_dX.IsVector)
+            {
+                var derivative = this.Derivative(this.LastActivation.ToColumnVector());
+
+                if (debugMode)
+                {
+                    Console.WriteLine($"    Sigmoid derivative mask (>0? 1 : 0): [{string.Join(", ", Enumerable.Range(0, derivative.Size).Select(i => derivative[i].ToString()))}]");
+                }
+
+                var result = derivative * dE_dX.ToColumnVector();
+
+                if (debugMode)
+                {
+                    Console.WriteLine($"    Output (dE/dX * derivative): [{string.Join(", ", Enumerable.Range(0, result.Size).Select(i => result[i].ToString("F6")))}]");
+                    Console.WriteLine($"  [Sigmoig.BackPropagation] END");
+                }
+
+                return result.ToTensor();
+            }
+            else
+            {
+                throw new NotImplementedException("Not expeecting matrix tensor in Sigmoid BackPropagation");
+            }
+
         }
 
         public Tensor LastActivation { get; private set; }

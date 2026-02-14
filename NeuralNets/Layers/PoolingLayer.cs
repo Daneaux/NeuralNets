@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 
@@ -150,7 +150,7 @@ namespace NeuralNets
             Debug.Assert(ColumnVectorBase.Size % (rows * cols) == 0 );
             for (int i = 0, j = 0; i < numMatrices; i++)
             {
-                mats[i] = MatrixFactory.CreateMatrix(rows, cols);
+                mats.Add(MatrixFactory.CreateMatrix(rows, cols));
                 for (int r = 0; r < rows; r++)
                     for (int c = 0; c < cols; c++)
                         mats[i][r, c] = ColumnVectorBase[j++];
@@ -161,7 +161,7 @@ namespace NeuralNets
 
         private (int r, int c) TwoDIndexHelper(int flatIndex, int rows, int cols)
         {
-            int r = flatIndex / rows;
+            int r = flatIndex / cols;
             int c = flatIndex % cols;
             return (r, c);
         }

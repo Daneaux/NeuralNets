@@ -1,4 +1,5 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
+using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
@@ -8,6 +9,10 @@ namespace NeuralNets
         public int RandomSeed { get; }
         public InputOutputShape InputShape { get; }
         public abstract InputOutputShape OutputShape { get; }
+        protected readonly object GradientLock = new object();
+
+        public MatrixBase LastWeightGradient { get; protected set; }
+        public ColumnVectorBase LastBiasGradient { get; protected set; }
 
         protected Layer(
             InputOutputShape inputShape,

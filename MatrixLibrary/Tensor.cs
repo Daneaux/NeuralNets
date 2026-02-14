@@ -48,6 +48,8 @@ namespace MatrixLibrary
         public abstract Tensor Multiply(Tensor rhs);
 
         public abstract List<MatrixBase> Matrices { get; }
+        public abstract bool IsVector { get; }
+        public abstract bool IsMatrix { get; }
     }
 
     public class ConvolutionTensor : Tensor
@@ -57,6 +59,8 @@ namespace MatrixLibrary
             Matrices = matrices;
         }
         public override List<MatrixBase> Matrices { get; }
+        public override bool IsVector { get => false; }
+        public override bool IsMatrix { get => true; }
 
         public override Tensor Add(Tensor rhs)
         {
@@ -74,6 +78,9 @@ namespace MatrixLibrary
         }
     }
 
+    // design bug: tensor is really supposed to be an array of matrices,
+    // but for ANN layers, we only have one matrix or one column vector.
+    // So this class is really just a wrapper for either a matrix or a column vector, and the other property is null.
     public class AnnTensor : Tensor
     {
         public AnnTensor(MatrixBase matrix, ColumnVectorBase columnVector)
@@ -81,6 +88,9 @@ namespace MatrixLibrary
             Matrix = matrix;
             ColumnVector = columnVector;
         }
+        public override bool IsVector { get => this.ColumnVector != null; }
+        public override bool IsMatrix { get => this.Matrix != null; }
+
         public MatrixBase Matrix { get; }
         public override List<MatrixBase> Matrices { get { return new List<MatrixBase>() { Matrix }; } }
         public ColumnVectorBase ColumnVector { get; }

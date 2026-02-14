@@ -1,9 +1,9 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
 {
-    // 1/2 * (precited - actual)^2
+    // 1/2 * (predicted - actual)^2
     public class SquaredLoss : ILossFunction
     {
         public ColumnVectorBase Error(ColumnVectorBase truth, ColumnVectorBase predicted) => 0.5F * (predicted - truth) * (predicted - truth);

@@ -1,19 +1,66 @@
-﻿// See https://aka.ms/new-console-template for more information
+// See https://aka.ms/new-console-template for more information
 using MnistReader_ANN;
 using MatrixLibrary;
 using NeuralNets;
 using NeuralNets.Network;
+using TorchSharp.Modules;
 
 class AnnHarness
 {
     static int Main(String[] args)
     {
+        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+
         //DoMyMNIST();
         //DoTorchMNIST();
-        DoCNN();
+       // DoCNN();
+       SimpleMnist();
 
         return 0;
 
+    }
+
+    // 784 -> 16 (relu) -> 16 (relu) -> 10 (sigmoid)
+    private static void SimpleMnist()
+    {
+        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+
+        MNISTTrainingSet trainingSet = new MNISTTrainingSet();
+
+        // Use explicit input shape (28x28x1 for MNIST)
+        var inputShape = new InputOutputShape(28, 28, 1, 1);
+
+        var linear1 = new WeightedLayer(inputShape, nodeCount: 16);
+        var relu1 = new ReLUActivaction();
+
+        var linear2 = new WeightedLayer(linear1.OutputShape, nodeCount: 16);
+        var relu2 = new ReLUActivaction();
+
+        var output = new WeightedLayer(linear2.OutputShape, nodeCount: 10);
+
+        List<Layer> layers = new List<Layer>()
+        {
+            linear1,
+            relu1,
+            linear2,
+            relu2,
+            output
+        };
+
+        // Create the network
+        var network = new GeneralFeedForwardANN(
+            layers,
+            trainingRate: 0.05f,
+            inputDim: inputShape.Width * inputShape.Height,
+            outputDim: 10,
+            new CategoricalCrossEntropy());
+
+        // Create render context for training
+        var ctx = new RenderContext(network, batchSize: 64, trainingSet);
+
+        // Train the network
+        int epochs = 10;
+        ctx.EpochTrain(epochs);
     }
 
     private static void DoTorchMNIST()
@@ -37,34 +84,42 @@ class AnnHarness
         MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
 
         MNISTTrainingSet trainingSet = new MNISTTrainingSet();
-        var conv1 = new ConvolutionLayer(trainingSet.OutputShape, 5, 4, 1);
-        var p1 = new PoolingLayer(conv1.OutputShape, 2, 5, 2, 1);
-        var p2 = new FlattenLayer(p1.OutputShape, 1);
+        
+        // Use explicit input shape (28x28x1 for MNIST)
+        var inputShape = new InputOutputShape(28, 28, 1, 1);
+        
+        // Build CNN architecture
+        var conv1 = new ConvolutionLayer(inputShape, kernelCount: 5, kernelSquareDimension: 4, stride: 1);
+        var relu1 = new ReLUActivaction();
+        var pool1 = new PoolingLayer(conv1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
+        var flatten = new FlattenLayer(pool1.OutputShape, nodeCount: 1);
+        var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
+        var sigmoid = new SigmoidActivation();
+        
         List<Layer> layers = new List<Layer>()
         {
             conv1,
-            new ReLUActivaction(),
-            p1,
-            p2,
-            //new NormalizationLayer(p1.OutputShape, 1),
-            new WeightedLayer(p2.OutputShape, 10, p2.OutputShape.TotalFlattenedSize),
-            new SigmoidActivation()
+            relu1,
+            pool1,
+            flatten,
+            dense,
+            sigmoid
         };
-        ConvolutionNN nn = new ConvolutionNN(layers, 0.05f, 1, 1, new SquaredLoss());
-        ConvolutionRenderContext crn = new ConvolutionRenderContext(nn, 256, trainingSet);
-
-        List<TrainingPair> tps = trainingSet.BuildNewRandomizedTrainingList();
-
-        GeneralFeedForwardANN gann = new GeneralFeedForwardANN(layers, 0.05f, 784, 10, new SquaredLoss());
-        RenderContext ctx = new RenderContext(gann, 64, new MNISTTrainingSet());
-
-        int epochs = 1000;
+        
+        // Create the network
+        var network = new GeneralFeedForwardANN(
+            layers,
+            trainingRate: 0.01f,
+            inputDim: 28 * 28,
+            outputDim: 10,
+            new SquaredLoss());
+        
+        // Create render context for training
+        var ctx = new RenderContext(network, batchSize: 64, trainingSet);
+        
+        // Train the network
+        int epochs = 10;
         ctx.EpochTrain(epochs);
-
-
-        //Tensor t = crn.FeedForward(tps[0].Input);
-        
-        
     }
 }
 
