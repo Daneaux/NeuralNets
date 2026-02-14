@@ -1,5 +1,6 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
+using System.Diagnostics;
 using System.Net.NetworkInformation;
 
 namespace NeuralNets
@@ -27,10 +28,56 @@ namespace NeuralNets
         }
         public override Tensor BackPropagation(Tensor dE_dX)
         {
-            if(dE_dX.ToColumnVector() != null)
-                return this.Derivative(dE_dX.ToColumnVector()).ToTensor();
+            bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
+            
+            if (debugMode)
+            {
+                Console.WriteLine($"\n  [ReLU.BackPropagation] START");
+                if (LastActivation?.ToColumnVector() != null)
+                {
+                    Console.WriteLine($"    Stored LastActivation (from forward): [{string.Join(", ", Enumerable.Range(0, LastActivation.ToColumnVector().Size).Select(i => LastActivation.ToColumnVector()[i].ToString("F6")))}]");
+                }
+                if (dE_dX.ToColumnVector() != null)
+                {
+                    Console.WriteLine($"    Incoming dE/dX: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+                }
+            }
+
+            // ReLU derivative: multiply incoming gradient by derivative of LastActivation
+            // If LastActivation[i] > 0: derivative is 1, so pass gradient through
+            // If LastActivation[i] = 0: derivative is 0, so block gradient
+            if(dE_dX.IsVector)
+            {
+                var derivative = this.Derivative(this.LastActivation.ToColumnVector());
+                
+                if (debugMode)
+                {
+                    Console.WriteLine($"    ReLU derivative mask (>0? 1 : 0): [{string.Join(", ", Enumerable.Range(0, derivative.Size).Select(i => derivative[i].ToString()))}]");
+                }
+                
+                var result = derivative * dE_dX.ToColumnVector();
+                
+                if (debugMode)
+                {
+                    Console.WriteLine($"    Output (dE/dX * derivative): [{string.Join(", ", Enumerable.Range(0, result.Size).Select(i => result[i].ToString("F6")))}]");
+                    Console.WriteLine($"  [ReLU.BackPropagation] END");
+                }
+                
+                return result.ToTensor();
+            }
             else
-                return this.Derivative(dE_dX.Matrices).ToTensor();
+            {
+                Debug.Assert(dE_dX.IsMatrix && !dE_dX.IsVector); 
+                var derivative = this.Derivative(this.LastActivation.Matrices);
+                // Multiply element-wise
+                var dE_dX_mats = dE_dX.Matrices;
+                var result = new List<MatrixBase>();
+                for(int i = 0; i < derivative.Count; i++)
+                {
+                    result.Add(derivative[i].Multiply(dE_dX_mats[i]));
+                }
+                return result.ToTensor();
+            }
         }
 
         public ColumnVectorBase Activate(ColumnVectorBase input)
@@ -79,7 +126,9 @@ namespace NeuralNets
             float[] derivative = new float[lastActivation.Size];
             for (int i = 0; i < lastActivation.Size; i++)
             {
-                if (lastActivation[i] >= 0)
+                // ReLU derivative: 1 if output > 0, 0 if output <= 0
+                // Note: ReLU output is always >= 0, so we check if > 0
+                if (lastActivation[i] > 0)
                     derivative[i] = 1;
                 else
                     derivative[i] = 0;
@@ -99,9 +148,11 @@ namespace NeuralNets
                 for(int r = 0; r < activationMat.Rows; r++)
                     for(int c = 0; c < activationMat.Cols; c++)
                     {
-                        if (activationMat[r, c] >= 0)
+                        // ReLU derivative: 1 if output > 0, 0 if output <= 0
+                        if (activationMat[r, c] > 0)
                             dMat[r, c] = 1;
-                        else dMat[r, c] = 0;
+                        else 
+                            dMat[r, c] = 0;
                     }
                 result.Add(dMat);
             }

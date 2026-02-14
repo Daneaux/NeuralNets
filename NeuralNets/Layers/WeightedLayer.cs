@@ -77,6 +77,16 @@ namespace NeuralNets
 
         public override Tensor BackPropagation(Tensor dE_dY)
         {
+            // Debug output for gradient computation tracing
+            bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
+            
+            if (debugMode)
+            {
+                Console.WriteLine($"\n  [WeightedLayer.BackPropagation] START");
+                Console.WriteLine($"    Input X (stored from forward): [{string.Join(", ", Enumerable.Range(0, X.Size).Select(i => X[i].ToString("F6")))}]");
+                Console.WriteLine($"    Incoming dE/dY: [{string.Join(", ", Enumerable.Range(0, dE_dY.ToColumnVector().Size).Select(i => dE_dY.ToColumnVector()[i].ToString("F6")))}]");
+            }
+
             // We want 3 gradients:
             // DE/DX (gradient of my Inputs)
             // DE/DW (gradient of my Weights)
@@ -92,14 +102,33 @@ namespace NeuralNets
             // We want DE/DW
             // DE/DW = DE/DY * DY/DW
             //       = DE/DY * X
+
             MatrixBase weightGradient = X.RhsOuterProduct(dE_dY); // todo: ugly hack
-            //MatrixBase weightGradient = dE_dY.ToAvxColumnVector().OuterProduct(X);
             ColumnVectorBase biasGradient = dE_dY.ToColumnVector();
+            
+            if (debugMode)
+            {
+                Console.WriteLine($"    Computed weight gradient (dE/dW = dE/dY · X^T):");
+                for (int r = 0; r < weightGradient.Rows; r++)
+                {
+                    var rowVals = Enumerable.Range(0, weightGradient.Cols).Select(c => weightGradient[r, c].ToString("F6"));
+                    Console.WriteLine($"      [{string.Join(", ", rowVals)}]");
+                }
+                Console.WriteLine($"    Bias gradient (dE/dB = dE/dY): [{string.Join(", ", Enumerable.Range(0, biasGradient.Size).Select(i => biasGradient[i].ToString("F6")))}]");
+            }
+            
             this.AccumulateGradients(weightGradient, biasGradient);
 
             // Now build De/Dx
             // De/Dx = De/Dy * Dy/Dx = De/Dy * W
             ColumnVectorBase dE_dX = this.Weights.GetTransposedMatrix() * dE_dY.ToColumnVector();
+            
+            if (debugMode)
+            {
+                Console.WriteLine($"    Output dE/dX (for previous layer): [{string.Join(", ", Enumerable.Range(0, dE_dX.Size).Select(i => dE_dX[i].ToString("F6")))}]");
+                Console.WriteLine($"  [WeightedLayer.BackPropagation] END");
+            }
+            
             return new AnnTensor(null, dE_dX);
         }
 
@@ -137,6 +166,8 @@ namespace NeuralNets
         {
             lock (GradientLock)
             {
+                this.LastBiasGradient = biasGradient;
+                this.LastWeightGradient = weightGradient;
                 accumulatedBiases.Add(biasGradient);
                 accumulatedWeights.Add(weightGradient);
             }

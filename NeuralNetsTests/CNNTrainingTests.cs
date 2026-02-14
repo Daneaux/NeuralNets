@@ -37,7 +37,7 @@ namespace NeuralNetsTests
             
             var network = new GeneralFeedForwardANN(
                 layers,
-                trainingRate: 0.1f,
+                trainingRate: 0.01f,
                 inputDim: 28 * 28,
                 outputDim: 10,
                 new SquaredLoss());
@@ -79,15 +79,8 @@ namespace NeuralNetsTests
                     
                     foreach (var layer in layers.Reverse<Layer>())
                     {
-                        if (layer is IActivationFunction activationLayer)
-                        {
-                            Tensor activationDerivative = layer.BackPropagation(activationLayer.LastActivation);
-                            dE_dX = activationDerivative * dE_dX;
-                        }
-                        else
-                        {
-                            dE_dX = layer.BackPropagation(dE_dX);
-                        }
+                        // All layers (including activation) handle their own derivative computation
+                        dE_dX = layer.BackPropagation(dE_dX);
                     }
                     
                     // Update weights immediately (single sample = batch size 1)

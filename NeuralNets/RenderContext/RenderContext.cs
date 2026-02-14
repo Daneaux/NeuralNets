@@ -182,15 +182,8 @@ namespace NeuralNets
             Tensor dE_dX = network.LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut).ToTensor();
             foreach (Layer layer in network.Layers.Reverse<Layer>())
             {
-                if (layer is IActivationFunction activationLayer)
-                {
-                    Tensor activationDerivative = layer.BackPropagation(activationLayer.LastActivation);
-                    dE_dX = activationDerivative * dE_dX;
-                }
-                else
-                {
-                    dE_dX = layer.BackPropagation(dE_dX);
-                }
+                // All layers (including activation) handle their own derivative computation
+                dE_dX = layer.BackPropagation(dE_dX);
             }
         }
         public void ScaleAndUpdateWeightsBiasesHelper(int L)
@@ -314,18 +307,54 @@ namespace NeuralNets
 
         public void BackProp(TrainingPair trainingPair, ColumnVectorBase predictedOut)
         {
+            bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
+            
             Tensor dE_dX = LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut).ToTensor();
+            if (debugMode)
+            {
+                Console.WriteLine($"\n[RenderContext.BackProp] Initial dE/dX (loss derivative): [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+            }
+            
+            int layerIndex = this.Layers.Count - 1;
             foreach (Layer layer in this.Layers.Reverse<Layer>())
             {
+                if (debugMode)
+                {
+                    Console.WriteLine($"\n[RenderContext.BackProp] Processing layer {layerIndex} ({layer.GetType().Name})");
+                }
+                
                 if (layer is IActivationFunction)
                 {
-                    Tensor activationDerivative = layer.BackPropagation((layer as IActivationFunction).LastActivation);
-                    dE_dX = activationDerivative * dE_dX;
+                    if (debugMode)
+                    {
+                        var lastAct = (layer as IActivationFunction).LastActivation;
+                        Console.WriteLine($"  Passing LastActivation to ReLU: [{string.Join(", ", Enumerable.Range(0, lastAct.ToColumnVector().Size).Select(i => lastAct.ToColumnVector()[i].ToString("F6")))}]");
+                        Console.WriteLine($"  Current dE/dX before ReLU: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+                    }
+
+                    dE_dX = layer.BackPropagation(dE_dX);                    
+                    
+                    if (debugMode)
+                    {
+                        Console.WriteLine($"  After multiplying by dE/dX: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+                    }
                 }
                 else 
                 {
+                    if (debugMode)
+                    {
+                        Console.WriteLine($"  Passing dE/dX to WeightedLayer: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+                    }
+                    
                     dE_dX = layer.BackPropagation(dE_dX);
-                } 
+                    
+                    if (debugMode)
+                    {
+                        Console.WriteLine($"  WeightedLayer returned dE/dX for previous layer: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
+                    }
+                }
+                
+                layerIndex--;
             }
         }
 

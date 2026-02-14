@@ -1,4 +1,4 @@
-﻿using MatrixLibrary.BaseClasses;
+using MatrixLibrary.BaseClasses;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
 
@@ -128,14 +128,14 @@ namespace MatrixLibrary
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v3 = Avx512F.Subtract(v2, v1);
+                    Vector512<float> v3 = Avx512F.Subtract(v1, v2);
                     Vector512.Store<float>(v3, destCol);
                 }
 
                 // remainder
                 for (int i = 0; i < vecRemainder; i++, col1++, destCol++)
                 {
-                    *destCol = scalar - *col1;
+                    *destCol = *col1 - scalar;
                 }
             }
 
@@ -162,7 +162,7 @@ namespace MatrixLibrary
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, col2 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v2 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Load<float>(col2);
                     Vector512<float> v3 = Avx512F.Multiply(v1, v2);
                     Vector512.Store<float>(v3, destCol);
                 }
@@ -232,7 +232,7 @@ namespace MatrixLibrary
                 for (int i = 0; i < vecSize; i++, col1 += vector512Floats, col2 += vector512Floats, destCol += vector512Floats)
                 {
                     Vector512<float> v1 = Vector512.Load<float>(col1);
-                    Vector512<float> v2 = Vector512.Load<float>(col1);
+                    Vector512<float> v2 = Vector512.Load<float>(col2);
                     Vector512<float> v3 = Avx512F.Subtract(v1, v2);
                     Vector512.Store<float>(v3, destCol);
                 }

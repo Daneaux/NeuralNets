@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 
 namespace MatrixLibrary
@@ -21,12 +21,12 @@ namespace MatrixLibrary
 
         public override ColumnVector Log()
         {
-            ColumnVector vector = new ColumnVector(this.Size);
+            float[] vec = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
-				column[i] =	(float)Math.Log(this[i]);
+				vec[i] =	(float)Math.Log(this[i]);
             }
-            return vector;
+            return new ColumnVector(vec);
         }
         public void SetRandom(int seed, float min, float max)
         {
