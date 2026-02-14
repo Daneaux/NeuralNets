@@ -8,6 +8,8 @@ class AnnHarness
 {
     static int Main(String[] args)
     {
+        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+
         //DoMyMNIST();
         //DoTorchMNIST();
         DoCNN();

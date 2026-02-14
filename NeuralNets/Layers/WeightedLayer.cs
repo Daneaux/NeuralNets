@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
 
@@ -102,6 +102,10 @@ namespace NeuralNets
 
         public override void UpdateWeightsAndBiasesWithScaledGradients(float learningRate)
         {
+            // Guard against empty accumulators
+            if (accumulatedWeights.Count == 0 || accumulatedBiases.Count == 0)
+                return;
+
             // add up and average all the gradients
             MatrixBase averageWeights = accumulatedWeights[0];
             for(int i = 1; i < accumulatedWeights.Count; i++)
@@ -128,8 +132,11 @@ namespace NeuralNets
         }
         private void AccumulateGradients(MatrixBase weightGradient, ColumnVectorBase biasGradient)
         {
-            accumulatedBiases.Add(biasGradient);
-            accumulatedWeights.Add(weightGradient);
+            lock (GradientLock)
+            {
+                accumulatedBiases.Add(biasGradient);
+                accumulatedWeights.Add(weightGradient);
+            }
         }
     }
 }

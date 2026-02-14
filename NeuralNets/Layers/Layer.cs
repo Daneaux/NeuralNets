@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 
 namespace NeuralNets
 {
@@ -8,6 +8,7 @@ namespace NeuralNets
         public int RandomSeed { get; }
         public InputOutputShape InputShape { get; }
         public abstract InputOutputShape OutputShape { get; }
+        protected readonly object GradientLock = new object();
 
         protected Layer(
             InputOutputShape inputShape,

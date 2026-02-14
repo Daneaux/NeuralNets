@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 
@@ -112,12 +112,15 @@ namespace NeuralNets
 
         private void AccumulateWeightsAndBiases(KernelStacks kernelGradients, List<MatrixBase> biasGradients)
         {
-            KernelGradientAccumulator.Accumulate(kernelGradients);
-
-            Debug.Assert(biasGradients.Count == Biases.Count);
-            for (int i = 0; i < this.Biases.Count; i++)
+            lock (GradientLock)
             {
-                BiasesGradientAccumulator[i] += biasGradients[i];
+                KernelGradientAccumulator.Accumulate(kernelGradients);
+
+                Debug.Assert(biasGradients.Count == Biases.Count);
+                for (int i = 0; i < this.Biases.Count; i++)
+                {
+                    BiasesGradientAccumulator[i] += biasGradients[i];
+                }
             }
         }
 

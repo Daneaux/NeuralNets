@@ -1,6 +1,5 @@
 ﻿using MatrixLibrary;
 using NeuralNets;
-using SharpTorch;
 using System.Diagnostics;
 
 namespace NeuralNetsTests.ANNTests

@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 
 namespace NeuralNets
@@ -30,6 +30,7 @@ namespace NeuralNets
         public float ScalarLossBatch(MatrixBase truth, MatrixBase predicted)
         {
             throw new NotImplementedException();
+            // todo: this is probably correct, but currently unused, not sure why.
             int N = truth.Rows;
             float invN = -1 / (float)N;
 
