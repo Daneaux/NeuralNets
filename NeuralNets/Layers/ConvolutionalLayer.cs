@@ -51,11 +51,13 @@ namespace NeuralNets
                 for (int j = 0; j < KernelDepth; j++)
                 {
                     MatrixBase kernel = MatrixFactory.CreateMatrix(KernelSize, KernelSize);
-                    kernel.SetRandom(RandomSeed, (float)-Math.Sqrt(KernelCount), (float)Math.Sqrt(KernelCount)); // Xavier initilization
+
+                    // todo: Not sure fan in, and fan out counts are correct
+                    kernel.XavierInitialize(KernelSize, KernelSize, RandomSeed);
                     Kernels[i, j] = kernel;
                 }
                 MatrixBase bias = MatrixFactory.CreateMatrix(OutputShape.Height, OutputShape.Width);
-                bias.SetRandom(RandomSeed, -1f, 1f);
+                bias.SetRandom(RandomSeed, -0.1f, -0.1f);
                 Biases.Add(bias);
             }
         }

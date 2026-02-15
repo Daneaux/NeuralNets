@@ -34,7 +34,7 @@ namespace NeuralNets
             Biases = MatrixFactory.CreateColumnVector(nodeCount);
             Weights = MatrixFactory.CreateMatrix(nodeCount, inputShape.TotalFlattenedSize);
             
-            this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
+            this.Weights.XavierInitialize(inputShape.TotalFlattenedSize, nodeCount, randomSeed);
             this.Biases.SetRandom(randomSeed, -0.1f, 0.1f);
             
             Debug.Assert(this.Weights.Rows == this.Biases.Size);

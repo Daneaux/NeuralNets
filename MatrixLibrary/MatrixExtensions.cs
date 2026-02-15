@@ -1,8 +1,22 @@
 ﻿
+using MatrixLibrary.BaseClasses;
+
 namespace MatrixLibrary
 {
     public static class MatrixExtensions
     {
+
+        public static void XavierInitialize(this MatrixBase matrix, int fanIn, int fanOut, int seed)
+        {
+            float bound = (float)Math.Sqrt(6.0 / (fanIn + fanOut));
+            matrix.SetRandom(seed, -bound, bound);
+        }
+
+        public static void XavierInitialize(this ColumnVectorBase columnVector, int fanIn, int fanOut, int seed)
+        {
+            float bound = (float)Math.Sqrt(6.0 / (fanIn + fanOut));
+            columnVector.SetRandom(seed, -bound, bound);
+        }
 
         public static AvxColumnVector ToAvxVector(this ColumnVector columnVector)
         {
