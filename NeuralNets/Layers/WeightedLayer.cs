@@ -29,13 +29,13 @@ namespace NeuralNets
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount, 
-            int randomSeed = 55) : base(inputShape, nodeCount, randomSeed)
+            int randomSeed = 42) : base(inputShape, nodeCount, randomSeed)
         {
             Biases = MatrixFactory.CreateColumnVector(nodeCount);
             Weights = MatrixFactory.CreateMatrix(nodeCount, inputShape.TotalFlattenedSize);
             
             this.Weights.SetRandom(randomSeed, (float)-Math.Sqrt(nodeCount), (float)Math.Sqrt(nodeCount)); // Xavier initilization
-            this.Biases.SetRandom(randomSeed, -1, 10);
+            this.Biases.SetRandom(randomSeed, -0.1f, 0.1f);
             
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);

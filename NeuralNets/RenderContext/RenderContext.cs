@@ -86,7 +86,7 @@ namespace NeuralNets
         /// </summary>
         public static void BatchTrain(RenderContext parentContext, int epochNum)
         {
-            bool do2dImage = true;
+            bool do2dImage = false;
             List<TrainingPair> trainingPairs = parentContext.TrainingSet.BuildNewRandomizedTrainingList(do2dImage);
             int totalSamples = parentContext.TrainingSet.NumberOfSamples;
             int maxBatches = totalSamples / parentContext.BatchSize;
@@ -193,17 +193,12 @@ namespace NeuralNets
 #endif
 
 
-        // temp changes to hack this, undo
         public ColumnVectorBase FeedForward(Tensor inputVecTensor)
         {
-            //ColumnVectorBase inputVec = inputVecTensor.ToAvxColumnVector();
-            //Debug.Assert(inputVec.Size == this.InputDim);
-
             Tensor lastOutput = inputVecTensor;
             for (int i = 0; i < this.LayerCount; i++)
             {
                 lastOutput = Layers[i].FeedFoward(lastOutput);
-                //this.SetLastActivation(i, lastOutput);
             }
             return lastOutput.ToColumnVector();
         }

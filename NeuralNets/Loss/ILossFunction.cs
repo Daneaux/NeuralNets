@@ -8,8 +8,8 @@ namespace NeuralNets
      */
     public interface ILossFunction
     {
-        ColumnVectorBase Error(ColumnVectorBase truth, ColumnVectorBase predicted);
-        ColumnVectorBase Error(Tensor truth, Tensor predicted);
+        float Error(ColumnVectorBase truth, ColumnVectorBase predicted);
+        float Error(Tensor truth, Tensor predicted);
         ColumnVectorBase Derivative(ColumnVectorBase truth, ColumnVectorBase predicted);
     }
 }

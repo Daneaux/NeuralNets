@@ -21,7 +21,7 @@ namespace MatrixLibrary.BaseClasses
             }
             return max;
         }
-        public void SetRandom(int seed, int min, int max)
+        public void SetRandom(int seed, float min, float max)
         {
             Random rnd = new Random(seed);
             float width = max - min;

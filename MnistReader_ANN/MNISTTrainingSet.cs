@@ -55,6 +55,22 @@ namespace MnistReader_ANN
             return this.TrainingList;
         }
 
+        public List<TrainingPair> GetTestPairs(bool do2DImage = false)
+        {
+            List<TrainingPair> testPairs;
+            if (this.ImageList == null)
+            {
+                this.ImageList = MnistReader.ReadTestData(do2DImage).ToList();
+                Debug.Assert(ImageList.Count == 10000);
+            }
+            testPairs = new List<TrainingPair>((int)ImageList.Count);
+            foreach (Image image in ImageList)
+            {
+                testPairs.Add(TrainingPairFromImage(image));
+            }
+            return testPairs;
+        }
+
         private TrainingPair TrainingPairFromImage(Image image)
         {
             Tensor imageTensor;

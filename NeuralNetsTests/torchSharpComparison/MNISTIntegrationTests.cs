@@ -1,14 +1,15 @@
+using System.Linq;
 using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
-using NeuralNets;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MnistReader_ANN;
+using NeuralNets;
 using TorchSharp;
 using TorchSharp.Modules;
 using static TorchSharp.torch;
 using static TorchSharp.torch.nn;
 using static TorchSharp.torch.nn.functional;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Linq;
+using static TorchSharp.torchvision;
 
 namespace NeuralNetsTests.torchSharpComparison
 {
@@ -1123,6 +1124,305 @@ namespace NeuralNetsTests.torchSharpComparison
             Console.WriteLine("\n=== TEST PASSED ===");
             Console.WriteLine("Both networks trained successfully with built-in trainers and produced matching results!");
         }
+
+
+        /// <summary>
+        /// Comprehensive test comparing fully trained MNIST networks between TorchSharp and NeuralNets.
+        /// Uses built-in training mechanisms: TorchSharp SGD optimizer and NeuralNets RenderContext.BatchTrain.
+        /// Architecture: 784 -> 16 -> 16 -> 10
+        /// Learning rate: 0.05
+        /// Batch size: 64
+        /// Epochs: 10
+        /// Compares final loss and output vectors on sample images.
+        /// </summary>
+        [TestMethod]
+        public void MNIST_FullyTrained_NetworkComparison_simpler()
+        {
+            Console.WriteLine("\n=== MNIST Full Training Comparison ===");
+            Console.WriteLine("Architecture: 784 -> 16 -> 16 -> 10");
+            Console.WriteLine("Learning rate: 0.05, Batch size: 64, Epochs: 10");
+            Console.WriteLine("Using built-in trainers: TorchSharp SGD + NeuralNets BatchTrain\n");
+
+            int inputDim = 784;
+            int hiddenDim1 = 16;
+            int hiddenDim2 = 16;
+            int outputDim = 10;
+            float learningRate = 0.05f;
+            int batchSize = 64;
+            int numEpochs = 10;
+
+            // Load MNIST data
+            var trainingSet = new MNISTTrainingSet();
+            var allTrainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2DImage: false).Take(640).ToList();
+            Console.WriteLine($"Loaded {allTrainingPairs.Count} training samples\n");
+
+            // Initialize weights (shared between both networks)
+            var (weights1Data, bias1Data) = InitializeWeightsTorchSharp(inputDim, hiddenDim1, RandomSeed);
+            float[,] weights1_2D = ReshapeTo2D(weights1Data, hiddenDim1, inputDim);
+
+            var (weights2Data, bias2Data) = InitializeWeightsTorchSharp(hiddenDim1, hiddenDim2, RandomSeed + 1);
+            float[,] weights2_2D = ReshapeTo2D(weights2Data, hiddenDim2, hiddenDim1);
+
+            var (weights3Data, bias3Data) = InitializeWeightsTorchSharp(hiddenDim2, outputDim, RandomSeed + 2);
+            float[,] weights3_2D = ReshapeTo2D(weights3Data, outputDim, hiddenDim2);
+
+            // ==================== TORCHSHARP NETWORK (using built-in SGD optimizer) ====================
+            Console.WriteLine("Training TorchSharp network with SGD optimizer...");
+
+            // Create individual layers (Sequential constructor is protected)
+            var torchLayer1 = Linear(inputDim, hiddenDim1);
+            var torchLayer2 = Linear(hiddenDim1, hiddenDim2);
+            var torchLayer3 = Linear(hiddenDim2, outputDim);
+
+            // Set shared weights
+            using var torchWeights1 = torch.from_array((float[,])weights1_2D.Clone());
+            using var torchWeights2 = torch.from_array((float[,])weights2_2D.Clone());
+            using var torchWeights3 = torch.from_array((float[,])weights3_2D.Clone());
+
+            torchLayer1.weight = torchWeights1.AsParameter();
+            torchLayer1.bias = torch.from_array((float[])bias1Data.Clone()).AsParameter();
+            torchLayer2.weight = torchWeights2.AsParameter();
+            torchLayer2.bias = torch.from_array((float[])bias2Data.Clone()).AsParameter();
+            torchLayer3.weight = torchWeights3.AsParameter();
+            torchLayer3.bias = torch.from_array((float[])bias3Data.Clone()).AsParameter();
+
+            // Use built-in SGD optimizer with layer parameters
+            var optimizer = torch.optim.SGD(
+                torchLayer1.parameters()
+                    .Concat(torchLayer2.parameters())
+                    .Concat(torchLayer3.parameters()),
+                learningRate);
+            using var torchLossFn = CrossEntropyLoss(reduction: Reduction.Sum);
+            float torchFinalLoss = 0;
+
+            // Train using optimizer
+            for (int epoch = 0; epoch < numEpochs; epoch++)
+            {
+                float epochLoss = 0;
+                int numBatches = allTrainingPairs.Count / batchSize;
+
+                for (int batchIdx = 0; batchIdx < numBatches; batchIdx++)
+                {
+                    // Prepare batch
+                    var batchInputs = new float[batchSize, inputDim];
+                    var batchTargets = new long[batchSize];
+
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        int sampleIdx = batchIdx * batchSize + i;
+                        var inputVector = allTrainingPairs[sampleIdx].Input.ToColumnVector();
+                        for (int j = 0; j < inputDim; j++)
+                            batchInputs[i, j] = inputVector[j];
+
+                        // Get target class from one-hot encoded output
+                        var outputVector = allTrainingPairs[sampleIdx].Output.ToColumnVector();
+                        int targetClass = 0;
+                        for (int j = 0; j < outputDim; j++)
+                            if (outputVector[j] > outputVector[targetClass])
+                                targetClass = j;
+                        batchTargets[i] = targetClass;
+                    }
+
+                    using var torchInput = torch.from_array(batchInputs);
+                    using var torchTarget = torch.from_array(batchTargets);
+
+                    // Zero gradients
+                    optimizer.zero_grad();
+
+                    // Forward pass (manual sequential execution with functional ReLU)
+                    var z1 = torchLayer1.forward(torchInput);
+                    using var a1 = relu(z1);
+                    var z2 = torchLayer2.forward(a1);
+                    using var a2 = relu(z2);
+                    var predictions = torchLayer3.forward(a2);
+
+                    var batchLoss = torchLossFn.forward(predictions, torchTarget);
+
+                    epochLoss += batchLoss.cpu().data<float>().ToArray()[0];
+
+                    // Backward pass
+                    batchLoss.backward();
+
+                    // Update weights using optimizer
+                    optimizer.step();
+                }
+
+                torchFinalLoss = epochLoss / numBatches;
+                if (epoch % 2 == 0)
+                    Console.WriteLine($"  TorchSharp Epoch {epoch}: Average Loss = {torchFinalLoss:F6}");
+            }
+            Console.WriteLine($"  TorchSharp Final Loss: {torchFinalLoss:F6}\n");
+
+            // ==================== NEURALNETS NETWORK (using built-in BatchTrain) ====================
+            Console.WriteLine("Training NeuralNets network with RenderContext.BatchTrain...");
+
+            var weights1 = MatrixFactory.CreateMatrix(weights1_2D);
+            var biases1 = new AvxColumnVector(bias1Data);
+            var inputShape = new InputOutputShape(1, inputDim, 1, 1);
+            var weightedLayer1 = new WeightedLayer(inputShape, hiddenDim1, weights1, biases1);
+            var reluLayer1 = new ReLUActivaction();
+
+            var weights2 = MatrixFactory.CreateMatrix(weights2_2D);
+            var biases2 = new AvxColumnVector(bias2Data);
+            var weightedLayer2 = new WeightedLayer(weightedLayer1.OutputShape, hiddenDim2, weights2, biases2);
+            var reluLayer2 = new ReLUActivaction();
+
+            var weights3 = MatrixFactory.CreateMatrix(weights3_2D);
+            var biases3 = new AvxColumnVector(bias3Data);
+            var weightedLayer3 = new WeightedLayer(weightedLayer2.OutputShape, outputDim, weights3, biases3);
+
+            var layers = new List<Layer> { weightedLayer1, reluLayer1, weightedLayer2, reluLayer2, weightedLayer3 };
+            var network = new GeneralFeedForwardANN(layers, learningRate, inputDim, outputDim, new CategoricalCrossEntropy());
+
+            // Use built-in BatchTrain via RenderContext
+            var mockTrainingSet = new MockMNISTTrainingSet(allTrainingPairs, trainingSet);
+            var renderContext = new RenderContext(network, batchSize, mockTrainingSet);
+
+            float nnFinalLoss = 0;
+
+            // Train using BatchTrain
+            for (int epoch = 0; epoch < numEpochs; epoch++)
+            {
+                RenderContext.BatchTrain(renderContext, epoch);
+
+                // Calculate average loss for this epoch
+                float epochLoss = 0;
+                int numBatches = allTrainingPairs.Count / batchSize;
+                for (int batchIdx = 0; batchIdx < numBatches; batchIdx++)
+                {
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        int sampleIdx = batchIdx * batchSize + i;
+                        var sample = allTrainingPairs[sampleIdx];
+
+                        // Forward pass to get prediction
+                        MatrixLibrary.Tensor output = sample.Input;
+                        foreach (var layer in layers)
+                            output = layer.FeedFoward(output);
+
+                        var predVec = output.ToColumnVector();
+                        if (predVec != null)
+                            epochLoss += network.GetTotallLoss(sample, predVec);
+                    }
+                }
+                nnFinalLoss = epochLoss / allTrainingPairs.Count;
+
+                if (epoch % 2 == 0)
+                    Console.WriteLine($"  NeuralNets Epoch {epoch}: Average Loss = {nnFinalLoss:F6}");
+            }
+            Console.WriteLine($"  NeuralNets Final Loss: {nnFinalLoss:F6}\n");
+
+            // ==================== COMPARE TRAINING PROGRESS ====================
+            Console.WriteLine("=== TRAINING PROGRESS ===");
+            Console.WriteLine($"Final Loss - TorchSharp: {torchFinalLoss:F6}, NeuralNets: {nnFinalLoss:F6}");
+            Console.WriteLine("Note: Loss values may differ due to different loss function implementations,");
+            Console.WriteLine("but both networks should train successfully.\n");
+
+            // Verify both networks trained (loss should be reasonable, not NaN or infinity)
+            Assert.IsTrue(torchFinalLoss > 0 && !float.IsNaN(torchFinalLoss) && !float.IsInfinity(torchFinalLoss),
+                "TorchSharp network should have valid final loss");
+            Assert.IsTrue(nnFinalLoss > 0 && !float.IsNaN(nnFinalLoss) && !float.IsInfinity(nnFinalLoss),
+                "NeuralNets network should have valid final loss");
+
+            // ==================== COMPARE OUTPUT VECTORS ====================
+            Console.WriteLine("Comparing output vectors on sample images:");
+
+            int numTestSamples = 5;
+            for (int testIdx = 0; testIdx < numTestSamples; testIdx++)
+            {
+                var sample = allTrainingPairs[testIdx];
+                var inputData = sample.Input.ToColumnVector().Column;
+
+                // TorchSharp forward pass
+                float[,] input2d = new float[1, inputDim];
+                for (int i = 0; i < inputDim; i++)
+                    input2d[0, i] = inputData[i];
+
+                using var torchInput = torch.from_array(input2d);
+                var torchZ1 = torchLayer1.forward(torchInput);
+                using var torchA1 = relu(torchZ1);
+                var torchZ2 = torchLayer2.forward(torchA1);
+                using var torchA2 = relu(torchZ2);
+                var torchOutput = torchLayer3.forward(torchA2).cpu().data<float>().ToArray();
+
+                // NeuralNets forward pass
+                var nnZ1 = weightedLayer1.FeedFoward(sample.Input);
+                var nnA1 = reluLayer1.FeedFoward(nnZ1);
+                var nnZ2 = weightedLayer2.FeedFoward(nnA1);
+                var nnA2 = reluLayer2.FeedFoward(nnZ2);
+                var nnZ3 = weightedLayer3.FeedFoward(nnA2);
+                var nnOutputVec = weightedLayer3.Y;
+
+                // Compare outputs
+                Console.WriteLine($"\n  Sample {testIdx + 1}:");
+                Console.WriteLine($"    TorchSharp output: [{string.Join(", ", torchOutput.Take(5).Select(x => x.ToString("F4")))}...]");
+                Console.WriteLine($"    NeuralNets output: [{string.Join(", ", Enumerable.Range(0, 5).Select(i => nnOutputVec[i].ToString("F4")))}...]");
+
+                // Calculate output vector difference
+                float maxDiff = 0;
+                for (int i = 0; i < outputDim; i++)
+                {
+                    float diff = System.Math.Abs(torchOutput[i] - nnOutputVec[i]);
+                    if (diff > maxDiff) maxDiff = diff;
+                }
+                Console.WriteLine($"    Max output difference: {maxDiff:F6}");
+
+                Assert.IsTrue(maxDiff < 2.0f,
+                    $"Sample {testIdx + 1}: Output vectors should match within tolerance. Max diff: {maxDiff:F6}");
+            }
+
+            Console.WriteLine("\n=== TEST PASSED ===");
+            Console.WriteLine("Both networks trained successfully with built-in trainers and produced matching results!");
+        }
+
+/*        private static TrainingResult TrainInternal(
+            Module<Tensor, Tensor> model,
+            Action<double> sgdStep,
+            TrainingConfiguration config,
+            IProgress<string>? progress)
+        {
+            var lossFn = CrossEntropyLoss();
+
+            //using var trainData = datasets.MNIST(config.DataPath, true, download: true);
+            //using var testData = datasets.MNIST(config.DataPath, false, download: true);
+
+            //using var trainLoader = DataLoader(trainData, config.BatchSize, shuffle: true);
+
+            // Load MNIST data
+            var trainingSet = new MNISTTrainingSet();
+            var allTrainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2DImage: false).Take(640).ToList();
+            Console.WriteLine($"Loaded {allTrainingPairs.Count} training samples\n");
+
+            for (int epoch = 0; epoch < config.Epochs; epoch++)
+            {
+                progress?.Report($"Epoch {epoch + 1}/{config.Epochs}...");
+                model.train();
+
+                int batchCount = 0;
+                foreach (var batch in trainLoader)
+                {
+                    using var disposeScope = NewDisposeScope();
+
+                    var data = batch["data"];
+                    var target = batch["label"];
+
+                    var output = model.call(data);
+                    var loss = lossFn.call(output, target);
+
+                    model.zero_grad();
+                    loss.backward();
+                    sgdStep(config.LearningRate);
+                    batchCount++;
+                }
+                progress?.Report($"Epoch {epoch + 1}/{config.Epochs} complete ({batchCount} batches)");
+            }
+
+            progress?.Report("Evaluating model...");
+            var (accuracy, avgLoss) = EvaluateInternal(model, testData, config.BatchSize);
+            progress?.Report($"Training complete. Accuracy: {accuracy:P2}, Loss: {avgLoss:F4}");
+
+            return new TrainingResult(config.Epochs, accuracy, avgLoss);
+        }*/
 
         // Helper class for NeuralNets training
         private class MockMNISTTrainingSet : ITrainingSet

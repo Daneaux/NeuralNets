@@ -6,18 +6,19 @@ namespace NeuralNets
 {
     public class CategoricalCrossEntropy : ILossFunction
     {
-        private static ColumnVectorBase SoftMax(ColumnVectorBase input)
+        public static ColumnVectorBase SoftMax(ColumnVectorBase input)
         {
             float max = input.GetMax();
             float scaleFactor = 0;
             float[] softMaxVec = new float[input.Size];
             for (int i = 0; i < input.Size; i++)
             {
-                scaleFactor += (float)Math.Exp(input[i] - max);
+                softMaxVec[i] = (float)Math.Exp(input[i] - max);
+                scaleFactor += softMaxVec[i];
             }
             for (int i = 0; i < input.Size; i++)
             {
-                softMaxVec[i] = (float)(Math.Exp(input[i] - max) / scaleFactor);
+                softMaxVec[i] /= scaleFactor;
             }
             return MatrixFactory.CreateColumnVector(softMaxVec);
         }
@@ -103,14 +104,21 @@ namespace NeuralNets
             return m;
         }
 
-        public ColumnVectorBase Error(ColumnVectorBase truth, ColumnVectorBase predicted)
+        public float Error(ColumnVectorBase truth, ColumnVectorBase predicted)
         {
             ColumnVectorBase softmaxPred = SoftMax(predicted);
-            ColumnVectorBase logSoftmax = softmaxPred.Log();
-            return -1 * truth * logSoftmax;
+            // predicteed probability assigned to the true class is the only one that contributes to the error,
+            // so we can isolate it by multiplying the one-hot encoded truth vector with the log of the softmax predictions.
+            // This will zero out all other contributions and give us a vector where only the true class's contribution is present.
+            // We then multiply by -1 to get the final error value.
+            var isolateTruth  = truth * softmaxPred;
+            float vectorError = isolateTruth.Sum() + 1e-15f; // Add small epsilon to prevent log(0)
+            var negLogSoftmax = -1 * (float)Math.Log(vectorError);
+            return negLogSoftmax;
         }
 
-        public ColumnVectorBase Error(Tensor truth, Tensor predicted)
+        // default to mean (in case of matrices) of the resulting error vector for batch error calculation
+        public float Error(Tensor truth, Tensor predicted)
         {
             var annTruth = truth as AnnTensor;
             var annPred = predicted as AnnTensor;
@@ -125,7 +133,8 @@ namespace NeuralNets
                 MatrixBase softmaxPred = SoftMax(annPred.Matrix);
                 MatrixBase logSoftmax = softmaxPred.Log();
                 MatrixBase error = annTruth.Matrix.Multiply(logSoftmax);
-                return MatrixHelpers.UnrollMatricesToColumnVector(new List<MatrixBase> { error.Multiply(-1f) });
+                var errorVec = MatrixHelpers.UnrollMatricesToColumnVector(new List<MatrixBase> { error.Multiply(-1f) });
+                return errorVec.Sum() / errorVec.Size; // Return mean error for the batch
             }
 
             throw new NotSupportedException("Only AnnTensor is supported for Tensor error calculation");

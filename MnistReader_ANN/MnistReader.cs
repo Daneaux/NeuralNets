@@ -1,63 +1,6 @@
-﻿using System.Drawing;
-using static TorchSharp.torch.utils;
-
+﻿
 namespace MnistReader_ANN
 {
-
-    /* USAGE
-     * 
-     * 
-      foreach (var image in MnistReader.ReadTrainingData())
-        {
-            //use image here     
-        }
-        or
-
-        foreach (var image in MnistReader.ReadTestData())
-        {
-            //use image here     
-        }
-    */
-
-    public abstract class Image
-    {
-        public virtual byte Label { get; set; }
-        public abstract int Size { get; }
-    }
-
-    public class Normalized1DImage : Image
-    {
-        public required float[] Data { get; set; }
-        public override int Size { get { return Data.Length; } }
-
-    }
-    public class Normalized2DImage : Image
-    {
-        public required float[,] Data { get; set; }
-        public override int Size { get { return Data.Length; } }
-    }
-
-    public static class Extensions
-    {
-        public static int ReadBigInt32(this BinaryReader br)
-        {
-            var bytes = br.ReadBytes(sizeof(int));
-            if (BitConverter.IsLittleEndian) Array.Reverse(bytes);
-            return BitConverter.ToInt32(bytes, 0);
-        }
-
-        /*        public static void ForEach<T>(this T[,] source, Action<int, int> action)
-                {
-                    for (int w = 0; w < source.GetLength(0); w++)
-                    {
-                        for (int h = 0; h < source.GetLength(1); h++)
-                        {
-                            action(w, h);
-                        }
-                    }
-                }*/
-    }
-
     public static class MnistReader
     {
         private const string TrainImages = "mnistdataset\\train-images.idx3-ubyte";

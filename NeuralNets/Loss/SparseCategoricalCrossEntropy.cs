@@ -66,7 +66,7 @@ namespace NeuralNets
             return softmaxPred - oneHot;
         }
 
-        public ColumnVectorBase Error(Tensor truth, Tensor predicted)
+        public float Error(Tensor truth, Tensor predicted)
         {
             throw new NotImplementedException();
         }
@@ -94,12 +94,14 @@ namespace NeuralNets
             return -sum / batchSize;
         }
 
-        ColumnVectorBase ILossFunction.Error(ColumnVectorBase truth, ColumnVectorBase predicted)
+        float ILossFunction.Error(ColumnVectorBase truth, ColumnVectorBase predicted)
         {
-            ColumnVectorBase softmaxPred = SoftMax(predicted);
+            throw new NotImplementedException();
+
+/*            ColumnVectorBase softmaxPred = SoftMax(predicted);
             int classIndex = (int)truth[0];
             ColumnVectorBase oneHot = CreateOneHot(predicted.Size, classIndex);
-            return -1 * oneHot * softmaxPred.Log();
+            return -1 * oneHot * softmaxPred.Log();*/
         }
     }
 }

@@ -2,8 +2,7 @@
 using MnistReader_ANN;
 using MatrixLibrary;
 using NeuralNets;
-using NeuralNets.Network;
-using TorchSharp.Modules;
+using System.Diagnostics;
 
 class AnnHarness
 {
@@ -11,24 +10,82 @@ class AnnHarness
     {
         MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
 
-        //DoMyMNIST();
         //DoTorchMNIST();
-       // DoCNN();
-       SimpleMnist();
+        // DoCNN();
+        (var network, var ctx) = TrainSimpleMnist(epochs: 10, batchSize: 64, trainingRate: 0.05f);
+        RunNetworkOnMnistTestSet(network, ctx);
 
         return 0;
-
     }
 
-    // 784 -> 16 (relu) -> 16 (relu) -> 10 (sigmoid)
-    private static void SimpleMnist()
+    private static void RunNetworkOnMnistTestSet(GeneralFeedForwardANN network, RenderContext ctx)
+    {
+        MNISTTrainingSet trainingSet = new MNISTTrainingSet();
+        var testSet = trainingSet.GetTestPairs();
+        int totalSamples = 0;
+        int totalCorrectSamples = 0;
+        foreach (TrainingPair testPair in testSet)
+        {
+            // run actual vs expected
+            var predicted = ctx.FeedForward(testPair.Input);
+            var sm = CategoricalCrossEntropy.SoftMax(predicted); // just so i can see the probability distribution.
+            var oneHotPredicted = OneHotEncode(predicted.Column);
+            var expected = testPair.Output;
+
+            if(IsSamePrediction(oneHotPredicted, expected.ToColumnVector().Column))
+            {
+                totalCorrectSamples++;
+            }
+            totalSamples++;
+        }
+        Console.WriteLine($"Total Samples: {totalSamples}, Total Correct: {totalCorrectSamples}, Accuracy: {(float)totalCorrectSamples / totalSamples}");
+    }
+
+    private static bool IsSamePrediction(float[] a, float[] b)
+    {
+        Debug.Assert(a.Length == b.Length);
+        for(int i=0; i < a.Length; i++)
+        {
+            if(a[i] != b[i])
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static float[] OneHotEncode(float[] logits)
+    {
+        // 1. Find the index of the highest value (Argmax)
+        int maxIndex = 0;
+        float maxValue = logits[0];
+
+        for (int i = 1; i < logits.Length; i++)
+        {
+            if (logits[i] > maxValue)
+            {
+                maxValue = logits[i];
+                maxIndex = i;
+            }
+        }
+
+        // 2. Create a one-hot array of the same length
+        float[] oneHot = new float[logits.Length];
+        oneHot[maxIndex] = 1.0f;
+
+        return oneHot;
+    }
+
+
+    // 784 -> 16 (relu) -> 16 (relu) -> 10 (cce)
+    private static (GeneralFeedForwardANN, RenderContext) TrainSimpleMnist(int epochs, int batchSize = 64, float trainingRate = 0.05f)
     {
         MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
 
         MNISTTrainingSet trainingSet = new MNISTTrainingSet();
 
         // Use explicit input shape (28x28x1 for MNIST)
-        var inputShape = new InputOutputShape(28, 28, 1, 1);
+        var inputShape = new InputOutputShape(1, 28*28, 1, 1);
 
         var linear1 = new WeightedLayer(inputShape, nodeCount: 16);
         var relu1 = new ReLUActivaction();
@@ -50,33 +107,23 @@ class AnnHarness
         // Create the network
         var network = new GeneralFeedForwardANN(
             layers,
-            trainingRate: 0.05f,
+            trainingRate: trainingRate,
             inputDim: inputShape.Width * inputShape.Height,
             outputDim: 10,
             new CategoricalCrossEntropy());
 
         // Create render context for training
-        var ctx = new RenderContext(network, batchSize: 64, trainingSet);
+        var ctx = new RenderContext(network, batchSize: batchSize, trainingSet);
 
         // Train the network
-        int epochs = 10;
         ctx.EpochTrain(epochs);
+
+        return (network, ctx);
     }
 
     private static void DoTorchMNIST()
     {
         TorchMNIST.MNIST.Run(1, 1000, null, null);
-    }
-
-    private static void DoMyMNIST()
-    {
-        float trainingRate = 0.05f;
-
-        MNISTSpecificANN ann1 = new MNISTSpecificANN(trainingRate, 28 * 28, 10); // shouldn't know this. bub bug todo
-        RenderContext ctx = new RenderContext(ann1, 256, new MNISTTrainingSet());
-
-        int epochs = 1000;
-        ctx.EpochTrain(epochs);
     }
 
     private static void DoCNN()
