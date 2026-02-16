@@ -8,16 +8,21 @@ namespace NeuralNets
 
     public class ReLUActivaction : Layer, IActivationFunction
     {
+        
+        public ReLUActivaction(InputOutputShape shape) : base(shape, shape.TotalFlattenedSize)
+        {
+            OutputShape = shape;
+        }
+
         public ReLUActivaction() : base(new InputOutputShape(1,1,1,1), 1)
         {
+            OutputShape = new InputOutputShape(1,1,1,1);
         }
 
         public Tensor LastActivation
         {
             get; private set;
         }
-
-        public override InputOutputShape OutputShape => throw new NotImplementedException();
 
         public override Tensor FeedFoward(Tensor input)
         {

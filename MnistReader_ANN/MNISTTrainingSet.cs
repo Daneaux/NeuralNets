@@ -76,11 +76,13 @@ namespace MnistReader_ANN
             Tensor imageTensor;
             if (image is Normalized1DImage)
             {
-                imageTensor = new AvxColumnVector((image as Normalized1DImage).Data).ToTensor();
+                var imgVec = MatrixFactory.CreateColumnVector((image as Normalized1DImage).Data);
+                imageTensor = imgVec.ToTensor();
             }
             else
             {
-                imageTensor = new AvxMatrix((image as Normalized2DImage).Data).ToTensor();
+                var imgMat = MatrixFactory.CreateMatrix((image as Normalized2DImage).Data);
+                imageTensor = imgMat.ToTensor();
             }
             AvxColumnVector outputVector = OneHotEncodeLabelData(image);
             TrainingPair trainingPair = new TrainingPair(imageTensor, outputVector.ToTensor());
