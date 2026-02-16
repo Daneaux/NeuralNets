@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 using TorchSharp;
@@ -56,11 +56,17 @@ namespace NeuralNets
     }
     public class SigmoidActivation : Layer, IActivationFunction   
     {
-        public SigmoidActivation() : base(new InputOutputShape(1,1,1,1), 1)
+
+        public SigmoidActivation(InputOutputShape shape, int nodeCount, int randomSeed = 55) : base(shape, nodeCount, randomSeed)
         {
+            OutputShape = shape;
         }
 
-        public override InputOutputShape OutputShape => new InputOutputShape(1, NumNodes, 1, 1);
+        public SigmoidActivation() : base(new InputOutputShape(1,1,1,1), 1)
+        {
+            OutputShape = new InputOutputShape(1,1,1,1);
+        }
+
 
         public override Tensor FeedFoward(Tensor input)
         {

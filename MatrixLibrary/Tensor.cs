@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 
 namespace MatrixLibrary
@@ -56,9 +56,12 @@ namespace MatrixLibrary
     {
         public ConvolutionTensor(List<MatrixBase> matrices)
         {
-            Matrices = matrices;
+            this.matrices = matrices;
         }
-        public override List<MatrixBase> Matrices { get; }
+        
+        private List<MatrixBase> matrices;
+        
+        public override List<MatrixBase> Matrices { get => matrices; }
         public override bool IsVector { get => false; }
         public override bool IsMatrix { get => true; }
 

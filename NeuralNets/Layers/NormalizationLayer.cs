@@ -16,9 +16,6 @@ namespace NeuralNets
         {
             OutputShape = inputShape;
         }
-
-        public override InputOutputShape OutputShape { get; }
-
         internal struct normMatMetaData
         {
             public float Mean;

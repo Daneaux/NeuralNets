@@ -8,7 +8,8 @@ namespace NeuralNets
         public int NumNodes { get; private set; }
         public int RandomSeed { get; }
         public InputOutputShape InputShape { get; }
-        public abstract InputOutputShape OutputShape { get; }
+        public InputOutputShape OutputShape { get; protected set; }
+
         protected readonly object GradientLock = new object();
 
         public MatrixBase LastWeightGradient { get; protected set; }

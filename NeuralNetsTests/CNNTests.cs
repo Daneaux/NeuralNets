@@ -2,7 +2,6 @@ using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 using MnistReader_ANN;
 using NeuralNets;
-using NeuralNets.Network;
 
 namespace NeuralNetsTests
 {
@@ -220,44 +219,41 @@ namespace NeuralNetsTests
         {
             // Arrange: Create MNIST CNN architecture
             var trainingSet = new MNISTTrainingSet();
-            
+
             // Get a few training samples for testing
             var trainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2DImage: true).Take(20).ToList();
-            
+
             var inputShape = trainingSet.OutputShape; // 28x28x1
-            
+
             // Build CNN layers
             var conv1 = new ConvolutionLayer(inputShape, kernelCount: 5, kernelSquareDimension: 4, stride: 1);
-            var relu1 = new ReLUActivaction();
-            var pool1 = new PoolingLayer(conv1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
+            var relu1 = new ReLUActivaction(conv1.OutputShape);
+            var pool1 = new PoolingLayer(relu1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
             var flatten = new FlattenLayer(pool1.OutputShape, nodeCount: 1);
             var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var sigmoid = new SigmoidActivation();
-            
+            var sigmoid = new SigmoidActivation(dense.OutputShape, nodeCount: 10);
+
             var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense, sigmoid };
-            
+
             var network = new GeneralFeedForwardANN(
                 layers,
                 trainingRate: 0.01f,  // Lower learning rate for stability
                 inputDim: 28 * 28,
                 outputDim: 10,
                 new SquaredLoss());
-            
+
             // Use BatchTrain which now uses single-threaded execution by default
             var mockTrainingSet = new MockMNISTTrainingSet(trainingPairs, trainingSet);
-            var renderContext = new RenderContext(network, batchSize: 5, mockTrainingSet);
-            
+            var renderContext = new ConvolutionRenderContext(network, batchSize: 5, mockTrainingSet);
+
             // Act: Train using BatchTrain (single-threaded by default)
             // Note: We track the average loss per epoch to verify training is working
             List<float> epochLosses = new List<float>();
-            for (int epoch = 0; epoch < 10; epoch++)
-            {
-                RenderContext.BatchTrain(renderContext, epoch);
-            }
-            
+            renderContext.EpochTrain(10);
+
             // Assert: Training completed without errors
             // The CNN_SingleThreadedTraining_ReducesLoss test verifies that loss actually decreases
-            Assert.IsTrue(true, "CNN training with MNIST data completed successfully");
+            Assert.IsTrue(false, "this test is currently useless");
         }
 
         /// <summary>
@@ -331,7 +327,7 @@ namespace NeuralNetsTests
 
         #region Mock Classes
 
-        private class MockMNISTTrainingSet : ITrainingSet
+        public class MockMNISTTrainingSet : ITrainingSet
         {
             private readonly List<TrainingPair> _trainingPairs;
             private readonly ITrainingSet _baseTrainingSet;

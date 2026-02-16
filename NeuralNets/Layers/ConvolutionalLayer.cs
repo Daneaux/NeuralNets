@@ -11,10 +11,8 @@ namespace NeuralNets
 
         public int Stride { get; }
         public int KernelSize { get; }
-        //public List<AvxMatrix> Biases { get; private set; }
         public List<MatrixBase> Biases { get; private set; }
         public List<MatrixBase> BiasesGradientAccumulator { get; private set; }
-        public override InputOutputShape OutputShape { get; }
         public KernelStacks Kernels { get; private set; }
         public KernelStacks KernelGradientAccumulator { get; private set; }
         public int AccumulationCount { get; private set; }
@@ -64,14 +62,21 @@ namespace NeuralNets
 
         public override Tensor FeedFoward(Tensor input)
         {
-            List<MatrixBase> avxMatrices = input.Matrices;
-            Debug.Assert(avxMatrices != null);
-            Debug.Assert(avxMatrices.Count == KernelDepth);
+            if (input.IsVector)
+            {
+                throw new InvalidOperationException("Convolution layer cannot take vector input. The input to a convolution layer must be a stack of matrices (for example, an image with depth).");
+            }
+            else
+            {
+                List<MatrixBase> mats = input.Matrices;
+                Debug.Assert(mats != null);
+                Debug.Assert(mats.Count == KernelDepth);
 
-            LastInput = avxMatrices;
+                LastInput = mats;
 
-            var ret = FeedForwardConvolutionPlusBias(avxMatrices);
-            return new ConvolutionTensor(ret);
+                var ret = FeedForwardConvolutionPlusBias(mats);
+                return new ConvolutionTensor(ret);
+            }
         }
 
         public override Tensor BackPropagation(Tensor dE_dX)
@@ -96,7 +101,7 @@ namespace NeuralNets
             int r = Biases[0].Rows;
             int c = Biases[0].Cols;
             for (int i = 0; i < Biases.Count; i++)
-                BiasesGradientAccumulator.Add(new AvxMatrix(r, c));
+                BiasesGradientAccumulator.Add(MatrixFactory.CreateMatrix(r,c));
         }
 
         public override void UpdateWeightsAndBiasesWithScaledGradients(float learningRate)
@@ -196,7 +201,9 @@ namespace NeuralNets
                 var inputs = LastInput;
                 for(int j = 0; j < N; j++)
                 {
-                    MatrixBase dE_dY = derivativeE_wrt_Y[j];
+                    // BUG FIX: Use index i (output/kernel index) not j (input depth)
+                    // derivativeE_wrt_Y has D elements (one per output), indexed by output number
+                    MatrixBase dE_dY = derivativeE_wrt_Y[i];
                     Debug.Assert(dE_dY.IsSquare());
                     var gradientE_K = LastInput[j].Convolution(dE_dY);
                     kernelGradients[i].Add(gradientE_K);
@@ -233,7 +240,8 @@ namespace NeuralNets
             {
                 for (int j = 0; j < N; j++)
                 {
-                    MatrixBase fullConvolve = derivativeE_wrt_Y[j].ConvolutionFull(this.Kernels[i, j]);
+                    // BUG FIX: Use index i (output/kernel index) not j (input depth)
+                    MatrixBase fullConvolve = derivativeE_wrt_Y[i].ConvolutionFull(this.Kernels[i, j]);
                     dEdXGradients[j] = dEdXGradients[j] + fullConvolve;
                 }
             }

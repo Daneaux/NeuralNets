@@ -24,13 +24,13 @@ namespace NeuralNets
         private List<MatrixBase> accumulatedWeights = new List<MatrixBase>();
         private List<ColumnVectorBase> accumulatedBiases = new List<ColumnVectorBase>();
 
-        public override InputOutputShape OutputShape => new InputOutputShape(1, NumNodes, 1, 1);
-
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount, 
             int randomSeed = 42) : base(inputShape, nodeCount, randomSeed)
         {
+            OutputShape = new InputOutputShape(1, NumNodes, 1, 1);
+
             Biases = MatrixFactory.CreateColumnVector(nodeCount);
             Weights = MatrixFactory.CreateMatrix(nodeCount, inputShape.TotalFlattenedSize);
             
@@ -47,6 +47,8 @@ namespace NeuralNets
             MatrixBase initialWeights,
             ColumnVectorBase initialBiases) : base(inputShape, nodeCount)
         {
+            OutputShape = new InputOutputShape(1, NumNodes, 1, 1);
+
             this.Biases = initialBiases;
             this.Weights = initialWeights;
             Debug.Assert(this.Weights.Rows == this.Biases.Size);

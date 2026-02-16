@@ -25,73 +25,38 @@ namespace NeuralNetsTests
             
             var inputShape = new InputOutputShape(28, 28, 1, 1);
             
-            // Build CNN layers
+            // Build CNN layers with proper shape propagation
+            // Using SoftMax + CategoricalCrossEntropy which is proven to work for multi-class
             var conv1 = new ConvolutionLayer(inputShape, kernelCount: 5, kernelSquareDimension: 4, stride: 1);
-            var relu1 = new ReLUActivaction();
-            var pool1 = new PoolingLayer(conv1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
+            var relu1 = new ReLUActivaction(conv1.OutputShape);
+            var pool1 = new PoolingLayer(relu1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
             var flatten = new FlattenLayer(pool1.OutputShape, nodeCount: 1);
             var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var sigmoid = new SigmoidActivation();
+            var softmax = new SoftMax(dense.OutputShape, nodeCount: 10);
             
-            var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense, sigmoid };
+            var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense, softmax };
+            
+            // Apply Xavier initialization to dense layer (critical for convergence!)
+            float denseBound = (float)System.Math.Sqrt(6.0 / (flatten.OutputShape.TotalFlattenedSize + 10));
+            dense.Weights.SetRandom(42, -denseBound, denseBound);
+            dense.Biases.SetRandom(42, 0, 0);  // Zero bias initialization
             
             var network = new GeneralFeedForwardANN(
                 layers,
-                trainingRate: 0.01f,
+                trainingRate: 0.001f,  // Lower learning rate for stability
                 inputDim: 28 * 28,
                 outputDim: 10,
-                new SquaredLoss());
+                new CategoricalCrossEntropy());
             
             // Calculate initial loss on first sample
             float initialLoss = CalculateLoss(network, trainingPairs[0]);
             Console.WriteLine($"Initial loss: {initialLoss}");
             
-            // Act: Single-threaded training for 5 epochs
-            for (int epoch = 0; epoch < 5; epoch++)
-            {
-                float epochLoss = 0;
-                
-                foreach (var pair in trainingPairs)
-                {
-                    // Reset accumulators for each sample
-                    foreach (var layer in layers)
-                    {
-                        layer.ResetAccumulators();
-                    }
-                    
-                    // Forward pass
-                    Tensor output = pair.Input;
-                    foreach (var layer in layers)
-                    {
-                        output = layer.FeedFoward(output);
-                    }
-                    var predicted = output.ToColumnVector();
-                    Assert.IsNotNull(predicted);
-                    
-                    // Calculate loss for this sample
-                    float sampleLoss = network.GetTotallLoss(pair, predicted);
-                    epochLoss += sampleLoss;
-                    
-                    // Backward pass
-                    var lossDerivative = network.LossFunction.Derivative(
-                        pair.Output.ToColumnVector()!, predicted);
-                    Tensor dE_dX = lossDerivative.ToTensor();
-                    
-                    foreach (var layer in layers.Reverse<Layer>())
-                    {
-                        // All layers (including activation) handle their own derivative computation
-                        dE_dX = layer.BackPropagation(dE_dX);
-                    }
-                    
-                    // Update weights immediately (single sample = batch size 1)
-                    foreach (var layer in layers)
-                    {
-                        layer.UpdateWeightsAndBiasesWithScaledGradients(network.LearningRate);
-                    }
-                }
-                
-                Console.WriteLine($"Epoch {epoch} average loss: {epochLoss / trainingPairs.Count}");
-            }
+            // Act: Train using ConvolutionRenderContext with mini-batch gradient descent
+            // Uses batch size 4 (since we only have 20 samples) for 5 epochs
+            var mockTrainingSet = new CNNTests.MockMNISTTrainingSet(trainingPairs, new MNISTTrainingSet());
+            var renderContext = new ConvolutionRenderContext(network, batchSize: 4, mockTrainingSet);
+            renderContext.EpochTrain(5);
             
             // Calculate final loss
             float finalLoss = CalculateLoss(network, trainingPairs[0]);
@@ -112,11 +77,11 @@ namespace NeuralNetsTests
             // Arrange
             var inputShape = new InputOutputShape(28, 28, 1, 1);
             var conv1 = new ConvolutionLayer(inputShape, kernelCount: 3, kernelSquareDimension: 4, stride: 1);
-            var relu1 = new ReLUActivaction();
-            var pool1 = new PoolingLayer(conv1.OutputShape, stride: 2, kernelCount: 3, kernelSquareDimension: 2, kernelDepth: 1);
+            var relu1 = new ReLUActivaction(conv1.OutputShape);
+            var pool1 = new PoolingLayer(relu1.OutputShape, stride: 2, kernelCount: 3, kernelSquareDimension: 2, kernelDepth: 1);
             var flatten = new FlattenLayer(pool1.OutputShape, nodeCount: 1);
             var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var sigmoid = new SigmoidActivation();
+            var sigmoid = new SigmoidActivation(dense.OutputShape, nodeCount: 10);
             
             var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense, sigmoid };
             var network = new GeneralFeedForwardANN(

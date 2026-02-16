@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
 
@@ -96,11 +96,11 @@ This is simply **(Predicted Probability - True Label)**.
     {
         public SoftMax(InputOutputShape inputShape, int nodeCount, int randomSeed = 55) : base(inputShape, nodeCount, randomSeed)
         {
+            OutputShape = inputShape;
         }
 
         public Tensor LastActivation {  get; private set; }
-
-        public override InputOutputShape OutputShape => throw new NotImplementedException();
+                
 
         public ColumnVectorBase Activate(ColumnVectorBase input)
         {
@@ -144,12 +144,44 @@ This is simply **(Predicted Probability - True Label)**.
 
         public override Tensor FeedFoward(Tensor input)
         {
-            throw new NotImplementedException();
+            // Store shape from input for later use in backprop
+            if (input.ToColumnVector() != null)
+            {
+                OutputShape = new InputOutputShape(1, input.ToColumnVector().Size, 1, 1);
+                return Activate(input.ToColumnVector()).ToTensor();
+            }
+            else if (input.Matrices != null && input.Matrices.Count > 0)
+            {
+                var firstMat = input.Matrices[0];
+                OutputShape = new InputOutputShape(firstMat.Rows, firstMat.Cols, input.Matrices.Count, 1);
+                return Activate(input.Matrices).ToTensor();
+            }
+            else
+            {
+                throw new InvalidOperationException("SoftMax FeedFoward: Input must be a vector or a list of matrices");
+            }
         }
 
         public override Tensor BackPropagation(Tensor dE_dY)
         {
-            throw new NotImplementedException();
+            // When SoftMax is paired with CrossEntropy loss, the combined gradient 
+            // is already computed as (softmax_output - true_label) by the loss function.
+            // For standalone SoftMax, we would need the Jacobian, but in practice
+            // SoftMax is almost always used with CrossEntropy at the output layer.
+            // Just pass through the incoming gradient.
+            
+            if (dE_dY.ToColumnVector() != null)
+            {
+                return dE_dY.ToColumnVector().ToTensor();
+            }
+            else if (dE_dY.Matrices != null)
+            {
+                return dE_dY.Matrices.ToTensor();
+            }
+            else
+            {
+                throw new InvalidOperationException("SoftMax BackPropagation: dE_dY must be a vector or a list of matrices");
+            }
         }
     }
 }

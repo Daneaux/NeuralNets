@@ -1,4 +1,4 @@
-﻿using MatrixLibrary;
+using MatrixLibrary;
 using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 
@@ -11,8 +11,6 @@ namespace NeuralNets
             int totSize = inputShape.TotalFlattenedSize;
             OutputShape = new InputOutputShape(1, totSize, 1, 1);
         }
-
-        public override InputOutputShape OutputShape { get; }
 
         public override Tensor BackPropagation(Tensor dE_dY)
         {
@@ -40,10 +38,14 @@ namespace NeuralNets
             // flatten the ugliest way possible!
             if (input.ToColumnVector() != null) 
                 return input;
-            else 
+            else if (input.Matrices != null && input.Matrices.Count > 0)
             {
                 var column = MatrixHelpers.UnrollMatricesToColumnVector(input.Matrices);
                 return column.ToTensor();
+            }
+            else
+            {
+                throw new InvalidOperationException("FlattenLayer: Input has neither ColumnVector nor Matrices");
             }
         }
     }

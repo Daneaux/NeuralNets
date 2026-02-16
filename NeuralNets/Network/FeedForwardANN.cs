@@ -6,19 +6,16 @@ namespace NeuralNets
 {
     /// <summary>
     /// This is purely a container of the current state of the network. It doesn't do any computation, it simply contains the network:
-    /// Weights, Biases, Layers, LossFunction.  That's it.
-    /// It's only operation is to update Weights and Biases
-    /// 
+    /// Weights, Biases, Layers, LossFunction.  That's it.    /// 
     /// Not sure if it should contain TrainingRate (or learning rate) however. Keep it here for now since it's reponsible for updating and scaling weights and biases
     /// </summary>
     public class GeneralFeedForwardANN : NeuralNetworkAbstract
     {
-
         protected GeneralFeedForwardANN(float trainingRate, int inputDim, int outputDim)
         {
-            this.LearningRate = trainingRate;
             this.InputDim = inputDim;
             this.OutputDim = outputDim;
+            this.LearningRate = trainingRate;
         }
 
         public GeneralFeedForwardANN(

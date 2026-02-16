@@ -29,7 +29,6 @@ namespace NeuralNets
         public int KernelDepth { get; }
         public int KernelSize { get; }
         public int FlatOutputSize { get; }
-        public override InputOutputShape OutputShape { get; }
 
         private List<GradientRouter> GradientRouters;
         private struct GradientRouter
