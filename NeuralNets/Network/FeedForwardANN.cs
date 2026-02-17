@@ -6,8 +6,9 @@ namespace NeuralNets
 {
     /// <summary>
     /// This is purely a container of the current state of the network. It doesn't do any computation, it simply contains the network:
-    /// Weights, Biases, Layers, LossFunction.  That's it.    /// 
-    /// Not sure if it should contain TrainingRate (or learning rate) however. Keep it here for now since it's reponsible for updating and scaling weights and biases
+    /// Layers, LossFunction, some meta data. 
+    /// 
+    /// Why do we have an abstract class with one subclass? need to clean it up. there's no reason to have both.
     /// </summary>
     public class GeneralFeedForwardANN : NeuralNetworkAbstract
     {

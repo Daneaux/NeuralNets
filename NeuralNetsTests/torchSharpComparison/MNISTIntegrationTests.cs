@@ -1033,7 +1033,7 @@ namespace NeuralNetsTests.torchSharpComparison
             // Train using BatchTrain
             for (int epoch = 0; epoch < numEpochs; epoch++)
             {
-                RenderContext.BatchTrain(renderContext, epoch);
+                renderContext.BatchTrain(epoch);
                 
                 // Calculate average loss for this epoch
                 float epochLoss = 0;
@@ -1283,7 +1283,7 @@ namespace NeuralNetsTests.torchSharpComparison
             // Train using BatchTrain
             for (int epoch = 0; epoch < numEpochs; epoch++)
             {
-                RenderContext.BatchTrain(renderContext, epoch);
+                renderContext.BatchTrain(epoch);
 
                 // Calculate average loss for this epoch
                 float epochLoss = 0;

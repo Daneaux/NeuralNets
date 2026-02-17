@@ -47,7 +47,7 @@ namespace NeuralNetsTests
             float initialBias = layer.Biases[0];
             
             // Act: Run batch training for 1 epoch
-            RenderContext.BatchTrain(renderContext, epochNum: 0);
+            renderContext.BatchTrain(epochNum: 0);
             
             // Assert: Verify weights were updated (changed from initial values)
             Assert.AreNotEqual(initialWeight0, layer.Weights[0, 0], "Weight 0 should have been updated");
@@ -101,7 +101,7 @@ namespace NeuralNetsTests
             // Act: Batch training on network1
             var mockTrainingSet1 = new MockTrainingSet(trainingPairs, inputShape, new InputOutputShape(1, 1, 1, 1));
             var batchContext = new RenderContext(network1, batchSize: 3, mockTrainingSet1);
-            RenderContext.BatchTrain(batchContext, epochNum: 0);
+            batchContext.BatchTrain(epochNum: 0);
             
             // Sequential training on network2
             SequentialTrain(network2, trainingPairs, trainingRate: 0.1f);
@@ -137,7 +137,7 @@ namespace NeuralNetsTests
             var renderContext = new RenderContext(network, batchSize: 3, emptyTrainingSet);
             
             // Act & Assert: Should not throw
-            RenderContext.BatchTrain(renderContext, epochNum: 0);
+            renderContext.BatchTrain(epochNum: 0);
             
             // Weights should remain unchanged since there were no samples
             // This is acceptable behavior for empty training sets
@@ -183,7 +183,7 @@ namespace NeuralNetsTests
             float expectedWeight = 0.6f;
             
             // Act
-            RenderContext.BatchTrain(renderContext, epochNum: 0);
+            renderContext.BatchTrain(epochNum: 0);
             
             // Assert
             Assert.AreEqual(expectedWeight, layer.Weights[0, 0], 1e-5f, "Weight 0 should match expected value");
@@ -231,7 +231,7 @@ namespace NeuralNetsTests
             float expectedWeight = 2.0f;
             
             // Act
-            RenderContext.BatchTrain(renderContext, epochNum: 0);
+            renderContext.BatchTrain(epochNum: 0);
             
             // Assert
             Assert.AreEqual(expectedWeight, layer.Weights[0, 0], 1e-5f, 
@@ -273,7 +273,7 @@ namespace NeuralNetsTests
             // Act: Train for 10 epochs
             for (int epoch = 0; epoch < 10; epoch++)
             {
-                RenderContext.BatchTrain(renderContext, epoch);
+                renderContext.BatchTrain(epoch);
             }
             
             // Calculate final loss
