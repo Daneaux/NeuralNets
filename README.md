@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NeuralNets
 =======
 Beginnings of a neural network and matrix library. The matrix library is mostly done and about 90% avx512 accelerated (so it only works on modern CPU's). The nueral network library is good enough now for traditional dense feedfoward networks with back propagation, but the CNN isn't working yet and the architecture is a bit wonky (currently refactoring ... will be much simpler and a lot less code).
