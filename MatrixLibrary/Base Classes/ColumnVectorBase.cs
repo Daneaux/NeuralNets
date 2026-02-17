@@ -53,7 +53,7 @@ namespace MatrixLibrary.BaseClasses
 
         public abstract ColumnVectorBase Subtract(float scalar);
         public abstract ColumnVectorBase Subtract(ColumnVectorBase rhs);
-        public static ColumnVectorBase operator -(float scalar, ColumnVectorBase vec) => vec.Subtract(scalar);
+        public static ColumnVectorBase operator -(float scalar, ColumnVectorBase vec) => -1 * vec + scalar;
         public static ColumnVectorBase operator -(ColumnVectorBase lhs, ColumnVectorBase rhs) => lhs.Subtract(rhs);
 
 

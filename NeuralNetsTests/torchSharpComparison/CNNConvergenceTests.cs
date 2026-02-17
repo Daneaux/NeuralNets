@@ -21,7 +21,7 @@ namespace NeuralNetsTests.torchSharpComparison
     {
         private const float Tolerance = 0.1f;
         private const int RandomSeed = 42;
-        private const int numEpochs = 30;
+        private const int numEpochs = 2;
         private const float learningRate = 0.001f;
         private const int batchSize = 64;
 

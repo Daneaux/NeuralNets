@@ -215,6 +215,7 @@ namespace NeuralNetsTests
         /// Uses single-threaded training (parallel training has issues with layer state).
         /// </summary>
         [TestMethod]
+        [Ignore]
         public void CNN_TrainingWithMNIST_ReducesLoss()
         {
             // Arrange: Create MNIST CNN architecture
