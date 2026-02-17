@@ -59,6 +59,9 @@ namespace MatrixLibrary
 
         public override ColumnVector Subtract(ColumnVectorBase right)
         {
+            if(this.Size != right.Size)
+                throw new ArgumentException("Vectors must be the same size for subtraction.");
+
             float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
@@ -70,7 +73,9 @@ namespace MatrixLibrary
 
         public override ColumnVector Add(ColumnVectorBase right)
         {
-            Debug.Assert(this.Size == right.Size);
+            if (this.Size != right.Size)
+                throw new ArgumentException("Vectors must be the same size for addition.");
+
             float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
@@ -82,6 +87,9 @@ namespace MatrixLibrary
 
         public override ColumnVector Multiply(ColumnVectorBase right)
         {
+            if (this.Size != right.Size)
+                throw new ArgumentException("Vectors must be the same size for multiplication.");
+
             float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
@@ -123,7 +131,7 @@ namespace MatrixLibrary
             float[] res = new float[this.Size];
             for (int i = 0; i < this.Size; i++)
             {
-                res[i] = scalar - this[i];
+                res[i] = this[i] - scalar;
             }
 
             return new ColumnVector(res);

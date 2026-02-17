@@ -1,11 +1,6 @@
-﻿using MatrixLibrary.BaseClasses;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
+using MatrixLibrary.BaseClasses;
 
 namespace MatrixLibrary
 {
@@ -22,7 +17,7 @@ namespace MatrixLibrary
     {
         public List<MatrixBase> Matrices { get; }
 
-        public int Size => this.Matrices.Count * Matrices[0].TotalSize;
+        public int Size => this.Matrices.Count == 0 ? 0 : this.Matrices.Count * Matrices[0].TotalSize;
 
         // The crazy idea here is, you have a bunch of N x M matrices, but we 
         // need to unroll them and concatinate them into one long column vector
@@ -33,12 +28,6 @@ namespace MatrixLibrary
         {
             Matrices = avxMatrices;
         }
-/*        public MatrixBase RhsOuterProduct(Tensor lhs)
-        {
-            var rhs = MatrixHelpers.UnrollMatricesToColumnVector(lhs.Matrices);
-            var lhsVec = lhs.ToColumnVector();
-            return lhsVec.OuterProduct(rhs);
-        }*/
 
         public static AvxColumnVector operator *(AvxMatrix lhs, FlattenedMatricesAsVector vec) => vec.MatrixTimesColumn(lhs);
 

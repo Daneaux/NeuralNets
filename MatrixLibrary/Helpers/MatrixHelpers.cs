@@ -7,6 +7,9 @@ namespace MatrixLibrary
     {
         public static ColumnVectorBase UnrollMatricesToColumnVector(List<MatrixBase> matrices)
         {
+            if(matrices == null || matrices.Count == 0)
+                throw new ArgumentException("The list of matrices cannot be null or empty.");
+
             int size = matrices.Count * matrices[0].TotalSize;
             float[] floats = new float[size];
             int i = 0;

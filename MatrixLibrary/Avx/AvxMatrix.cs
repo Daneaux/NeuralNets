@@ -289,12 +289,6 @@ namespace MatrixLibrary
             return result;
         }
 
-        /*public override AvxMatrix CrossCorrelate(MatrixBase kernel)
-        {
-            // rotates 180 degrees is:  kernel[k - 1 - m, k - 1 - n]
-            return null;
-        }*/
-
         public override AvxMatrix ConvolutionFull(MatrixBase kernel)
         {
             int KernelSize = ThrowIfNotSquare(kernel);

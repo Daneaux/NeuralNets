@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using System.Diagnostics;
 using MatrixLibrary.BaseClasses;
 using System.Runtime.CompilerServices;
@@ -24,41 +24,6 @@ namespace MatrixLibrary
             this.Mat = m; // no deep copy, better not change my matrix dude!
         }
 
-        public unsafe Matrix2D Convolution(Matrix2D filter)
-        {
-            // slide a 4x4 filter across this matrix.
-            // resulting matrix dimensions are: lhx - filter.x + 1 
-
-            Debug.Assert(filter != null);
-            Debug.Assert(filter.Rows < this.Rows);
-            Debug.Assert(filter.Cols < this.Cols);
-
-            (int rows, int cols) = MatrixHelpers.ConvolutionSizeHelper(this, filter);
-            Matrix2D result = new Matrix2D(rows, cols);
-
-            int stride = this.Cols;
-
-            for (int t = 0; t < rows; t++)
-            {
-                for (int l = 0; l < cols; l++)
-                {
-                    int srcx = l;
-                    int srcy = t;
-
-                    for (int r = 0; r < filter.Rows; r++, srcy++)
-                    {
-                        srcx = l;
-                        for (int c = 0; c < filter.Cols; c++, srcx++)
-                        {
-                            result[t, l] += filter[r, c] * this[srcy, srcx];
-                        }
-                    }
-                }
-            }
-
-            return result;
-        }
-
         public override Matrix2D Log()
         {
             Matrix2D logMat = new Matrix2D(this.Rows, this.Cols);
@@ -74,17 +39,17 @@ namespace MatrixLibrary
 
         public override void SetDiagonal(float diagonalValue)
         {
-            Debug.Assert(Rows == Cols);
+            if (Rows != Cols)
+                throw new InvalidOperationException("Can't set diagonal of a non-square matrix");
+
             for (int i = 0; i < Rows; i++)
                 Mat[i, i] = diagonalValue;
         }
 
         public override Matrix2D Add(MatrixBase b)
         {
-            if (this.Rows != b.Rows || this.Cols != b.Cols)
-            {
-                throw new ArgumentException("bad dimensions in Matrix.add");
-            }
+            if (this.Rows != b.Rows || this.Cols != b.Cols)            
+                throw new ArgumentException("bad dimensions in Matrix.add");            
 
             Matrix2D res = new Matrix2D(Rows, Cols);
             for (int r = 0; r < Rows; r++)
@@ -119,7 +84,7 @@ namespace MatrixLibrary
             }
             else
             {
-                throw new ArgumentOutOfRangeException("Bad dimensions");
+                throw new ArgumentException("Bad dimensions");
             }
         }
 
@@ -155,7 +120,7 @@ namespace MatrixLibrary
             }
             else
             {
-                throw new ArgumentOutOfRangeException("Bad dimensions");
+                throw new ArgumentException("Bad dimensions");
             }
         }
 
@@ -174,7 +139,8 @@ namespace MatrixLibrary
 
         public override Matrix2D Subtract(MatrixBase b)
         {
-            Debug.Assert(HasSameDimensions(b));
+            if (!HasSameDimensions(b))
+                throw new ArgumentException("bad dimensions in Matrix.subtract");
 
             // this minus b
             if (this.Cols == b.Cols && this.Rows == b.Rows)
@@ -197,19 +163,18 @@ namespace MatrixLibrary
 
         public override Matrix2D HadamardProduct(MatrixBase b)
         {
-            if (this.HasSameDimensions(b))
+            if (!this.HasSameDimensions(b))
+                throw new ArgumentException("bad dimensions in Matrix.HadamardProduct");
+
+            Matrix2D res = new Matrix2D(Rows, Cols);
+            for (int r = 0; r < Rows; r++)
             {
-                Matrix2D res = new Matrix2D(Rows, Cols);
-                for (int r = 0; r < Rows; r++)
+                for (int c = 0; c < this.Cols; c++)
                 {
-                    for (int c = 0; c < this.Cols; c++)
-                    {
-                        res.Mat[r, c] = this.Mat[r, c] * b.Mat[r, c];
-                    }
+                    res.Mat[r, c] = this.Mat[r, c] * b.Mat[r, c];
                 }
-                return res;
             }
-            return null;
+            return res;
         }
 
         private bool HasSameDimensions(MatrixBase b) => (Rows == b.Rows) && (Cols == b.Cols);
@@ -282,19 +247,98 @@ namespace MatrixLibrary
             return res;
         }
 
-        public override MatrixBase Convolution(MatrixBase kernel)
+        public override Matrix2D Convolution(MatrixBase kernel)
         {
-            throw new NotImplementedException();
+            // Valid convolution: kernel stays entirely within the input matrix
+            // Output size: (rows - kernel_rows + 1) x (cols - kernel_cols + 1)
+            
+            if (kernel.Rows > this.Rows || kernel.Cols > this.Cols)
+                throw new ArgumentException("Kernel dimensions cannot exceed matrix dimensions");
+            
+            int outputRows = this.Rows - kernel.Rows + 1;
+            int outputCols = this.Cols - kernel.Cols + 1;
+            
+            Matrix2D result = new Matrix2D(outputRows, outputCols);
+            
+            // Slide kernel across the matrix
+            for (int outRow = 0; outRow < outputRows; outRow++)
+            {
+                for (int outCol = 0; outCol < outputCols; outCol++)
+                {
+                    float sum = 0;
+                    
+                    // Apply kernel at current position
+                    for (int kRow = 0; kRow < kernel.Rows; kRow++)
+                    {
+                        for (int kCol = 0; kCol < kernel.Cols; kCol++)
+                        {
+                            int inRow = outRow + kRow;
+                            int inCol = outCol + kCol;
+                            sum += this[inRow, inCol] * kernel[kRow, kCol];
+                        }
+                    }
+                    
+                    result[outRow, outCol] = sum;
+                }
+            }
+            
+            return result;
         }
 
-        public override MatrixBase ConvolutionFull(MatrixBase kernel)
+        public override Matrix2D ConvolutionFull(MatrixBase kernel)
         {
-            throw new NotImplementedException();
+            // Full convolution: kernel can extend past the edges (padding with implied zeros)
+            // Output size: (rows + kernel_rows - 1) x (cols + kernel_cols - 1)
+            
+            int outputRows = this.Rows + kernel.Rows - 1;
+            int outputCols = this.Cols + kernel.Cols - 1;
+            
+            Matrix2D result = new Matrix2D(outputRows, outputCols);
+            
+            // For full convolution, we center the kernel such that it can extend beyond edges
+            // The kernel's top-left corner can start at: -(kernel.Rows - 1) to (this.Rows - 1)
+            // But we iterate through output positions
+            
+            int kernelCenterRow = kernel.Rows / 2;
+            int kernelCenterCol = kernel.Cols / 2;
+            
+            for (int outRow = 0; outRow < outputRows; outRow++)
+            {
+                for (int outCol = 0; outCol < outputCols; outCol++)
+                {
+                    float sum = 0;
+                    
+                    // For each output position, calculate which input elements contribute
+                    // The kernel is applied centered at various positions
+                    for (int kRow = 0; kRow < kernel.Rows; kRow++)
+                    {
+                        for (int kCol = 0; kCol < kernel.Cols; kCol++)
+                        {
+                            // Calculate input position
+                            // When kernel center is at outRow, outCol in output space
+                            // Kernel element [kRow, kCol] aligns with input at:
+                            int inRow = outRow - (kernel.Rows - 1) + kRow;
+                            int inCol = outCol - (kernel.Cols - 1) + kCol;
+                            
+                            // Check bounds - if outside matrix, it's zero (padding)
+                            if (inRow >= 0 && inRow < this.Rows && inCol >= 0 && inCol < this.Cols)
+                            {
+                                sum += this[inRow, inCol] * kernel[kRow, kCol];
+                            }
+                            // Else: implied zero padding, nothing to add
+                        }
+                    }
+                    
+                    result[outRow, outCol] = sum;
+                }
+            }
+            
+            return result;
         }
 
         public override MatrixBase Transpose()
         {
-            throw new NotImplementedException();
+            return GetTransposedMatrix();
         }
     }
 }

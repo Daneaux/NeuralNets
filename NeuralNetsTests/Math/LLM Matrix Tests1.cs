@@ -33,7 +33,7 @@ namespace NeuralNetsTests.Math
         {
             var matrixA = new Matrix2D(2, 3);
             var matrixB = new Matrix2D(2, 2);
-            Assert.ThrowsExactly<ArgumentOutOfRangeException>(() => matrixA.Multiply(matrixB));
+            Assert.ThrowsExactly<ArgumentException>(() => matrixA.Multiply(matrixB));
         }
 
         [TestMethod]
