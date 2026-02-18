@@ -6,13 +6,15 @@ using System.Diagnostics;
 
 class AnnHarness
 {
+    static bool doParallel = true;
     static int Main(String[] args)
     {
-        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+        MatrixFactory.SetDefaultBackend(MatrixBackend.AVX);
+        //MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
 
         //DoTorchMNIST();
         // DoCNN();
-        (var network, var ctx) = TrainSimpleMnist(epochs: 10, batchSize: 64, trainingRate: 0.05f);
+        (var network, var ctx) = TrainSimpleMnist(epochs: 30, batchSize: 1024, trainingRate: 0.025f);
         RunNetworkOnMnistTestSet(network, ctx);
 
         return 0;
@@ -80,8 +82,6 @@ class AnnHarness
     // 784 -> 16 (relu) -> 16 (relu) -> 10 (cce)
     private static (GeneralFeedForwardANN, RenderContext) TrainSimpleMnist(int epochs, int batchSize = 64, float trainingRate = 0.05f)
     {
-        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
-
         MNISTTrainingSet trainingSet = new MNISTTrainingSet();
 
         // Use explicit input shape (28x28x1 for MNIST)
@@ -116,7 +116,7 @@ class AnnHarness
         var ctx = new RenderContext(network, batchSize: batchSize, trainingSet);
 
         // Train the network
-        ctx.EpochTrain(epochs);
+        ctx.EpochTrain(epochs, doParallel);
 
         return (network, ctx);
     }

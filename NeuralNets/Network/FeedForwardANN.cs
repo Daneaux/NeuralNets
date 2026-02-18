@@ -12,6 +12,26 @@ namespace NeuralNets
     /// </summary>
     public class GeneralFeedForwardANN : NeuralNetworkAbstract
     {
+        // deep copy
+        public GeneralFeedForwardANN(GeneralFeedForwardANN srcNetwork)
+        {
+            this.InputDim = srcNetwork.InputDim;
+            this.OutputDim = srcNetwork.OutputDim;
+            this.LearningRate = srcNetwork.LearningRate;
+            this.LossFunction = srcNetwork.LossFunction;
+            this.Layers = DeepCopyLayers(srcNetwork.Layers);
+        }
+
+        private List<Layer> DeepCopyLayers(List<Layer> layers)
+        {
+            List<Layer> copiedLayers = new List<Layer>(layers.Count);
+            for (int i=0; i < layers.Count; i++)
+            {
+                copiedLayers.Add(layers[i].DeepCopy());
+            }
+            return copiedLayers;
+        }
+
         protected GeneralFeedForwardANN(float trainingRate, int inputDim, int outputDim)
         {
             this.InputDim = inputDim;

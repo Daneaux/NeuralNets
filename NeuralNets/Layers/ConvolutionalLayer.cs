@@ -15,7 +15,6 @@ namespace NeuralNets
         public List<MatrixBase> BiasesGradientAccumulator { get; private set; }
         public KernelStacks Kernels { get; private set; }
         public KernelStacks KernelGradientAccumulator { get; private set; }
-        public int AccumulationCount { get; private set; }
         private List<MatrixBase> LastInput { get; set; }
 
         public ConvolutionLayer(
@@ -33,9 +32,27 @@ namespace NeuralNets
             KernelDepth = inputShape.Depth;
             KernelSize = kernelSquareDimension;
             Stride = stride;
+            Initialize();
+        }
 
-            (int r, int c) = MatrixLibrary.MatrixHelpers.ConvolutionSizeHelper(inputShape, KernelSize, isFull: false, stride);
-            OutputShape = new InputOutputShape(c, r, KernelDepth, kernelCount);
+        public ConvolutionLayer(ConvolutionLayer srcLayer) : base(srcLayer)
+        {
+            KernelCount = srcLayer.KernelCount;
+            KernelDepth = srcLayer.KernelDepth;
+            KernelSize = srcLayer.KernelSize;
+            Stride = srcLayer.Stride;
+            Initialize();
+        }
+
+        public override Layer DeepCopy()
+        {
+            return new ConvolutionLayer(this);
+        }
+
+        public override void Initialize()
+        {
+            (int r, int c) = MatrixLibrary.MatrixHelpers.ConvolutionSizeHelper(InputShape, KernelSize, isFull: false, Stride);
+            OutputShape = new InputOutputShape(c, r, KernelDepth, KernelCount);
             InitKernelsAndBiases();
             ResetAccumulators();
         }
@@ -119,16 +136,10 @@ namespace NeuralNets
 
         private void AccumulateWeightsAndBiases(KernelStacks kernelGradients, List<MatrixBase> biasGradients)
         {
-            lock (GradientLock)
-            {
-                KernelGradientAccumulator.Accumulate(kernelGradients);
-
-                Debug.Assert(biasGradients.Count == Biases.Count);
-                for (int i = 0; i < this.Biases.Count; i++)
-                {
-                    BiasesGradientAccumulator[i] += biasGradients[i];
-                }
-            }
+            KernelGradientAccumulator.Accumulate(kernelGradients);
+            Debug.Assert(biasGradients.Count == Biases.Count);
+            for (int i = 0; i < this.Biases.Count; i++)            
+                BiasesGradientAccumulator[i] += biasGradients[i];            
         }
 
         public (KernelStacks kernelGradients, List<MatrixBase> biasGradients, List<MatrixBase> inputGradients) Derivative(List<MatrixBase> derivativeE_wrt_Y)
@@ -285,6 +296,23 @@ namespace NeuralNets
                 result += inputStack[i].Convolution(kernelStack[i]);
             }
             return result;
+        }
+
+        internal override void AccumulateGradientsFrom(Layer layer)
+        {
+            if (layer is ConvolutionLayer convLayer)
+            {
+                this.KernelGradientAccumulator.Accumulate(convLayer.KernelGradientAccumulator);
+                for (int i = 0; i < this.BiasesGradientAccumulator.Count; i++)
+                {
+                    this.BiasesGradientAccumulator[i] += convLayer.BiasesGradientAccumulator[i];
+                }
+                this.AccumulationCount += convLayer.AccumulationCount;
+            }
+            else
+            {
+                throw new InvalidOperationException("Can only accumulate gradients from another convolution layer of the same dimensions.");
+            }
         }
     }
 }

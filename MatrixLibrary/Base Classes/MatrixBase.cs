@@ -22,6 +22,30 @@ namespace MatrixLibrary.BaseClasses
             get { return this.Mat[r, c]; }
             set { this.Mat[r, c] = value; }
         }
+        public MatrixBase() { }
+        public MatrixBase(int rows, int cols)
+        {
+            this.Rows = rows;
+            this.Cols = cols;
+            this.Mat = new float[Rows, Cols];
+        }
+
+        // TODO: slow deep copy for now, future use 
+        // Buffer.BlockCopy(array, 0, copiedArray, 0, array.Length * sizeof(float));
+        public MatrixBase(MatrixBase src)
+        {
+            this.Rows = src.Rows;
+            this.Cols = src.Cols;
+            this.Mat = new float[Rows, Cols];
+            for (int c = 0; c < Cols; c++)
+            {
+                for (int r = 0; r < Rows; r++)
+                {
+                    this[r, c] = src[r, c];
+                }
+            }
+        }
+
         public void SetRandom(int seed, float min, float max)
         {
             Random rnd = new Random(seed);
@@ -72,12 +96,11 @@ namespace MatrixLibrary.BaseClasses
 
         public abstract MatrixBase HadamardProduct(MatrixBase other);
 
-        //public abstract RowVectorBase RowTimesMatrix(RowVectorBase left);
-        //public static RowVectorBase operator *(RowVectorBase lhs, MatrixBase rhs) => rhs.RowTimesMatrix(lhs);
 
 
         // TODO BUG: this seems redundant, what was the intent?
         public abstract MatrixBase Transpose();
         public abstract MatrixBase GetTransposedMatrix();
+
     }
 }

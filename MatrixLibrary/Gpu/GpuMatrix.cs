@@ -76,6 +76,8 @@ namespace MatrixLibrary
             _hostValid = true;
         }
 
+        public GpuMatrix(MatrixBase src) : this(src.Mat) { }
+
         /// <summary>
         /// Internal constructor: device-only result. Host array is allocated but NOT populated.
         /// Data lives only on GPU until someone reads Mat or the indexer.

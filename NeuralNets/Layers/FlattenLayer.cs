@@ -12,6 +12,21 @@ namespace NeuralNets
             OutputShape = new InputOutputShape(1, totSize, 1, 1);
         }
 
+        public FlattenLayer(FlattenLayer srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+
+        public override Layer DeepCopy()
+        {
+            return new FlattenLayer(this);
+        }
+
+        public override void Initialize()
+        {
+        }
+
         public override Tensor BackPropagation(Tensor dE_dY)
         {
             Debug.Assert(dE_dY.ToColumnVector() != null);

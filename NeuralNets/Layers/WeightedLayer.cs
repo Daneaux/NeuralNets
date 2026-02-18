@@ -1,6 +1,7 @@
 using MatrixLibrary;
 using MatrixLibrary.BaseClasses;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace NeuralNets
 {
@@ -20,34 +21,52 @@ namespace NeuralNets
         public ColumnVectorBase Y { get; private set; }
         public MatrixBase Weights { get; set; }
         public ColumnVectorBase Biases { get; set; }
-
-        private List<MatrixBase> accumulatedWeights = new List<MatrixBase>();
-        private List<ColumnVectorBase> accumulatedBiases = new List<ColumnVectorBase>();
+        public override int AccumulationCount { get => accumulatedWeights.Count; }
+        protected List<MatrixBase> accumulatedWeights = new List<MatrixBase>();
+        protected List<ColumnVectorBase> accumulatedBiases = new List<ColumnVectorBase>();
 
         public WeightedLayer(
             InputOutputShape inputShape,
-            int nodeCount, 
+            int nodeCount,
             int randomSeed = 42) : base(inputShape, nodeCount, randomSeed)
         {
-            OutputShape = new InputOutputShape(1, NumNodes, 1, 1);
+            Initialize();
+        }
 
-            Biases = MatrixFactory.CreateColumnVector(nodeCount);
-            Weights = MatrixFactory.CreateMatrix(nodeCount, inputShape.TotalFlattenedSize);
-            
-            this.Weights.XavierInitialize(inputShape.TotalFlattenedSize, nodeCount, randomSeed);
-            this.Biases.SetRandom(randomSeed, -0.1f, 0.1f);
-            
+        public WeightedLayer(WeightedLayer srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+
+        public override Layer DeepCopy()
+        {
+            return new WeightedLayer(this);
+        }
+
+        public override void Initialize()
+        {
+            OutputShape = new InputOutputShape(1, NodeCount, 1, 1);
+            Biases = MatrixFactory.CreateColumnVector(NodeCount);
+            Weights = MatrixFactory.CreateMatrix(NodeCount, InputShape.TotalFlattenedSize);
+
+            this.Weights.XavierInitialize(InputShape.TotalFlattenedSize, NodeCount, RandomSeed);
+            this.Biases.SetRandom(RandomSeed, -0.1f, 0.1f);
+
             Debug.Assert(this.Weights.Rows == this.Biases.Size);
             Debug.Assert(this.Weights.Cols == this.InputShape.TotalFlattenedSize);
         }
 
+        // TODO: this is only used for testing, we should remove it and just set the weights and biases directly on the layer.
+        // How do I assert it's only available to test code and not product code??
+        // NOT THREAD SAFE
         public WeightedLayer(
             InputOutputShape inputShape,
             int nodeCount,
             MatrixBase initialWeights,
             ColumnVectorBase initialBiases) : base(inputShape, nodeCount)
         {
-            OutputShape = new InputOutputShape(1, NumNodes, 1, 1);
+            OutputShape = new InputOutputShape(1, NodeCount, 1, 1);
 
             this.Biases = initialBiases;
             this.Weights = initialWeights;
@@ -58,14 +77,14 @@ namespace NeuralNets
         public override Tensor FeedFoward(Tensor input)
         {
             AnnTensor annTensor = input as AnnTensor;
-            ColumnVectorBase ?vectorInput = null;
+            ColumnVectorBase? vectorInput = null;
             if (annTensor.IsVector)
             {
                 vectorInput = annTensor.ColumnVector;
                 Debug.Assert(!input.IsMatrix);
                 Debug.Assert(input.IsVector);
             }
-            else 
+            else
             {
                 Debug.Assert(input.IsMatrix);
                 Debug.Assert(!input.IsVector);
@@ -81,7 +100,7 @@ namespace NeuralNets
         {
             // Debug output for gradient computation tracing
             bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
-            
+
             if (debugMode)
             {
                 Console.WriteLine($"\n  [WeightedLayer.BackPropagation] START");
@@ -107,7 +126,7 @@ namespace NeuralNets
 
             MatrixBase weightGradient = X.RhsOuterProduct(dE_dY); // todo: ugly hack
             ColumnVectorBase biasGradient = dE_dY.ToColumnVector();
-            
+
             if (debugMode)
             {
                 Console.WriteLine($"    Computed weight gradient (dE/dW = dE/dY · X^T):");
@@ -118,19 +137,19 @@ namespace NeuralNets
                 }
                 Console.WriteLine($"    Bias gradient (dE/dB = dE/dY): [{string.Join(", ", Enumerable.Range(0, biasGradient.Size).Select(i => biasGradient[i].ToString("F6")))}]");
             }
-            
+
             this.AccumulateGradients(weightGradient, biasGradient);
 
             // Now build De/Dx
             // De/Dx = De/Dy * Dy/Dx = De/Dy * W
             ColumnVectorBase dE_dX = this.Weights.GetTransposedMatrix() * dE_dY.ToColumnVector();
-            
+
             if (debugMode)
             {
                 Console.WriteLine($"    Output dE/dX (for previous layer): [{string.Join(", ", Enumerable.Range(0, dE_dX.Size).Select(i => dE_dX[i].ToString("F6")))}]");
                 Console.WriteLine($"  [WeightedLayer.BackPropagation] END");
             }
-            
+
             return new AnnTensor(null, dE_dX);
         }
 
@@ -142,14 +161,14 @@ namespace NeuralNets
 
             // add up and average all the gradients
             MatrixBase averageWeights = accumulatedWeights[0];
-            for(int i = 1; i < accumulatedWeights.Count; i++)
+            for (int i = 1; i < accumulatedWeights.Count; i++)
             {
                 averageWeights += accumulatedWeights[i];
             }
-            averageWeights = averageWeights * ( learningRate / (float)accumulatedWeights.Count);
+            averageWeights = averageWeights * (learningRate / (float)accumulatedWeights.Count);
 
             ColumnVectorBase avgBiases = accumulatedBiases[0];
-            for(int i = 1;i < accumulatedBiases.Count; i++)
+            for (int i = 1; i < accumulatedBiases.Count; i++)
             {
                 avgBiases += accumulatedBiases[i];
             }
@@ -164,15 +183,38 @@ namespace NeuralNets
             accumulatedBiases.Clear();
             accumulatedWeights.Clear();
         }
+
+        internal override void AccumulateGradientsFrom(Layer layer)
+        {
+            if (layer is WeightedLayer weightedLayer)
+                this.AccumulateGradients(weightedLayer.accumulatedWeights, weightedLayer.accumulatedBiases);
+            else
+                throw new InvalidOperationException("Can only accumulate gradients from another WeightedLayer");
+        }
+
+        private void AccumulateGradients(List<MatrixBase> weightGradients, List<ColumnVectorBase> biasGradients)
+        {
+            accumulatedBiases.AddRange(biasGradients);
+            accumulatedWeights.AddRange(weightGradients);
+        }
+
         private void AccumulateGradients(MatrixBase weightGradient, ColumnVectorBase biasGradient)
         {
-            lock (GradientLock)
-            {
-                this.LastBiasGradient = biasGradient;
-                this.LastWeightGradient = weightGradient;
-                accumulatedBiases.Add(biasGradient);
-                accumulatedWeights.Add(weightGradient);
-            }
+            // todo: these two are only for testing/debugging.
+            this.LastBiasGradient = biasGradient;
+            this.LastWeightGradient = weightGradient;
+
+            accumulatedBiases.Add(biasGradient);
+            accumulatedWeights.Add(weightGradient);
+        }
+
+        internal override void CopyWeightsAndBiasesFrom(Layer layer)
+        {
+            if (layer is not WeightedLayer weightedLayer)
+                throw new InvalidOperationException("Can only copy weights and biases from another WeightedLayer");
+
+            this.Weights = MatrixFactory.CreateMatrix(weightedLayer.Weights);
+            this.Biases = MatrixFactory.CreateColumnVector(weightedLayer.Biases);
         }
     }
 }

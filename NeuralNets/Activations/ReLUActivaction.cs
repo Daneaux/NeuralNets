@@ -12,11 +12,27 @@ namespace NeuralNets
         public ReLUActivaction(InputOutputShape shape) : base(shape, shape.TotalFlattenedSize)
         {
             OutputShape = shape;
+            Initialize();
         }
 
         public ReLUActivaction() : base(new InputOutputShape(1,1,1,1), 1)
         {
             OutputShape = new InputOutputShape(1,1,1,1);
+            Initialize();
+        }
+
+        public ReLUActivaction(ReLUActivaction srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+        public override Layer DeepCopy()
+        {
+            return new ReLUActivaction(this);
+        }
+
+        public override void Initialize()
+        {            
         }
 
         public Tensor LastActivation

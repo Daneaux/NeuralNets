@@ -16,6 +16,22 @@ namespace NeuralNets
         {
             OutputShape = inputShape;
         }
+
+        public NormalizationLayer(NormalizationLayer srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+
+        public override Layer DeepCopy()
+        {
+            return new NormalizationLayer(this);
+        }
+
+        public override void Initialize()
+        {
+        }
+
         internal struct normMatMetaData
         {
             public float Mean;
@@ -190,7 +206,6 @@ namespace NeuralNets
             double variance = sumSqDiff / sz;
             return (float)Math.Sqrt(variance);
         }
-
     }
 
 }

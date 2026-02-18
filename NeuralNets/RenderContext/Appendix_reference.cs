@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -9,6 +10,32 @@ namespace NeuralNets.Network
 {
     internal class Appendix_reference
     {
+        #if false
+                    this.Sigma = new ColumnVectorBase[this.LayerCount];
+            this.WeightGradient = new MatrixBase[this.LayerCount];
+            this.BiasGradient = new ColumnVectorBase[this.LayerCount];
+            this.ActivationContext = new ColumnVectorBase[this.LayerCount];
+            this.DerivativeContext = new ColumnVectorBase[this.LayerCount];
+
+        private void SetLastActivation(int layerIndex, ColumnVectorBase lastActivation)
+        {
+            Debug.Assert(layerIndex >= 0);
+            Debug.Assert(lastActivation != null);
+            Debug.Assert(ActivationContext[layerIndex] == null);
+            ActivationContext[layerIndex] = lastActivation;
+        }
+
+        private void SetlayerSigma(int layerIndex, ColumnVectorBase sigma)
+        {
+            Debug.Assert(this.Sigma[layerIndex] == null);
+            this.Sigma[layerIndex] = sigma;
+        }
+
+        private void SetLastDerivative(int myLayerIndex, ColumnVectorBase derivative)
+        {
+            Debug.Assert(DerivativeContext[myLayerIndex] == null);
+            DerivativeContext[myLayerIndex] = derivative;
+        }
 
         private MatrixBase BuildGradientWeightsHelper_naive(ColumnVectorBase lastActivation, ColumnVectorBase sigma)
         {
@@ -30,6 +57,7 @@ namespace NeuralNets.Network
             MatrixBase gradientDelta = sigma.OuterProduct(lastActivation);
             return gradientDelta;
         }
+#endif
 
 
         // for reference

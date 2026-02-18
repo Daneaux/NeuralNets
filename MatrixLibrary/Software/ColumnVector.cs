@@ -19,6 +19,8 @@ namespace MatrixLibrary
             return accum;
         }
 
+        public ColumnVector(ColumnVectorBase src) : base(src.Column) { }
+
         public override ColumnVector Log()
         {
             float[] vec = new float[this.Size];

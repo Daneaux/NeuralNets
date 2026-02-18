@@ -25,6 +25,13 @@ namespace MatrixLibrary
             _deviceValid = true;
         }
 
+        public GpuColumnVector(ColumnVectorBase src) : base(src.Column)
+        {
+            // Deep copy of host data, device pointer will be allocated on demand
+            _devicePtr = IntPtr.Zero;
+            _deviceValid = false;
+        }
+
         /// <summary>
         /// Ensures device memory is allocated and contains current host data.
         /// </summary>
