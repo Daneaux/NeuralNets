@@ -11,7 +11,7 @@ class CNNHarness
         Console.WriteLine("=== CNN MNIST Digit Recognition ===\n");
         
         // Use GPU for matrix operations if available
-        MatrixFactory.SetDefaultBackend(MatrixBackend.GPU);
+        MatrixFactory.SetDefaultBackend(MatrixBackend.AVX);
         
         // Train the CNN with mini-batching (batch size 64 for stable convergence)
         Console.WriteLine("Training CNN with mini-batch size 64...");

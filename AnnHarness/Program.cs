@@ -14,7 +14,7 @@ class AnnHarness
 
         //DoTorchMNIST();
         // DoCNN();
-        (var network, var ctx) = TrainSimpleMnist(epochs: 30, batchSize: 1024, trainingRate: 0.025f);
+        (var network, var ctx) = TrainSimpleMnist(epochs: 30, batchSize: 2000, trainingRate: 0.05f);
         RunNetworkOnMnistTestSet(network, ctx);
 
         return 0;

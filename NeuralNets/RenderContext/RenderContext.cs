@@ -36,7 +36,7 @@ namespace NeuralNets
             if (doParallel)
             {
                 // get number of cores
-                int numCores = Environment.ProcessorCount / 2;
+                int numCores = Environment.ProcessorCount;
                 Console.WriteLine($"Processor count: {numCores}. Setting max degree of parallelism to {numCores}.");
 
                 // Create a bunch of cloned RenderContextx.
