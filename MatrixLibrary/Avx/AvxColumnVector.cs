@@ -6,9 +6,11 @@ namespace MatrixLibrary
 {
     public class AvxColumnVector : ColumnVectorBase
     {
-		public AvxColumnVector(float[] column) : base(column) { }
-        public AvxColumnVector(int size) : base(size) { }
         protected AvxColumnVector() { }
+        public AvxColumnVector(int size) : base(size) { }
+        public AvxColumnVector(float[] column) : base(column) { }
+        public AvxColumnVector(ColumnVectorBase src) : base(src.Column) { }
+
         public override unsafe float Sum()
         {
             float sum = 0.0f;

@@ -274,7 +274,7 @@ namespace NeuralNetsTests
             var layer = new WeightedLayer(inputShape, outputNodes);
             
             // Assert
-            Assert.AreEqual(outputNodes, layer.NumNodes, "Layer should have correct number of nodes");
+            Assert.AreEqual(outputNodes, layer.NodeCount, "Layer should have correct number of nodes");
             Assert.AreEqual(720, layer.Weights.Cols, "Weights should have correct input dimension");
             Assert.AreEqual(10, layer.Weights.Rows, "Weights should have correct output dimension");
             Assert.AreEqual(10, layer.Biases.Size, "Biases should have correct size");

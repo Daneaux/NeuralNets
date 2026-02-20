@@ -179,82 +179,82 @@ namespace NeuralNetsTests.torchSharpComparison
         public void SimpleCNN_GradientComparison()
         {
             Console.WriteLine("\n=== Simple CNN Gradient Comparison ===\n");
-            
+
             // Get a single MNIST sample
             var trainingSet = new MNISTTrainingSet();
             var sample = trainingSet.BuildNewRandomizedTrainingList(do2DImage: true).First();
             var input2D = sample.Input.Matrices[0];
             float[,] inputData = input2D.Mat;
-            
+
             // Target label
             int targetLabel = ArgMax(sample.Output.ToColumnVector().Column);
-            
+
             // ==================== TORCHSHARP ====================
             Console.WriteLine("--- TorchSharp ---");
-            
+
             var torchConv = Conv2d((long)1, (long)1, (long)3, stride: (long)1, padding: (long)0);
             var torchDense = Linear(26 * 26, 10);
-            
+
             // Initialize with same seed as NeuralNets for comparison
             // For now, use zeros for simplicity
             torchConv.weight = torch.zeros(1, 1, 3, 3).AsParameter();
             torchConv.bias = torch.zeros(1).AsParameter();
             torchDense.weight = torch.zeros(10, 26 * 26).AsParameter();
             torchDense.bias = torch.zeros(10).AsParameter();
-            
+
             using var torchInput = torch.from_array(inputData).reshape(1, 1, 28, 28);
             // Target needs to be a 1D tensor with batch size 1
             long[] targetArray = new long[] { targetLabel };
             using var torchTarget = torch.from_array(targetArray);  // Shape: [1]
-            
+
             // Forward + backward
             var torchConvOut = torchConv.forward(torchInput);
             var torchReLUOut = relu(torchConvOut);
             var torchFlatOut = torchReLUOut.reshape(1, 26 * 26);
             var torchDenseOut = torchDense.forward(torchFlatOut);
-            
+
             using var torchLossFn = CrossEntropyLoss();
             var loss = torchLossFn.forward(torchDenseOut, torchTarget);
             loss.backward();
-            
+
             // Get gradients
             var torchConvGrad = torchConv.weight.grad.cpu().data<float>().ToArray();
             var torchConvBiasGrad = torchConv.bias.grad.cpu().data<float>().ToArray();
             var torchDenseGrad = torchDense.weight.grad.cpu().data<float>().ToArray();
             var torchDenseBiasGrad = torchDense.bias.grad.cpu().data<float>().ToArray();
-            
+
             Console.WriteLine($"TorchSharp loss: {loss.cpu().data<float>().ToArray()[0]:F6}");
             Console.WriteLine($"TorchSharp conv weight grad: [{string.Join(", ", torchConvGrad.Take(9).Select(x => x.ToString("F6")))}]");
             Console.WriteLine($"TorchSharp dense weight grad (first 5): [{string.Join(", ", torchDenseGrad.Take(5).Select(x => x.ToString("F6")))}...]");
-            
+
             // ==================== NEURALNETS ====================
             Console.WriteLine("\n--- NeuralNets ---");
-            
+
             var inputShape = new InputOutputShape(28, 28, 1, 1);
             var conv1 = new ConvolutionLayer(inputShape, kernelCount: 1, kernelSquareDimension: 3, stride: 1);
             var relu1 = new ReLUActivaction(conv1.OutputShape);
             var flatten = new FlattenLayer(relu1.OutputShape, nodeCount: 1);
-            var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var softmax1 = new SoftMax(dense.OutputShape, nodeCount: 10);
-            
+            var annWeightedLayer = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
+            var softmax1 = new SoftMax(annWeightedLayer.OutputShape, nodeCount: 10);
+
             // Zero initialize to match TorchSharp
             for (int r = 0; r < 3; r++)
                 for (int c = 0; c < 3; c++)
                     conv1.Kernels[0, 0][r, c] = 0;
             conv1.Biases[0][0, 0] = 0;  // Set bias value at [0,0] since it's a matrix
-            
+
             for (int r = 0; r < 10; r++)
                 for (int c = 0; c < 26 * 26; c++)
-                    dense.Weights[r, c] = 0;
-            dense.Biases.SetRandom(42, 0, 0);  // Set all biases to 0
-            
-            var layers = new List<Layer> { conv1, relu1, flatten, dense, softmax1 };
+                    annWeightedLayer.Weights[r, c] = 0;
+            annWeightedLayer.Biases.SetRandom(42, 0, 0);  // Set all biases to 0
+
+            var layers = new List<Layer> { conv1, relu1, flatten, annWeightedLayer, softmax1 };
             var network = new GeneralFeedForwardANN(layers, 0.01f, 28 * 28, 10, new CategoricalCrossEntropy());
-            
+
             // Reset accumulators
             foreach (var layer in layers)
                 layer.ResetAccumulators();
-            
+
             // Forward pass
             MatrixLibrary.Tensor output = sample.Input;
             foreach (var layer in layers)
@@ -262,21 +262,21 @@ namespace NeuralNetsTests.torchSharpComparison
                 output = layer.FeedFoward(output);
             }
             var predicted = output.ToColumnVector();
-            
+
             // Calculate loss
             float nnLoss = network.GetTotallLoss(sample, predicted);
             Console.WriteLine($"NeuralNets loss: {nnLoss:F6}");
-            
+
             // Backward pass
             var lossDerivative = network.LossFunction.Derivative(
                 sample.Output.ToColumnVector(), predicted);
             MatrixLibrary.Tensor dE_dX = lossDerivative.ToTensor();
-            
+
             foreach (var layer in layers.Reverse<Layer>())
             {
                 dE_dX = layer.BackPropagation(dE_dX);
             }
-            
+
             // Check conv layer gradients
             Console.WriteLine($"\n--- Conv Layer Gradients ---");
             if (conv1.KernelGradientAccumulator != null && conv1.KernelGradientAccumulator.Stacks.Count > 0)
@@ -285,9 +285,9 @@ namespace NeuralNetsTests.torchSharpComparison
                 for (int r = 0; r < 3; r++)
                     for (int c = 0; c < 3; c++)
                         nnConvGrad[r * 3 + c] = conv1.KernelGradientAccumulator[0, 0][r, c];
-                
+
                 Console.WriteLine($"NeuralNets conv weight grad: [{string.Join(", ", nnConvGrad.Select(x => x.ToString("F6")))}]");
-                
+
                 // Compare conv gradients
                 float maxConvGradDiff = 0;
                 for (int i = 0; i < System.Math.Min(torchConvGrad.Length, nnConvGrad.Length); i++)
@@ -299,53 +299,60 @@ namespace NeuralNetsTests.torchSharpComparison
                         Console.WriteLine($"  Conv grad mismatch at [{i}]: Torch={torchConvGrad[i]:F6}, NN={nnConvGrad[i]:F6}, Diff={diff:F6}");
                     }
                 }
-                
+
                 Console.WriteLine($"Max conv gradient difference: {maxConvGradDiff:F6}");
-                
+
                 // Assert conv gradients match
-                Assert.IsTrue(maxConvGradDiff < Tolerance, 
+                Assert.IsTrue(maxConvGradDiff < Tolerance,
                     $"Conv gradients should match within tolerance. Max diff: {maxConvGradDiff:F6}");
-                
+
                 Console.WriteLine("✓ Conv gradients match!");
             }
             else
             {
                 Assert.Fail("Conv layer gradients were not computed");
             }
-            
+
             // Check dense layer gradients
-            Console.WriteLine($"\n--- Dense Layer Gradients ---");
-            Console.WriteLine($"NeuralNets dense weight grad shape: {dense.LastWeightGradient?.Rows}x{dense.LastWeightGradient?.Cols}");
-            if (dense.LastWeightGradient != null)
+            Console.WriteLine($"\n--- Dense Layer Weight Gradients ---");
+            Console.WriteLine($"NeuralNets dense weight grad shape: {annWeightedLayer.LastWeightGradient?.Rows}x{annWeightedLayer.LastWeightGradient?.Cols}");
+            Assert.IsNotNull(annWeightedLayer.LastWeightGradient, "Dense layer weight gradients should not be null");
+
+            var nnDenseGrad = MatrixHelpers.FlattenMatrixToFloatArray(annWeightedLayer.LastWeightGradient);
+            Console.WriteLine($"NeuralNets dense weight grad (first 5): [{string.Join(", ", nnDenseGrad.Take(5).Select(x => x.ToString("F6")))}...]");
+
+            // ---
+            // Compare Weight gradients
+            // ---
+            float maxGradDiff = 0;
+            Assert.AreEqual(nnDenseGrad.Length, torchDenseGrad.Length, "Dense gradient arrays should have the same length");
+            for (int i = 0; i < System.Math.Min(torchDenseGrad.Length, nnDenseGrad.Length); i++)
             {
-                var nnDenseGrad = new float[10 * 26 * 26];
-                for (int r = 0; r < 10; r++)
-                    for (int c = 0; c < 26 * 26; c++)
-                        nnDenseGrad[r * 26 * 26 + c] = dense.LastWeightGradient[r, c];
-                
-                Console.WriteLine($"NeuralNets dense weight grad (first 5): [{string.Join(", ", nnDenseGrad.Take(5).Select(x => x.ToString("F6")))}...]");
-                
-                // Compare
-                float maxGradDiff = 0;
-                for (int i = 0; i < System.Math.Min(torchDenseGrad.Length, nnDenseGrad.Length); i++)
-                {
-                    float diff = System.Math.Abs(torchDenseGrad[i] - nnDenseGrad[i]);
-                    if (diff > maxGradDiff) maxGradDiff = diff;
-                }
-                
-                Console.WriteLine($"Max dense gradient difference: {maxGradDiff:F6}");
-                Console.WriteLine($"Tolerance: {Tolerance:F6}");
-                
-                // Assert gradients match
-                Assert.IsTrue(maxGradDiff < Tolerance, 
-                    $"Dense gradients should match within tolerance. Max diff: {maxGradDiff:F6}");
-                
-                Console.WriteLine("\n✓ Dense gradients match!");
+                float diff = System.Math.Abs(torchDenseGrad[i] - nnDenseGrad[i]);
+                if (diff > maxGradDiff) maxGradDiff = diff;
             }
-            else
+
+            Console.WriteLine($"Max dense gradient difference: {maxGradDiff:F6}");
+            Console.WriteLine($"Tolerance: {Tolerance:F6}");
+
+            // Assert gradients match
+            Assert.IsTrue(maxGradDiff < Tolerance, $"Dense gradients should match within tolerance. Max diff: {maxGradDiff:F6}");
+            Console.WriteLine("\n✓ Dense gradients match!");
+
+
+            // ---
+            // Check Biases on weighted layer
+            // ---
+            Console.WriteLine($"\n--- Dense Layer Bias Gradients ---");
+            Assert.IsNotNull(annWeightedLayer.LastBiasGradient, "Dense layer bias gradients should not be null");
+            Assert.AreEqual(torchDenseBiasGrad.Length, annWeightedLayer.LastBiasGradient.Size, "Dense bias gradient size should match TorchSharp");
+            float maxBiasGradDiff = 0;
+            for (int i = 0; i < torchDenseBiasGrad.Length; i++)
             {
-                Assert.Fail("Dense layer gradients were not computed");
+                float diff = System.Math.Abs(torchDenseBiasGrad[i] - annWeightedLayer.LastBiasGradient[i]);
+                if (diff > maxBiasGradDiff) maxBiasGradDiff = diff;
             }
+            Assert.IsTrue(maxBiasGradDiff < Tolerance, $"Dense bias gradients should match within tolerance. Max diff: {maxBiasGradDiff:F6}");
         }
 
         private static int ArgMax(float[] arr)

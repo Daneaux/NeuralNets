@@ -97,10 +97,22 @@ This is simply **(Predicted Probability - True Label)**.
         public SoftMax(InputOutputShape inputShape, int nodeCount, int randomSeed = 55) : base(inputShape, nodeCount, randomSeed)
         {
             OutputShape = inputShape;
+            Initialize();
+        }
+        public SoftMax(SoftMax srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+        public override Layer DeepCopy()
+        {
+            return new SoftMax(this);
+        }
+        public override void Initialize()
+        {
         }
 
-        public Tensor LastActivation {  get; private set; }
-                
+        public Tensor LastActivation {  get; private set; }                
 
         public ColumnVectorBase Activate(ColumnVectorBase input)
         {

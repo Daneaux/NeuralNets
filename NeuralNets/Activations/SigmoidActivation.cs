@@ -60,13 +60,28 @@ namespace NeuralNets
         public SigmoidActivation(InputOutputShape shape, int nodeCount, int randomSeed = 55) : base(shape, nodeCount, randomSeed)
         {
             OutputShape = shape;
+            Initialize();
         }
 
         public SigmoidActivation() : base(new InputOutputShape(1,1,1,1), 1)
         {
             OutputShape = new InputOutputShape(1,1,1,1);
+            Initialize();
+        }
+        public SigmoidActivation(SigmoidActivation srcLayer) : base(srcLayer)
+        {
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
         }
 
+        public override Layer DeepCopy()
+        {
+            return new SigmoidActivation(this);
+        }
+
+        public override void Initialize()
+        {
+        }
 
         public override Tensor FeedFoward(Tensor input)
         {

@@ -5,12 +5,11 @@ namespace NeuralNets
 {
     public abstract class Layer
     {
-        public int NumNodes { get; private set; }
+        public int NodeCount { get; private set; }
         public int RandomSeed { get; }
         public InputOutputShape InputShape { get; }
         public InputOutputShape OutputShape { get; protected set; }
-
-        protected readonly object GradientLock = new object();
+        public virtual int AccumulationCount { get; protected set; }
 
         public MatrixBase LastWeightGradient { get; protected set; }
         public ColumnVectorBase LastBiasGradient { get; protected set; }
@@ -20,15 +19,32 @@ namespace NeuralNets
             int nodeCount,
             int randomSeed = 55)
         {
-            NumNodes = nodeCount;
+            NodeCount = nodeCount;
             RandomSeed = randomSeed;
             InputShape = inputShape;
         }
+
+        // Deep copy, except for matrices those aren't necessary.
+        protected Layer(Layer srcLayer)
+        {
+            this.NodeCount = srcLayer.NodeCount;
+            this.RandomSeed = srcLayer.RandomSeed;
+            this.InputShape = srcLayer.InputShape;
+            this.OutputShape = srcLayer.OutputShape;
+            this.LastWeightGradient = null;
+            this.LastBiasGradient = null;
+        }
+
+        public abstract Layer DeepCopy();
+
+        public abstract void Initialize();
 
         public virtual void ResetAccumulators() { }
 
         public abstract Tensor FeedFoward(Tensor input);
         public abstract Tensor BackPropagation(Tensor dE_dY);
         public virtual void UpdateWeightsAndBiasesWithScaledGradients(float learningRate) { }
+        internal virtual void AccumulateGradientsFrom(Layer layer) { }
+        internal virtual void CopyWeightsAndBiasesFrom(Layer layer) { }
     }
 }

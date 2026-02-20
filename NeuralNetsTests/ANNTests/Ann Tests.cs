@@ -257,7 +257,7 @@ namespace NeuralNetsTests.ANNTests
             totLoss = 0;
             for (int i = 0; i < 10000; i++)
             {
-                RenderContext.BatchTrain(ctx3, 1);
+                ctx3.BatchTrain(1);
             }
 
             {

@@ -7,13 +7,11 @@ namespace NeuralNets
 {
     public class RenderContext
     {
+        private readonly int batchLogRate = 200; // how often to log progress during batch training (in batches)
+
         public int BatchSize { get; }
         public GeneralFeedForwardANN Network { get; }
         public int CurrentThreadID { get; private set; }
-        public ColumnVectorBase[] Sigma { get; private set; }
-        public ColumnVectorBase[] ActivationContext { get; }
-        public ColumnVectorBase[] DerivativeContext { get; }
-        public bool DoRandomSamples { get; private set; }
         public virtual ITrainingSet TrainingSet { get; }
 
         public int InputDim => Network.InputDim;
@@ -24,56 +22,243 @@ namespace NeuralNets
         public ILossFunction LossFunction => Network.LossFunction;
         public List<Layer> Layers => Network.Layers;
 
-        public MatrixBase[] WeightGradient { get; }
-        public ColumnVectorBase[] BiasGradient { get; }
-
-
         public RenderContext(GeneralFeedForwardANN network, int batchSize, ITrainingSet trainingSet)
         {
             this.CurrentThreadID = Thread.CurrentThread.ManagedThreadId;
             this.Network = network;
             this.BatchSize = batchSize;
             this.TrainingSet = trainingSet;
-            this.Sigma = new ColumnVectorBase[this.LayerCount];
-            this.WeightGradient = new MatrixBase[this.LayerCount];
-            this.BiasGradient = new ColumnVectorBase[this.LayerCount];
-            this.ActivationContext = new ColumnVectorBase[this.LayerCount];
-            this.DerivativeContext = new ColumnVectorBase[this.LayerCount];
         }
 
-        private void SetLastActivation(int layerIndex, ColumnVectorBase lastActivation)
+        public void EpochTrain(int numEpochs, bool doParallel = false)
         {
-            Debug.Assert(layerIndex >= 0);
-            Debug.Assert(lastActivation != null);
-            Debug.Assert(ActivationContext[layerIndex] == null);
-            ActivationContext[layerIndex] = lastActivation;
-        }
-
-        private void SetlayerSigma(int layerIndex, ColumnVectorBase sigma)
-        {
-            Debug.Assert(this.Sigma[layerIndex] == null);
-            this.Sigma[layerIndex] = sigma;
-        }
-
-        private void SetLastDerivative(int myLayerIndex, ColumnVectorBase derivative)
-        {
-            Debug.Assert(DerivativeContext[myLayerIndex] == null);
-            DerivativeContext[myLayerIndex] = derivative;   
-        }
-
-        //
-        // do the work
-        //
-#if true
-
-        public void EpochTrain(int numEpochs)
-        {
-            // scope of training enumerator is entire epoch
-            for (int i = 0; i < numEpochs; i++)
+            List<RenderContext> contexts = new List<RenderContext>();
+            if (doParallel)
             {
-                RenderContext.BatchTrain(this, i);
+                // get number of cores
+                int numCores = Environment.ProcessorCount;
+                Console.WriteLine($"Processor count: {numCores}. Setting max degree of parallelism to {numCores}.");
+
+                // Create a bunch of cloned RenderContextx.
+                // Each will have fresh layers and networks like this main context (this).
+                for (int i = 0; i < numCores; i++)
+                {
+                    GeneralFeedForwardANN networkCopy = DeepCopyNetwork(this.Network);
+                    RenderContext contextCopy = new RenderContext(networkCopy, this.BatchSize, this.TrainingSet);
+                    contexts.Add(contextCopy);
+                }
+
+                for (int i = 0; i < numEpochs; i++)
+                    BatchTrain_parallel(i, numCores, contexts, this.TrainingSet);
+            }
+            else
+            {
+                for (int i = 0; i < numEpochs; i++)
+                    BatchTrain(i, doParallel);
+            }
+
+        }
+
+        private GeneralFeedForwardANN DeepCopyNetwork(GeneralFeedForwardANN network)
+        {
+            // does a deep copy of the network by creating a new instance and copying all layers and their parameters
+            GeneralFeedForwardANN networkCopy = new GeneralFeedForwardANN(network);            
+            return networkCopy;
+        }
+
+        public void BatchTrain_parallel(
+            int epochNum,
+            int numCores, 
+            List<RenderContext> contexts, 
+            ITrainingSet trainingSet)
+        {
+            Debug.Assert(contexts.Count == numCores, "Number of contexts must match number of cores for parallel batch training.");
+            RenderContext mainContext = this; // the main context whose network will be updated with averaged weights
+            bool do2dImage = false;
+            List<TrainingPair> trainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2dImage);
+            int totalSamples = trainingSet.NumberOfSamples;
+            int maxBatches = totalSamples / BatchSize;
+            int batchSize = BatchSize;
+            int currentSampleIndex = 0;
+            var options = new ParallelOptions
+            {
+                MaxDegreeOfParallelism = numCores
+            };
+
+            // let's say you have 60,000 samples. With a batch size of 100, that's 600 batches per epoch.
+            // if you have 8 cores, you could process 8 batches in parallel, which means you'd have 75 sets of parallel batches to process per epoch.
+            // as each set of parallel batches completes, you'd average the weights across the 8 contexts before moving on to the next set of parallel batches.
+
+            // execute batches in groups of 'numCores' to maximize parallelism.
+            int batchGroups = maxBatches / numCores;
+            
+            // Timing accumulators for profiling
+            long totalCopyTime = 0;
+            long totalParallelTime = 0;
+            long totalSyncTime = 0;
+            int logInterval = 10; // Log timing every N batch groups
+            
+            for (int batchGroupIdx = 0; batchGroupIdx < batchGroups; batchGroupIdx++)
+            {
+                // Process batchSize samples
+                // Each sample: forward pass + backward pass to accumulate gradients
+                int batchStartIndex = currentSampleIndex;
+
+                // Time the weight copy operation
+                var copyStopwatch = Stopwatch.StartNew();
+                // --
+                // Every context has its own network and layers, by design for trhead safety, however, if we don't copy main's weights and biases over
+                // then we're learning from stale or divergent w/b on each context.  so start each context with the same weights/biases as main, then they can diverge during the batch, but we are starting from the same place.
+                // --
+                foreach(RenderContext ctx in contexts)
+                {
+                    ctx.CopyWeightsAndBiasesFrom(mainContext);
+                }
+                copyStopwatch.Stop();
+                totalCopyTime += copyStopwatch.ElapsedMilliseconds;
+
+                // Time the parallel training section
+                var parallelStopwatch = Stopwatch.StartNew();
+                int[] threadIds = new int[numCores];
+                long[] threadTimes = new long[numCores];
+                
+                Parallel.For(0, numCores, options, coreIdx =>
+                {
+                    int threadId = Thread.CurrentThread.ManagedThreadId;
+                    threadIds[coreIdx] = threadId;
+                    var threadStopwatch = Stopwatch.StartNew();
+                    
+                    RenderContext context = contexts[coreIdx];
+                    foreach (Layer layer in context.Network.Layers)                    
+                        layer.ResetAccumulators();                    
+
+                    // Each context processes its own batch of samples
+                    int samplesProcessed = 0;
+                    for (int sampleIdx = 0; sampleIdx < batchSize; sampleIdx++)
+                    {
+                        int coreSpecificSampleIndex = batchStartIndex + coreIdx * batchSize + sampleIdx;
+                        if (coreSpecificSampleIndex >= trainingPairs.Count)
+                            break; // safety check to avoid out-of-range
+
+                        TrainingPair trainingPair = trainingPairs[coreSpecificSampleIndex];                        
+                        ColumnVectorBase predictedOut = context.FeedForward(trainingPair.Input);
+                        context.BackProp(trainingPair, predictedOut);
+                        samplesProcessed++;
+                    }
+                    
+                    threadStopwatch.Stop();
+                    threadTimes[coreIdx] = threadStopwatch.ElapsedMilliseconds;
+                });
+                parallelStopwatch.Stop();
+                totalParallelTime += parallelStopwatch.ElapsedMilliseconds;
+                
+                // Log thread diagnostics every N batch groups
+                if (batchGroupIdx % logInterval == 0)
+                {
+                    long minThreadTime = threadTimes.Min();
+                    long maxThreadTime = threadTimes.Max();
+                    long avgThreadTime = (long)threadTimes.Average();
+                    double imbalance = maxThreadTime > 0 ? (double)(maxThreadTime - minThreadTime) / maxThreadTime * 100 : 0;
+                    
+                    Console.WriteLine($"[THREADS] Core times (ms): {string.Join(", ", threadTimes)}");
+                    Console.WriteLine($"[THREADS] Min={minThreadTime}, Max={maxThreadTime}, Avg={avgThreadTime}, Imbalance={imbalance:F1}%");
+                    Console.WriteLine($"[THREADS] Thread IDs: {string.Join(", ", threadIds)}");
+                }
+
+                // Time the synchronization section
+                var syncStopwatch = Stopwatch.StartNew();
+                // Update weights once per numCore batches using averaged gradients
+                // Every Rendercontext has been accumulating Weights & Biases into its own network layers,
+                // so now we need to average those W&B across contexts
+                // and update the main network's weights/biases, then update main gradients.
+
+                mainContext.ResetWeightsAndBiasesAccumulatorCounters();
+                foreach (RenderContext context in contexts)
+                {
+                    mainContext.AccumulateWeightsAndBiasesFrom(context);
+                }
+                mainContext.UpdateGradientsFromAccumulatorsAndReset();
+                syncStopwatch.Stop();
+                totalSyncTime += syncStopwatch.ElapsedMilliseconds;
+                
+                // Log timing every N batch groups
+                if (batchGroupIdx > 0 && batchGroupIdx % logInterval == 0)
+                {
+                    long totalTime = totalCopyTime + totalParallelTime + totalSyncTime;
+                    double copyPct = totalTime > 0 ? (double)totalCopyTime / totalTime * 100 : 0;
+                    double parallelPct = totalTime > 0 ? (double)totalParallelTime / totalTime * 100 : 0;
+                    double syncPct = totalTime > 0 ? (double)totalSyncTime / totalTime * 100 : 0;
+                    
+                    Console.WriteLine($"[TIMING] BatchGroup {batchGroupIdx}: " +
+                        $"Copy={totalCopyTime}ms ({copyPct:F1}%), " +
+                        $"Parallel={totalParallelTime}ms ({parallelPct:F1}%), " +
+                        $"Sync={totalSyncTime}ms ({syncPct:F1}%) " +
+                        $"| Parallel/Sync Ratio: {(double)totalParallelTime / totalSyncTime:F2}x");
+                    
+                    // Reset counters for next interval
+                    totalCopyTime = 0;
+                    totalParallelTime = 0;
+                    totalSyncTime = 0;
+                }
+
+
+                // Log progress every 100 batches
+                // Add thread id in here to verify that different threads are processing different batches
+                int globalBatchIdx = batchGroupIdx * numCores;
+                if (globalBatchIdx % contexts[0].batchLogRate == 0)
+                {
+                    // Use the last sample of this batch group for loss calculation
+                    int lastSampleIdx = Math.Min(currentSampleIndex + (numCores * BatchSize) - 1, trainingPairs.Count - 1);
+                    TrainingPair sampleForLoss = trainingPairs[lastSampleIdx];
+                    ColumnVectorBase predictedOut = FeedForward(sampleForLoss.Input);
+                    float totalLoss = Network.GetTotallLoss(sampleForLoss, predictedOut);
+                    Console.WriteLine($"Epoch {epochNum}, batch size:{BatchSize}. Finished Batch Group {batchGroupIdx}/{batchGroups} (batches {globalBatchIdx}-{globalBatchIdx + numCores - 1}) with total loss = {totalLoss}");
+                }
+
+                currentSampleIndex += (numCores * BatchSize);
+            } // for batchGroupIdx
+        }
+
+        private void CopyWeightsAndBiasesFrom(RenderContext mainContext)
+        {
+            Debug.Assert(this.Layers.Count == mainContext.Layers.Count, "Layer count mismatch when copying weights and biases from main context.");
+            for(int i = 0; i < this.Layers.Count; i++)
+            {
+                Layers[i].CopyWeightsAndBiasesFrom(mainContext.Layers[i]);
             }
         }
+
+        private int numSamples = 0;
+
+        private void AccumulateWeightsAndBiasesFrom(RenderContext context)
+        {
+            for(int l = 0; l < this.Layers.Count; l++)
+            {
+                this.Layers[l].AccumulateGradientsFrom(context.Layers[l]);
+            }
+            numSamples++;
+        }
+
+        private void ResetWeightsAndBiasesAccumulatorCounters()
+        {
+            numSamples = 0;
+        }
+
+        private void UpdateGradientsFromAccumulatorsAndReset()
+        {
+            // Average the accumulated gradients across all contexts (divide by numSamples) and update weights
+            foreach (Layer layer in this.Layers)
+            {
+                if(layer is WeightedLayer || layer is ConvolutionLayer)
+                    Debug.Assert(numSamples == layer.AccumulationCount, $"numSamples ({numSamples}) must match the number of accumulated gradients ({layer.AccumulationCount}) for correct averaging.");
+                layer.UpdateWeightsAndBiasesWithScaledGradients(LearningRate);
+            }
+
+            // reset all layer accumulators, get ready for next epoch.
+            foreach (Layer layer in this.Layers)            
+                layer.ResetAccumulators();            
+        }
+
         /// <summary>
         /// Performs mini-batch gradient descent training.
         /// For each batch:
@@ -81,22 +266,21 @@ namespace NeuralNets
         /// 2. Processes batchSize samples, accumulating gradients
         /// 3. Averages gradients and updates weights once per batch
         /// 
-        /// Note: By default uses single-threaded execution for thread safety with CNN layers.
-        /// To enable parallel execution, define PARALLEL_BATCH_TRAIN compilation symbol.
+        /// Note: By default uses single-threaded execution for thread safety.
         /// </summary>
-        public static void BatchTrain(RenderContext parentContext, int epochNum)
+        public void BatchTrain(int epochNum, bool doParallel = false)
         {
             bool do2dImage = false;
-            List<TrainingPair> trainingPairs = parentContext.TrainingSet.BuildNewRandomizedTrainingList(do2dImage);
-            int totalSamples = parentContext.TrainingSet.NumberOfSamples;
-            int maxBatches = totalSamples / parentContext.BatchSize;
-            
+            List<TrainingPair> trainingPairs = TrainingSet.BuildNewRandomizedTrainingList(do2dImage);
+            int totalSamples = TrainingSet.NumberOfSamples;
+            int maxBatches = totalSamples / BatchSize;
+
             int currentSampleIndex = 0;
-            
+
             for (int batchIdx = 0; batchIdx < maxBatches; batchIdx++)
             {
                 // Reset accumulators at start of each batch
-                foreach (Layer layer in parentContext.Network.Layers)
+                foreach (Layer layer in Network.Layers)
                 {
                     layer.ResetAccumulators();
                 }
@@ -104,212 +288,72 @@ namespace NeuralNets
                 // Process batchSize samples
                 // Each sample: forward pass + backward pass to accumulate gradients
                 int batchStartIndex = currentSampleIndex;
-                
-#if PARALLEL_BATCH_TRAIN
-                // Parallel execution (faster but may have issues with CNN layers that store state)
-                Parallel.For(0, parentContext.BatchSize, sampleIdx =>
-                {
-                    // Get the training pair for this sample (thread-safe)
-                    TrainingPair trainingPair;
-                    int sampleIndex = batchStartIndex + sampleIdx;
-                    lock (trainingPairs)
-                    {
-                        trainingPair = trainingPairs[sampleIndex];
-                    }
-                    
-                    // Forward pass
-                    ColumnVectorBase predictedOut = FeedForwardStatic(parentContext.Network.Layers, trainingPair.Input);
-                    
-                    // Backward pass - accumulates gradients into shared layer accumulators
-                    BackPropStatic(parentContext.Network, trainingPair, predictedOut);
-                });
-#else
+
                 // Single-threaded execution (safer, works with all layer types including CNN)
-                for (int sampleIdx = 0; sampleIdx < parentContext.BatchSize; sampleIdx++)
+                for (int sampleIdx = 0; sampleIdx < BatchSize; sampleIdx++)
                 {
                     // Get the training pair for this sample
                     TrainingPair trainingPair;
                     int sampleIndex = batchStartIndex + sampleIdx;
                     trainingPair = trainingPairs[sampleIndex];
-                    
+
                     // Forward pass
-                    ColumnVectorBase predictedOut = FeedForwardStatic(parentContext.Network.Layers, trainingPair.Input);
-                    
+                    ColumnVectorBase predictedOut = FeedForward(trainingPair.Input);
+
                     // Backward pass - accumulates gradients into shared layer accumulators
-                    BackPropStatic(parentContext.Network, trainingPair, predictedOut);
+                    BackProp(trainingPair, predictedOut);
                 }
-#endif
 
                 // Update weights once per batch using averaged gradients
-                foreach (Layer layer in parentContext.Network.Layers)
+                foreach (Layer layer in Network.Layers)
                 {
-                    layer.UpdateWeightsAndBiasesWithScaledGradients(parentContext.LearningRate);
+                    layer.UpdateWeightsAndBiasesWithScaledGradients(LearningRate);
                 }
 
                 // Log progress every 100 batches
-                if (batchIdx % 100 == 0)
+                // Add thread id in here to verify that different threads are processing different batches
+                if (batchIdx % batchLogRate == 0)
                 {
                     // Use the last sample of this batch for loss calculation
-                    TrainingPair sampleForLoss = trainingPairs[currentSampleIndex + parentContext.BatchSize - 1];
-                    ColumnVectorBase predictedOut = FeedForwardStatic(parentContext.Network.Layers, sampleForLoss.Input);
-                    float totalLoss = parentContext.Network.GetTotallLoss(sampleForLoss, predictedOut);
-                    Console.WriteLine($"Epoch {epochNum}, batch size:{parentContext.BatchSize}. Finished Batch {batchIdx} with total loss = {totalLoss}");
+                    TrainingPair sampleForLoss = trainingPairs[currentSampleIndex + BatchSize - 1];
+                    ColumnVectorBase predictedOut = FeedForward(sampleForLoss.Input);
+                    float totalLoss = Network.GetTotallLoss(sampleForLoss, predictedOut);
+                    Console.WriteLine($"Epoch {epochNum}, batch size:{BatchSize}. Finished Batch {batchIdx} with total loss = {totalLoss}");
                 }
 
-                currentSampleIndex += parentContext.BatchSize;
+                currentSampleIndex += BatchSize;
             }
         }
 
-        /// <summary>
-        /// Static version of FeedForward that doesn't require creating a RenderContext
-        /// </summary>
-        private static ColumnVectorBase FeedForwardStatic(List<Layer> layers, Tensor input)
+        public ColumnVectorBase FeedForward(Tensor input)
         {
             Tensor lastOutput = input;
-            foreach (Layer layer in layers)
-            {
+            foreach (Layer layer in Layers)            
                 lastOutput = layer.FeedFoward(lastOutput);
-            }
+            
             return lastOutput.ToColumnVector();
         }
 
         /// <summary>
-        /// Static version of BackProp that doesn't require creating a RenderContext
         /// Accumulates gradients directly into the shared network layers
         /// </summary>
-        private static void BackPropStatic(NeuralNetworkAbstract network, TrainingPair trainingPair, ColumnVectorBase predictedOut)
-        {
-            Tensor dE_dX = network.LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut).ToTensor();
-            foreach (Layer layer in network.Layers.Reverse<Layer>())
-            {
-                // All layers (including activation) handle their own derivative computation
-                dE_dX = layer.BackPropagation(dE_dX);
-            }
-        }
-        public void ScaleAndUpdateWeightsBiasesHelper(int L)
-        {
-            this.Layers[L].UpdateWeightsAndBiasesWithScaledGradients(LearningRate);
-        }
-#endif
-
-
-        public ColumnVectorBase FeedForward(Tensor inputVecTensor)
-        {
-            Tensor lastOutput = inputVecTensor;
-            for (int i = 0; i < this.LayerCount; i++)
-            {
-                lastOutput = Layers[i].FeedFoward(lastOutput);
-            }
-            return lastOutput.ToColumnVector();
-        }
-
-        // for reference
-#if false
-        public ColumnVectorBase FeedForward_(Tensor inputVecTensor)
-        {
-            ColumnVectorBase inputVec = (inputVecTensor as AnnTensor).ColumnVector;
-            Debug.Assert(inputVec.Size == this.InputDim);
-            ColumnVectorBase prevActivation = inputVec;
-            for (int i = 0; i < this.LayerCount; i++)
-            {
-                WeightedLayer currentLayer = Layers[i] as WeightedLayer;
-                MatrixBase w1 = new MatrixBase(currentLayer.Weights.Mat);
-                ColumnVectorBase pa = new ColumnVectorBase(prevActivation.Column);
-                ColumnVectorBase z1 = new MatrixBase(currentLayer.Weights.Mat) * new ColumnVectorBase(prevActivation.Column);
-                ColumnVectorBase z12 = z1 + new ColumnVectorBase(currentLayer.Biases.Column);
-                prevActivation = currentLayer.Activate(z12);
-                this.SetLastActivation(i, prevActivation);
-            }
-            return prevActivation;
-        }
-#endif
-
-// Note: this is specialized for 2 layers (input, hidden, output). Great as a reference
-// But not generalized for many layers.
-// Great for validation because we know it works.
-/*
- * public void BackProp_2layer(TrainingPair trainingPair, ColumnVectorBase predictedOut)
-{
-    // Second: find W0 - Wn in the hidden layer, just before the output layer
-    // We want the derivative of the Error function in terms of the weights (w0 ... wn)
-    // d(E)/dw1 = d(E)/o2 * d(o2)/z2 * d(z2)/w = (a-b) * layer.derivative * o1
-    // <matrix form> ==> 
-    //          (pred - actual)_vec * sigmoid_derivate_vec * layer-1.output_vec
-    // d(E)/db = d(E)/o2 * d(o2)/z2 * d(z2)/b
-    // 
-
-    WeightedLayer hiddenLayer = WeightedLayers[0];
-    WeightedLayer outputLayer = WeightedLayers[1];
-
-    // partial product, before we start the per-w differentials.
-    ColumnVectorBase LossPartial = this.LossFunction.Derivative(trainingPair.Output, predictedOut);
-    ColumnVectorBase ActivationPartial = outputLayer.Derivative();  // sigmoid partial derivative
-    ColumnVectorBase w2_sigma = LossPartial * ActivationPartial;
-
-    // Remember that the weights in the weight matrix are ROWS ...
-    // so the dot product of row1 and output vector or activation vector minus the bias is = Z (the input to the activation function)
-
-    // so the gradient w' matrix needs to be rows of gradient weights (or weight deltas) that we get from all the partial derivative shenanigans
-    Matrix scaledGradientWeights_outputLayer = this.TrainingRate * BuildGradientWeights(ctx.ActivationContext[1], w2_sigma);
-    ColumnVectorBase b2_delta = this.TrainingRate * w2_sigma * 1.0;
-
-
-    // ----
-    // For hidden layer:
-    // v = the weights before the hidden layer.
-    // bb = biases before the hidden layer.
-    // Zl = the input to this node
-    // Ol = output = Relu(Zl)
-    // in = input n.
-    // Zl = v1 * i1 + v2 * i2 + ... 
-    // Full D(E)/dv = D(zl)/d(v) * d(Ol)/d(zl) * SUM_OVER_ALL_OUTGOING_EDGES[ D(E)/D(Ol) ]   (for example de1/dzl + de0/dzl + de2/dzl ... deN/dzl)
-
-    // a = output of sigmoid on out put layer
-    // z = input to sigmoing on outputlayer
-    // E = error at that node on output layer
-    // w = weight on edge between hiddend and output layer
-    //  D(E)/D(Ol) == D(E)/D(a) * D(a)/Dz * Dz / D(Ol) = (predicted - actual) * sigmoid_derivative(z) * w
-    // and the left side:  D(E)/dv = D(zl)/d(v) * d(Ol)/d(zl)
-    //                             = i          * Relu'(zl)
-
-    // 
-    // Sigma = D(E)/Da * Da / Dz  [ on the output layer). a is the output of sigmoid. z is the input
-    // Now multiply sigma by the existing weight matrix:
-    // ** from above **  D(E)/D(Ol) == D(E)/D(a) * D(a)/Dz * Dz / D(Ol) = (predicted - actual) * sigmoid_derivative(z) * w
-    ColumnVectorBase sum_over_all_de_dOl = outputLayer.Weights.GetTransposedMatrix() * w2_sigma;
-    // NOTE: each entry of this column vector as the SUM_OVER_ALL_OUTGOING_EDGES for each HiddenLayer node.
-    // for node 3, de_dOl[2] == the sum of all outgoing edges partial derivatives
-
-    // partial weights 
-    // ColumnVectorBase DZl_Dv_times_dOl_dZl = trainingPair.Input * hiddenLayer.GetActivationFunctionDerivative();
-    ColumnVectorBase DOl_DZL = hiddenLayer.Derivative(ctx, 0) * sum_over_all_de_dOl;
-    Matrix scaledGradientWeights_hiddenLayer = this.TrainingRate * BuildGradientWeights(trainingPair.Input, DOl_DZL);
-
-    // partial biases full equation:
-    // D(E)/D(bb) = D(zl)/D(bb) * d(Ol)/d(zl) * SUM_OVER_ALL_OUTGOING_EDGES[ D(E)/D(Ol) ]   (for example de1/dzl + de0/dzl + de2/dzl ... deN/dzl)
-    // Note all the terms are the same except the first : dzl/dbb
-    ColumnVectorBase b1_delta = this.TrainingRate * DOl_DZL * 1.0;
-
-    // UPDATE THESE WEIGHTS AFTER BACK PROP IS DONE
-    // Now: Update W2 weight matrix with w2_delta (and same for b)
-    outputLayer.AccumulateGradients(scaledGradientWeights_outputLayer, b2_delta);
-    outputLayer.UpdateWeightsAndBiases();
-
-    hiddenLayer.AccumulateGradients(scaledGradientWeights_hiddenLayer, b1_delta);
-    hiddenLayer.UpdateWeightsAndBiases();
-}
-*/
-
         public void BackProp(TrainingPair trainingPair, ColumnVectorBase predictedOut)
         {
+            Tensor dE_dX = Network.LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut).ToTensor();
+            foreach (Layer layer in Network.Layers.Reverse<Layer>())
+                dE_dX = layer.BackPropagation(dE_dX);
+        }
+
+        public void BackProp_verboseDebug(TrainingPair trainingPair, ColumnVectorBase predictedOut)
+        {
             bool debugMode = Environment.GetEnvironmentVariable("NEURALNET_DEBUG") == "1";
-            
+
             Tensor dE_dX = LossFunction.Derivative(trainingPair.Output.ToColumnVector(), predictedOut).ToTensor();
             if (debugMode)
             {
                 Console.WriteLine($"\n[RenderContext.BackProp] Initial dE/dX (loss derivative): [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
             }
-            
+
             int layerIndex = this.Layers.Count - 1;
             foreach (Layer layer in this.Layers.Reverse<Layer>())
             {
@@ -317,7 +361,7 @@ namespace NeuralNets
                 {
                     Console.WriteLine($"\n[RenderContext.BackProp] Processing layer {layerIndex} ({layer.GetType().Name})");
                 }
-                
+
                 if (layer is IActivationFunction)
                 {
                     if (debugMode)
@@ -327,58 +371,35 @@ namespace NeuralNets
                         Console.WriteLine($"  Current dE/dX before ReLU: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
                     }
 
-                    dE_dX = layer.BackPropagation(dE_dX);                    
-                    
+                    dE_dX = layer.BackPropagation(dE_dX);
+
                     if (debugMode)
                     {
                         Console.WriteLine($"  After multiplying by dE/dX: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
                     }
                 }
-                else 
+                else
                 {
                     if (debugMode)
                     {
                         Console.WriteLine($"  Passing dE/dX to WeightedLayer: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
                     }
-                    
+
                     dE_dX = layer.BackPropagation(dE_dX);
-                    
+
                     if (debugMode)
                     {
                         Console.WriteLine($"  WeightedLayer returned dE/dX for previous layer: [{string.Join(", ", Enumerable.Range(0, dE_dX.ToColumnVector().Size).Select(i => dE_dX.ToColumnVector()[i].ToString("F6")))}]");
                     }
                 }
-                
+
                 layerIndex--;
             }
         }
 
-
-        private void SetLayerGradients(int L, MatrixBase weightGradient, ColumnVectorBase biasGradient)
+        public void ScaleAndUpdateWeightsBiasesHelper(int L)
         {
-            this.BiasGradient[L] = biasGradient;
-            this.WeightGradient[L] = weightGradient;
-        }
-
-        private MatrixBase BuildGradientWeightsHelper_naive(ColumnVectorBase lastActivation, ColumnVectorBase sigma)
-        {
-            // Do outer product
-            // we want all the sigmas (on the right) times all the Outpus (from the left) to look like the wiehgt matrix
-            // where the top row represents the weights of the entier (left) layer.
-            // this matrix is the D(E)/D(w) final result, and the partial derivative of the massive dot product at each right node, per neft node is simply the output of the left node
-            //sigma = this.TrainingRate * sigma;
-            // Matrix scaledGradientWeights = sigma * lastActivation.Transpose();
-
-            // outer product:  o1s1 o2s1 o3s1 o4s1 ... onS1    o1s2 o2s2 o3s2 ... oNs2 
-//            MatrixBase gradientDelta = sigma * lastActivation.Transpose();
-            MatrixBase gradientDelta = sigma.OuterProduct(lastActivation);
-            return gradientDelta;
-        }
-
-        private MatrixBase BuildGradientWeightsHelper(ColumnVectorBase lastActivation, ColumnVectorBase sigma)
-        {
-            MatrixBase gradientDelta = sigma.OuterProduct(lastActivation);
-            return gradientDelta;
+            this.Layers[L].UpdateWeightsAndBiasesWithScaledGradients(LearningRate);
         }
 
     }

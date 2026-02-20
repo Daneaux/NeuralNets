@@ -24,6 +24,8 @@ namespace MatrixLibrary
             this.Mat = m; // no deep copy, better not change my matrix dude!
         }
 
+        public Matrix2D(MatrixBase src) : base(src) { }
+
         public override Matrix2D Log()
         {
             Matrix2D logMat = new Matrix2D(this.Rows, this.Cols);

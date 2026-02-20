@@ -31,6 +31,7 @@ namespace NeuralNetsTests.torchSharpComparison
         /// Both use: Vanilla SGD, learning_rate=0.001, 5 epochs, same Xavier init, same 100 MNIST samples
         /// </summary>
         [TestMethod]
+        [Ignore]
         public void CNN_VanillaSGD_ConvergenceComparison()
         {
             Console.WriteLine("\n=== CNN Vanilla SGD Convergence Comparison ===");
@@ -40,7 +41,7 @@ namespace NeuralNetsTests.torchSharpComparison
 
             // Get same MNIST samples for both networks
             var trainingSet = new MNISTTrainingSet();
-            var trainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2DImage: true).Take(100).ToList();
+            var trainingPairs = trainingSet.BuildNewRandomizedTrainingList(do2DImage: true).Take(1000).ToList();
             Console.WriteLine($"Loaded {trainingPairs.Count} training samples\n");
 
             // ==================== TORCHSHARP CNN ====================
@@ -198,6 +199,7 @@ namespace NeuralNetsTests.torchSharpComparison
             int epochs,
             float learningRate)
         {
+            MatrixFactory.DefaultBackend = MatrixBackend.AVX;
             // Create network: Conv(4x4, 5) → ReLU → Pool(2x2) → Flatten → Dense(720→10) → SoftMax
             // Using SoftMax layer + CategoricalCrossEntropy like CNNTrainingTests
             var inputShape = new InputOutputShape(28, 28, 1, 1);

@@ -22,6 +22,27 @@ namespace NeuralNets
             (int destRows, int destColumns) = MatrixLibrary.MatrixHelpers.ConvolutionSizeHelper(inputShape, KernelSize, isFull:false, Stride);
 
             OutputShape = new InputOutputShape(destColumns, destRows, KernelDepth, KernelCount);
+            Initialize();
+        }
+
+        public PoolingLayer(PoolingLayer srcLayer) : base(srcLayer)
+        {
+            Stride = srcLayer.Stride;
+            KernelCount = srcLayer.KernelCount;
+            KernelDepth = srcLayer.KernelDepth;
+            KernelSize = srcLayer.KernelSize;
+            FlatOutputSize = srcLayer.FlatOutputSize;
+            OutputShape = srcLayer.OutputShape;
+            Initialize();
+        }
+
+        public override Layer DeepCopy()
+        {
+            return new PoolingLayer(this);
+        }
+
+        public override void Initialize()
+        {
         }
 
         public int Stride { get; }

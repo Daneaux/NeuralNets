@@ -52,7 +52,7 @@ namespace NeuralNets
             get => Stacks[i];
         }
 
-        public void Accumulate( KernelStacks ks)
+        public void Accumulate(KernelStacks ks)
         {
             for (int i = 0; i < Stacks.Count; i++)
                 for (int j = 0; j < Stacks[i].Count; j++)

@@ -23,6 +23,9 @@ namespace MnistReader_ANN
             NumberOfLabels = numLabels;
             NumberOfSamples = numSamples;
             OutputShape = new InputOutputShape(Width, Height, Depth, 1);
+
+            ImageList = null; 
+            TrainingList = null;            
         }
 
         public int Width { get; }
@@ -36,6 +39,12 @@ namespace MnistReader_ANN
         public List<TrainingPair> TrainingList { get; private set; }
         private List<Image> ImageList { get; set; }
 
+        public void ClearTrainingData()
+        {
+            this.ImageList = null;
+            this.TrainingList = null;
+        }
+
         public List<TrainingPair> BuildNewRandomizedTrainingList(bool do2DImage = false)
         {
             Random rnd = new Random();
@@ -45,13 +54,18 @@ namespace MnistReader_ANN
                 this.ImageList = MnistReader.ReadTrainingData(do2DImage).ToList();
                 Debug.Assert(ImageList.Count == 60000);
             }
-            trainingPairs = new List<TrainingPair>((int)ImageList.Count);
-            foreach (Image image in ImageList)
+
+            if (this.TrainingList == null)
             {
-                trainingPairs.Add(TrainingPairFromImage(image));
+                trainingPairs = new List<TrainingPair>((int)ImageList.Count);
+                foreach (Image image in ImageList)
+                {
+                    trainingPairs.Add(TrainingPairFromImage(image));
+                }
+
+                this.TrainingList = trainingPairs.OrderBy(x => rnd.Next()).ToList();
             }
 
-            this.TrainingList = trainingPairs.OrderBy(x => rnd.Next()).ToList();
             return this.TrainingList;
         }
 

@@ -59,6 +59,17 @@ namespace MatrixLibrary
             return CreateMatrix(data, _defaultBackend);
         }
 
+        public static MatrixBase CreateMatrix(MatrixBase src)
+        {
+            return MatrixFactory.GetDefaultBackend() switch
+            {
+                MatrixBackend.Software => new Matrix2D(src),
+                MatrixBackend.AVX => new AvxMatrix(src),
+                MatrixBackend.GPU => CreateGpuMatrix(src),
+                _ => throw new ArgumentException($"Unsupported backend: {MatrixFactory.GetDefaultBackend()}")
+            };
+        }
+
         /// <summary>
         /// Creates a matrix with the specified dimensions using the specified backend.
         /// </summary>
@@ -114,6 +125,17 @@ namespace MatrixLibrary
         public static BaseClasses.ColumnVectorBase CreateColumnVector(float[] data)
         {
             return CreateColumnVector(data, _defaultBackend);
+        }
+
+        public static BaseClasses.ColumnVectorBase CreateColumnVector(BaseClasses.ColumnVectorBase src)
+        {
+            return MatrixFactory.GetDefaultBackend() switch
+            {
+                MatrixBackend.Software => new ColumnVector(src),
+                MatrixBackend.AVX => new AvxColumnVector(src),
+                MatrixBackend.GPU => new GpuColumnVector(src),
+                _ => throw new ArgumentException($"Unsupported backend: {MatrixFactory.GetDefaultBackend()}")
+            };
         }
 
         /// <summary>
@@ -216,6 +238,11 @@ namespace MatrixLibrary
         private static MatrixBase CreateGpuMatrix(float[,] data)
         {
             return new GpuMatrix(data);
+        }
+
+        private static MatrixBase CreateGpuMatrix(MatrixBase src)
+        {
+            return new GpuMatrix(src);
         }
 
         private static ColumnVectorBase CreateGpuColumnVector(int size)

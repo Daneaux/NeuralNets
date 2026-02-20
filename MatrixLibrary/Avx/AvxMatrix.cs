@@ -21,20 +21,8 @@ namespace MatrixLibrary
             Cols = cols;
             Mat = new float[rows, cols];
         }
-        /*        public void SetRandom(int seed, float min, float max)
-                {
-                    Random rnd = new Random(seed);
-                    float width = max - min;
-                    for (int c = 0; c < Cols; c++)
-                    {
-                        for (int r = 0; r < Rows; r++)
-                        {
-                            Mat[r, c] = (float)((rnd.NextDouble() * width) + min);
-                        }
-                    }
-                }*/
 
-        //public MatrixBackend Backend => MatrixBackend.AVX;
+        public AvxMatrix(MatrixBase src) : base(src) { }
 
         public override unsafe AvxMatrix Add(MatrixBase rhs)
         {

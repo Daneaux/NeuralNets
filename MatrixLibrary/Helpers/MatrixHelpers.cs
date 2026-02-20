@@ -24,6 +24,16 @@ namespace MatrixLibrary
             return result;
         }
 
+        public static float[] FlattenMatrixToFloatArray(MatrixBase matrix)
+        {
+            float[] floats = new float[matrix.TotalSize];
+            int i = 0;
+            for (int r = 0; r < matrix.Rows; r++)
+                for (int c = 0; c < matrix.Cols; c++)
+                    floats[i++] = matrix[r, c];
+            return floats;
+        }
+
 
         public static (int r, int c) ConvolutionSizeHelper(MatrixBase matrix, MatrixBase filter)
         {
