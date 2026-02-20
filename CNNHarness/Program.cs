@@ -15,7 +15,7 @@ class CNNHarness
         
         // Train the CNN with mini-batching (batch size 64 for stable convergence)
         Console.WriteLine("Training CNN with mini-batch size 64...");
-        (var network, var layers) = TrainCNN(epochs: 30, learningRate: 0.001f, batchSize: 64);
+        (var network, var layers) = TrainCNN(epochs: 10, learningRate: 0.001f, batchSize: 64);
         
         // Evaluate on test set
         Console.WriteLine("\nEvaluating on test set...");
@@ -186,7 +186,7 @@ class CNNHarness
         var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
         
         // Layer 6: SoftMax - convert logits to probabilities
-        var softmax = new SoftMax(dense.OutputShape, nodeCount: 10);
+       // var softmax = new SoftMax(dense.OutputShape, nodeCount: 10);
         
         // Build layer stack
         List<Layer> layers = new List<Layer>()
@@ -196,7 +196,7 @@ class CNNHarness
             pool1,
             flatten,
             dense,
-            softmax
+           // softmax
         };
         
         // Apply proper Xavier initialization to weighted layers

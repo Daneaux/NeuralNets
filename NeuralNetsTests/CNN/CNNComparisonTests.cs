@@ -235,7 +235,7 @@ namespace NeuralNetsTests.torchSharpComparison
             var relu1 = new ReLUActivaction(conv1.OutputShape);
             var flatten = new FlattenLayer(relu1.OutputShape, nodeCount: 1);
             var annWeightedLayer = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var softmax1 = new SoftMax(annWeightedLayer.OutputShape, nodeCount: 10);
+            //var softmax1 = new SoftMax(annWeightedLayer.OutputShape, nodeCount: 10);
 
             // Zero initialize to match TorchSharp
             for (int r = 0; r < 3; r++)
@@ -248,7 +248,7 @@ namespace NeuralNetsTests.torchSharpComparison
                     annWeightedLayer.Weights[r, c] = 0;
             annWeightedLayer.Biases.SetRandom(42, 0, 0);  // Set all biases to 0
 
-            var layers = new List<Layer> { conv1, relu1, flatten, annWeightedLayer, softmax1 };
+            var layers = new List<Layer> { conv1, relu1, flatten, annWeightedLayer };//, softmax1 };
             var network = new GeneralFeedForwardANN(layers, 0.01f, 28 * 28, 10, new CategoricalCrossEntropy());
 
             // Reset accumulators

@@ -72,7 +72,7 @@ namespace NeuralNets
                     Kernels[i, j] = kernel;
                 }
                 MatrixBase bias = MatrixFactory.CreateMatrix(OutputShape.Height, OutputShape.Width);
-                bias.SetRandom(RandomSeed, -0.1f, -0.1f);
+                bias.SetRandom(RandomSeed, -0.1f, 0.1f);
                 Biases.Add(bias);
             }
         }

@@ -21,7 +21,7 @@ namespace NeuralNetsTests.torchSharpComparison
     {
         private const float Tolerance = 0.1f;
         private const int RandomSeed = 42;
-        private const int numEpochs = 2;
+        private const int numEpochs = 30;
         private const float learningRate = 0.001f;
         private const int batchSize = 64;
 
@@ -208,9 +208,9 @@ namespace NeuralNetsTests.torchSharpComparison
             var pool1 = new PoolingLayer(relu1.OutputShape, stride: 2, kernelCount: 5, kernelSquareDimension: 2, kernelDepth: 1);
             var flatten = new FlattenLayer(pool1.OutputShape, nodeCount: 1);
             var dense = new WeightedLayer(flatten.OutputShape, nodeCount: 10);
-            var softmax = new SoftMax(dense.OutputShape, nodeCount: 10);
+            //var softmax = new SoftMax(dense.OutputShape, nodeCount: 10);
 
-            var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense, softmax };
+            var layers = new List<Layer> { conv1, relu1, pool1, flatten, dense };
 
             // Xavier initialization (same as TorchSharp)
             float convBound = (float)System.Math.Sqrt(6.0 / (16 + 5));

@@ -95,7 +95,7 @@ namespace NeuralNets
                 var result = new List<MatrixBase>();
                 for(int i = 0; i < derivative.Count; i++)
                 {
-                    result.Add(derivative[i].Multiply(dE_dX_mats[i]));
+                    result.Add(derivative[i].HadamardProduct(dE_dX_mats[i]));
                 }
                 return result.ToTensor();
             }
